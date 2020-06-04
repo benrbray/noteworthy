@@ -25,7 +25,8 @@ function base(options){
 				'Environment.isDevelopment': JSON.stringify ( process.env.NODE_ENV !== 'production' )
 			}),
 			PluginSkeletonOptimization
-		]
+		],
+		devtool: "source-map"
 	}
 }
 
