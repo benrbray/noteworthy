@@ -1,8 +1,24 @@
-<!doctype html>
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'">
+		<title>Hello World!</title>
+	</head>
+	<body>
+		<h1>💖 Hello World!</h1>
+		<p>Welcome to your Electron application.</p>
 
-<head>
-	<meta charset="utf-8">
-</head>
-<body>
-	<div class="app"></div>
-</body>
+		<button id="buttonNew">New</button>
+		<button id="buttonOpen">Open</button>
+		<button id="buttonSave">Save</button>
+
+		<textarea id="editor">
+		</textarea>
+
+		<div class="info">
+			<label>Filename: </label><span id="title"></span>
+			<label>Mode: </label><span id="mode"></span>
+		</div>
+	</body>
+</html>

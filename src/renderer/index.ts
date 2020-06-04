@@ -1,15 +1,23 @@
-import render from './render';
+import Renderer from './render';
+
+import "./main.css";
 
 /* RENDERER */
 
-render();
+let renderer:Renderer;
 
-/* HOT MODULE REPLACEMENT */
+onload = function(){
 
-if (module.hot) {
+	renderer = new Renderer();
+	renderer.init();
 
-	module.hot.accept('./render', () => {
-		require('./render').default();
-	});
+	/* HOT MODULE REPLACEMENT */
 
+	if (module.hot) {
+
+		module.hot.accept('./render', () => {
+			require('./render').default();
+		});
+
+	}
 }
