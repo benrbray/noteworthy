@@ -36,9 +36,7 @@ class Window {
 	initDebug(){
 		if (!Environment.isDevelopment) return;
 
-		this.window.webContents.openDevTools({
-			mode: 'undocked'
-		});
+		this.window.webContents.openDevTools();
 
 		this.window.webContents.on('devtools-opened', () => {
 			this.window.focus();

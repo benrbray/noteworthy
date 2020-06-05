@@ -3,11 +3,15 @@ import { enforceMacOSAppLocation, is } from 'electron-util';
 import * as fs from "fs";
 import Main from "./windows/main";
 import Window from "./windows/window";
+import MainIPC from "./MainIPC";
 
 export default class App {
 	window: Window | undefined;
+	_ipc:MainIPC;
 
 	constructor(){
+		this._ipc = new MainIPC(this);
+
 		this.init();
 		this.events();
 	}
@@ -15,6 +19,7 @@ export default class App {
 	// INITIALIZATION //////////////////////////////////////
 
 	init(){
+		this._ipc.init();
 		this.initContextMenu();
 		this.initMenu();
 	}

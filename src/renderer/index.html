@@ -2,23 +2,47 @@
 <html>
 	<head>
 		<meta charset="UTF-8">
-		<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'">
-		<title>Hello World!</title>
+		<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; font-src data: 'self'">
+		<title>Spaetzle</title>
 	</head>
 	<body>
-		<h1>💖 Hello World!</h1>
-		<p>Welcome to your Electron application.</p>
+		<div id="app">
+			<div id="header">
+				<button id="buttonNew">New</button>
+				<button id="buttonOpen">Open</button>
+				<button id="buttonSave">Save</button>
+				<button id="buttonSaveAs">SaveAs</button>
+			</div>
+			<div id="sidebar">
 
-		<button id="buttonNew">New</button>
-		<button id="buttonOpen">Open</button>
-		<button id="buttonSave">Save</button>
+			</div>
+			<div id="content">
+				<div id="editor">
+				</div>
+			</div>
+			<div id="footer">
+				<label>Filename: </label><span id="title"></span>
+				<label>Mode: </label><span id="mode"></span>
+			</div>
+		</div>
 
-		<textarea id="editor">
-		</textarea>
+		<div style="display: none" id="pm-content">
+			<h3>Hello ProseMirror</h3>
 
-		<div class="info">
-			<label>Filename: </label><span id="title"></span>
-			<label>Mode: </label><span id="mode"></span>
+			<p>This is editable text. You can focus it and start typing.</p>
+
+			<p>To apply styling, you can select a piece of text and manipulate
+			its styling from the menu. The basic schema
+			supports <em>emphasis</em>, <strong>strong
+			text</strong>, <a href="http://marijnhaverbeke.nl/blog">links</a>, <code>code
+			font</code>, and images.</p>
+
+			<p>Block-level structure can be manipulated with key bindings (try
+			ctrl-shift-2 to create a level 2 heading, or enter in an empty
+			textblock to exit the parent block), or through the menu.</p>
+
+			<p>Try using the “list” item in the menu to wrap this paragraph in
+			a numbered list.</p>
 		</div>
 	</body>
 </html>

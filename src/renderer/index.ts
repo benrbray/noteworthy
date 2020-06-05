@@ -1,6 +1,8 @@
 import Renderer from './render';
 
-import "./main.css";
+import "./main.less";
+import "@root/node_modules/prosemirror-view/style/prosemirror.css";
+import "@root/node_modules/katex/dist/katex.min.css";
 
 /* RENDERER */
 

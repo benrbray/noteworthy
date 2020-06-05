@@ -1,0 +1,135 @@
+body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	height: 100vh;
+	width: 100%;
+	padding: 0;
+	margin: 0;
+}
+
+/* User Interface --------------------------------------- */
+
+#app {
+	display: grid;
+	grid-template-areas: "sidebar header" "sidebar content" "sidebar footer";
+	grid-template-rows: 2em 1fr 2em;
+	grid-template-columns: 200px 1fr;
+	
+	width: 100%;
+	height: 100%;
+}
+
+#footer {
+	grid-area: footer;
+	background-color: rgb(76, 76, 172);
+}
+
+#header {
+	grid-area: header;
+	background-color: rgb(175, 85, 85);
+}
+
+#content {
+	grid-area: content;
+	padding: 1em;
+	overflow-y: scroll;
+	overflow-x: hidden;
+	background-color: white;
+}
+
+#sidebar {
+	grid-area: sidebar;
+	background-color: rgb(196, 196, 105);
+}
+
+#app {
+	h1::before { content: "# ";     color: #ccc; margin-left: 0.5rem; }
+	h2::before { content: "## ";    color: #ccc; margin-left: 0.5rem; }
+	h3::before { content: "### ";   color: #ccc; margin-left: 0.5rem; }
+	h4::before { content: "#### ";  color: #ccc; margin-left: 0.5rem; }
+	h5::before { content: "##### "; color: #ccc; margin-left: 0.5rem; }
+	h6::before { content: "##### "; color: #ccc; margin-left: 0.5rem; }
+
+	p {
+		margin-left: 0.5em;
+	}
+}
+
+/* ProseMirror ------------------------------------------ */
+
+shouting { display: inline; text-transform: uppercase; font-weight: bold; }
+
+note, notegroup { display: block; border: 1px solid silver; border-radius: 3px; padding: 3px 6px; margin: 5px 0; }
+  notegroup { border-color: #66f }
+
+.ProseMirror {
+	counter-reset: prosemirror-footnote;
+	outline: none;
+}
+footnote {
+	display: inline-block;
+	position: relative;
+	cursor: pointer;
+}
+footnote::after {
+	content: counter(prosemirror-footnote);
+	vertical-align: super;
+	font-size: 75%;
+	counter-increment: prosemirror-footnote;
+}
+.ProseMirror-hideselection .footnote-tooltip *::selection { background-color: transparent; }
+.ProseMirror-hideselection .footnote-tooltip *::-moz-selection { background-color: transparent; }
+.footnote-tooltip {
+	cursor: auto;
+	position: absolute;
+	left: -30px;
+	top: calc(100% + 10px);
+	background: silver;
+	padding: 3px;
+	border-radius: 2px;
+	width: 500px;
+}
+.footnote-tooltip::before {
+	border: 5px solid silver;
+	border-top-width: 0px;
+	border-left-color: transparent;
+	border-right-color: transparent;
+	position: absolute;
+	top: -5px;
+	left: 27px;
+	content: " ";
+	height: 0;
+	width: 0;
+}
+
+//// MATH ///////////////////////////////////////////////////
+
+/* Inline Math ------------------------------------------- */
+
+inlinemath {
+	min-width: 1em;
+	min-height: calc(1em);
+	background-color: rgba(0,0,0,0.1);
+	display: inline-block;
+	font-size: 0.95em;
+	text-align: center;
+}
+
+inlinemath {
+	cursor: auto;
+}
+
+inlinemath .math-src::after, inlinemath .math-src::before {
+	content: "$";
+}
+
+inlinemath .math-src {
+	display: none;
+	font-family: monospace;
+	font-size: 1.2em;
+}
+
+inlinemath .math-src .ProseMirror { display: inline-block; }
+inlinemath .math-src .ProseMirror:focus { outline: none; }
+inlinemath .math-render { display: inline-block; cursor: pointer; }
+inlinemath.ProseMirror-selectednode .math-src { display: inline; }
+inlinemath.ProseMirror-selectednode .math-render { display: none; }
