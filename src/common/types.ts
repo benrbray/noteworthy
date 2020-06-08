@@ -1,6 +1,10 @@
-declare module NodeJS {
-	interface Global {
-		isQuitting?: boolean;
+import "prosemirror-model";
+
+declare module "prosemirror-model" {
+	interface Fragment {
+		// as of (3/31/20) official @types/prosemirror-model
+		// was missing Fragment.content, so we define it here
+		content: Node[];
 	}
 }
 
