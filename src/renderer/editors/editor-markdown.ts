@@ -1,6 +1,6 @@
 import { IFileInfo, UntitledFile } from "@common/fileio";
 import { EditorView as ProseEditorView } from "prosemirror-view";
-import { Schema as ProseSchema, DOMParser as ProseDOMParser, Schema } from "prosemirror-model";
+import { Schema as ProseSchema, DOMParser as ProseDOMParser } from "prosemirror-model";
 import RendererIPC from "@renderer/RendererIPC";
 import { FancySchema } from "@common/pm-schema";
 import { EditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
