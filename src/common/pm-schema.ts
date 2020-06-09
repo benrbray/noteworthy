@@ -10,6 +10,7 @@ import {
 import { wrapInList, splitListItem, liftListItem, sinkListItem } from "prosemirror-schema-list"
 import { undo, redo } from "prosemirror-history"
 import { Transaction, EditorState, Plugin } from "prosemirror-state";
+import { ProseCommand } from "./types";
 
 export const PlainSchema = new Schema({
 	nodes : {
