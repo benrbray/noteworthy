@@ -18,6 +18,7 @@ import { Plugin as ProsePlugin } from "prosemirror-state";
 import { INamedFile, UntitledFile } from "@common/fileio";
 import { ProseMirrorEditor } from "./editors/editor-prosemirror";
 import { MarkdownEditor } from "./editors/editor-markdown";
+import { IpynbEditor } from "./editors/editor-ipynb";
 
 class Renderer {
 
@@ -79,17 +80,17 @@ class Renderer {
 
 	initEditor(){
 		// initialize editor
-		/*this._editor = new ProseMirrorEditor(
-			this._currentFile,
-			this.editorElt,
-			this._ipc
-		);*/
-		
-		this._editor = new MarkdownEditor(
+		this._editor = new IpynbEditor(
 			this._currentFile,
 			this.editorElt,
 			this._ipc
 		);
+		
+		/*this._editor = new MarkdownEditor(
+			this._currentFile,
+			this.editorElt,
+			this._ipc
+		);*/
 
 		this._editor.init();
 	}

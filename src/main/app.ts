@@ -4,13 +4,19 @@ import * as fs from "fs";
 import Main from "./windows/main";
 import Window from "./windows/window";
 import MainIPC from "./MainIPC";
+import FSAL from "./fsal/fsal";
+
+import * as FSALDir from "./fsal/fsal-dir";
 
 export default class App {
 	window: Window | undefined;
-	_ipc:MainIPC;
+	
+	private _ipc:MainIPC;
+	private _fsal:FSAL;
 
 	constructor(){
 		this._ipc = new MainIPC(this);
+		this._fsal = new FSAL("C:/Users/Ben/Documents/notabledata/notes");
 
 		this.init();
 		this.events();
@@ -19,9 +25,49 @@ export default class App {
 	// INITIALIZATION //////////////////////////////////////
 
 	init(){
-		this._ipc.init();
+		// services
+		this.initIPC();
+		this.initFSAL();
+
+		// menus
 		this.initContextMenu();
 		this.initMenu();
+	}
+
+	initIPC(){
+		this._ipc.init();
+
+		global.ipc = {
+			/**
+			 * Sends an arbitrary message to the renderer.
+			 * @param  {String} cmd The command to be sent
+			 * @param  {Object} arg An optional object with data.
+			 * @return {void}     Does not return.
+			 */
+			send: (cmd, arg) => { this._ipc.send(cmd, arg); },
+			/**
+			 * Sends a message to the renderer and displays it as a notification.
+			 * @param  {String} msg The message to be sent.
+			 * @return {void}       Does not return.
+			 */
+			notify: (msg:any) => { this._ipc.send('notify', msg); },
+			/**
+			 * Sends an error to the renderer process that should be displayed using
+			 * a dedicated dialog window (is used, e.g., during export when Pandoc
+			 * throws potentially a lot of useful information for fixing problems in
+			 * the source files).
+			 * @param  {Object} msg        The error object
+			 * @return {void}            Does not return.
+			 */
+			notifyError: (msg:any) => { this._ipc.send('notify-error', msg); }
+		}
+	}
+
+	initFSAL(){
+		this._fsal.init();
+		this._fsal.on("fsal-state-changed", (objPath, info) => {
+			console.log("app :: fsal-state-changed ::", objPath);
+		})
 	}
 
 	initContextMenu(){}
@@ -36,9 +82,21 @@ export default class App {
 	}
 
 	load(){
+		if(this.window){
+			/** @todo handle window exists? */
+		}
 		console.log("app :: load")
 		this.window = new Main();
 		this.window.init();
+	}
+
+	async setActiveDir(dirPath:string){
+		let dir = await FSALDir.parseDir(dirPath);
+		this._fsal.setRootDirectory(dir);
+	}
+
+	async openFile(filePath:string){
+
 	}
 
 	// EVENTS //////////////////////////////////////////////

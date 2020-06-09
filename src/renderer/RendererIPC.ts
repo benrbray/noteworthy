@@ -12,10 +12,6 @@ export default class RendererIPC {
 	init(){
 		console.log("RendererIPC :: init()");
 
-		ipcRenderer.on("message", (event: Event, arg: Object) => {
-			console.log(event, arg);
-		});
-
 		ipcRenderer.on(FILE_IO.FILE_OPENED, (event:Event, fileInfo:INamedFile)=> {
 			console.log("RendererIPC :: FILE_OPENED");
 			if(!this._app._editor){ 
@@ -66,8 +62,8 @@ export default class RendererIPC {
 	 * Dispatch a command to the parent.
 	 * @param (arg) message body
 	 */
-	dispatch(arg:Object){
-		//this.handleEvent(arg.command, arg.content);
+	dispatch(arg:{command:string, content?:Object }){
+		this.handleEvent(arg.command, arg.content);
 	}
 
 	send(command:string, arg:{}={}){
@@ -79,7 +75,7 @@ export default class RendererIPC {
 	 * @param (cmd) message sent from main
 	 * @param (content) message body
 	 */
-	handleEvent(cmd:string, content:Object) {
+	handleEvent(cmd:string, content:any) {
 		switch (cmd) {
 			// FILE_OPEN
 			case FILE_IO.FILE_OPEN:
