@@ -6,6 +6,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import Route from './route';
 
+import { FILE_IO } from "@common/fileio";
+
 /* MAIN */
 
 export default class Main extends Route {
@@ -14,12 +16,94 @@ export default class Main extends Route {
 		super(name);
 	}
 
-	initMenu(){}
 	load(){
 		super.load();
 		setTimeout(this.__didFinishLoad, 500);
 	}
 
+	initMenu(){
+		console.log("window :: initMenu()")
+		const template: MenuItemConstructorOptions[] = [
+			{	label: "File",
+				submenu: [
+					{
+						label: "Open Folder...",
+						click: () => { global.ipc.send(FILE_IO.FOLDER_OPEN); }
+					},
+					{
+						label: "Open File...",
+						click: () => { global.ipc.send(FILE_IO.FILE_OPEN); }
+					},
+					{
+						label: "Close All",
+						click: () => { }
+					},
+					{
+						type: "separator"
+					},
+					{
+						label: "Save",
+						click: () => { global.ipc.send(FILE_IO.FILE_SAVE); }
+					},
+					{
+						label: "Save As...",
+						click: () => { global.ipc.send(FILE_IO.DIALOG_SAVE_AS); }
+					},
+					{
+						type: "separator"
+					},
+					{
+						label: "Exit",
+						click: () => { }
+					}
+				]
+			},{	label: "Edit",
+				submenu: [
+					{ role: "undo" },
+					{ role: "redo" },
+					{ type: "separator" },
+					{ role: "cut" },
+					{ role: "copy" },
+					{ role: "paste" },
+					{ role: "pasteAndMatchStyle" },
+					{ role: "delete" },
+					{ type: "separator" },
+					{ role: "selectAll" },
+				]
+			}, {
+				label: "View",
+				submenu: [
+					{ role: "reload" },
+					{ role: "forceReload" },
+					{ role: "toggleDevTools" },
+					{ type: "separator" },
+					{ role: "resetZoom" },
+					{ role: "zoomIn" },
+					{ role: "zoomOut" },
+					{ type: "separator" },
+					{ role: "togglefullscreen" }
+				]
+			},{
+				label: "Window",
+				submenu: [
+					{ role: "minimize" },
+					{ role: "close" },
+					{ role: "zoom", visible: is.macos }
+				]
+			}, {
+				label: "Help",
+				submenu: [
+					{
+						label: "About",
+						click: () => console.log("about")
+					}
+				]
+			}
+		];
+
+		const menu = Menu.buildFromTemplate(template);
+		Menu.setApplicationMenu(menu);
+	}
 
 	/* == Cleanup ======================================= */
 
