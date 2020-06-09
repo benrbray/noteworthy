@@ -133,3 +133,25 @@ inlinemath .math-src .ProseMirror:focus { outline: none; }
 inlinemath .math-render { display: inline-block; cursor: pointer; }
 inlinemath.ProseMirror-selectednode .math-src { display: inline; }
 inlinemath.ProseMirror-selectednode .math-render { display: none; }
+
+//// IPYNB ///////////////////////////////////////////////////
+
+cell_markdown {
+	display: block;
+	padding: 10px;
+	margin-block-start: 10px;
+	border: 1px solid gray;
+}
+
+cell_code {
+	display: block;
+	margin-block-start: 10px;
+	font-family: "Consolas", "Source Code Pro", monospace;
+	background-color: #ddd;
+	color: #333;
+}
+
+cell_markdown:focus-within {
+	outline: 3px solid black;
+	border: 1px solid blue;
+}
