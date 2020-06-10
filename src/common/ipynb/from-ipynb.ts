@@ -40,9 +40,6 @@ export class IpynbParser {
 
 				let cellMarkdown = markdownParser.parse(cellText).toJSON();
 
-				console.log(cellMarkdown);
-				console.log(cellText);
-
 				proseContent.push({
 					type: "cell_markdown",
 					content: cellMarkdown.content
@@ -58,8 +55,6 @@ export class IpynbParser {
 				})
 			}
 		}
-
-		console.log(proseContent);
 
 		return {
 			"doc" :{
