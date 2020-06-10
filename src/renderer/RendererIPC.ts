@@ -21,9 +21,9 @@ export default class RendererIPC {
 			console.log("RendererIPC :: FILE_SAVED", event, arg);
 		});
 
-		ipcRenderer.on(FILE_IO.FILE_SAVED_AS, (event: Event, fileName:string) => {
-			console.log("RendererIPC :: FILE_SAVED_AS", event, fileName);
-			this._app.setCurrentFileName(fileName);
+		ipcRenderer.on(FILE_IO.FILE_SAVED_AS, (event: Event, filePath:string) => {
+			console.log("RendererIPC :: FILE_SAVED_AS", event, filePath);
+			this._app.setCurrentFilePath(filePath);
 		});
 	}
 

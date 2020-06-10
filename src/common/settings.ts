@@ -7,7 +7,7 @@ import { darkMode } from 'electron-util';
 /* SETTINGS */
 
 const Settings = new Store({
-	name: '.notable',
+	name: '.typeright',
 	cwd: os.homedir(),
 	defaults: {
 		cwd: undefined,

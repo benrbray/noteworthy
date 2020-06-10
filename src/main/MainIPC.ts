@@ -83,20 +83,20 @@ export default class MainIPC {
 		console.log("MainIPC :: DIALOG_OPEN");
 
 		// open file dialog
-		const fileNames: string[] | undefined = dialog.showOpenDialogSync(
+		const filePaths: string[] | undefined = dialog.showOpenDialogSync(
 			this._app.window.window,
 			{
 				properties: ['openFile'],
 				//filters: FILE_FILTERS
 			}
 		);
-		if (!fileNames || !fileNames.length) return;
+		if (!filePaths || !filePaths.length) return;
 
-		const fileText:string = readFile(fileNames[0]);
+		const fileText:string = readFile(filePaths[0]);
 
-		console.log(fileNames[0]);
+		console.log(filePaths[0]);
 		this._app.window.window.webContents.send(FILE_IO.FILE_OPENED, {
-			name: fileNames[0],
+			path: filePaths[0],
 			contents: fileText
 		});
 	}
@@ -105,20 +105,20 @@ export default class MainIPC {
 		if (!this._app.window) { return; }
 		console.log("MainIPC :: DIALOG_SAVE_AS");
 
-		const newFileName: string | undefined = dialog.showSaveDialogSync(
+		const newFilePath: string | undefined = dialog.showSaveDialogSync(
 			//TODO: better default "save as" path?
 			this._app.window.window,
 			{
-				defaultPath: file.name || "",
+				defaultPath: file.path || "",
 				//filters: FILE_FILTERS
 			}
 		);
-		if (!newFileName) return;
-		saveFile(newFileName, file.contents);
+		if (!newFilePath) return;
+		saveFile(newFilePath, file.contents);
 
-		// send new file name to renderer
+		// send new file path to renderer
 		// TODO: handle this event in renderer!!
-		this._app.window.window.webContents.send(FILE_IO.FILE_SAVED_AS, newFileName);
+		this._app.window.window.webContents.send(FILE_IO.FILE_SAVED_AS, newFilePath);
 	}
 
 
@@ -127,7 +127,7 @@ export default class MainIPC {
 		if (!this._app.window) { return; }
 
 		console.log("MainIPC :: FILE_SAVE");
-		saveFile(file.name, file.contents);
+		saveFile(file.path, file.contents);
 			// TODO: send success/fail back to renderer?
 	}
 }

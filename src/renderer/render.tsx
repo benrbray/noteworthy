@@ -95,19 +95,17 @@ class Renderer {
 		this._currentFile = file;
 
 		// create new editor
-		this._editor = new MarkdownEditor(
+		this._editor = new ProseMirrorEditor(
 			this._currentFile,
 			this._editorElt,
 			this._ipc
 		)
 		this._editor.init();
-
-		console.log(this._editor);
 	}
 
-	setCurrentFileName(fileName:string):void {
+	setCurrentFilePath(filePath:string):void {
 		if(this._editor){
-			this._editor.setCurrentFileName(fileName);
+			this._editor.setCurrentFilePath(filePath);
 		}
 	}
 }

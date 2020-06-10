@@ -70,12 +70,11 @@ export abstract class Editor<TDocumentModel=any> {
 
 	// == File Management =============================== //
 
-
-	setCurrentFileName(fileName: string):void {
+	setCurrentFilePath(filePath: string):void {
 		// ensure current file exists
 		if(!this._currentFile){ this._currentFile = this._createEmptyFile(); }
 		// set file path
-		this._currentFile.name = fileName;
+		this._currentFile.path = filePath;
 	}
 
 	saveCurrentFile(saveas:boolean = true):void {
@@ -86,7 +85,7 @@ export abstract class Editor<TDocumentModel=any> {
 
 		this._currentFile.contents = this.serializeContents();
 
-		if (saveas || this._currentFile.name == null) {
+		if (saveas || this._currentFile.path == null) {
 			this._ipc.openSaveAsDialog(this._currentFile);
 		} else {
 			this._ipc.requestFileSave(this._currentFile);

@@ -68,20 +68,20 @@ export class FileHash extends String {}
 
 /////////////////// OLD
 
-export const readFile = (fileName: string): string => {
+export const readFile = (filePath: string): string => {
 	let fileText = '';
 	try {
-		fileText = fs.readFileSync(fileName, 'UTF-8');
+		fileText = fs.readFileSync(filePath, 'UTF-8');
 	} catch (err) {
 		console.log(err);
 	}
 	return fileText;
 };
 
-export const saveFile = (fileName: string, fileText: string): void => {
-	console.log("saveFile ::", fileName, fileText);
+export const saveFile = (filePath: string, fileText: string): void => {
+	console.log("saveFile ::", filePath, fileText);
 	try {
-		fs.writeFileSync(fileName, fileText, 'UTF-8');
+		fs.writeFileSync(filePath, fileText, 'UTF-8');
 	} catch (err) {
 		console.log(err);
 	}
