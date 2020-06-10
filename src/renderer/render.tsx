@@ -33,7 +33,7 @@ class Renderer {
 	buttonSave: HTMLButtonElement;
 	buttonSaveAs: HTMLButtonElement;
 	titleElt: HTMLDivElement;
-	editorElt: HTMLDivElement;
+	_editorElt: HTMLDivElement;
 
 	// prosemirror
 	_editor:ProseMirrorEditor|null;
@@ -57,14 +57,17 @@ class Renderer {
 		this.buttonSave = document.getElementById("buttonSave") as HTMLButtonElement;
 		this.buttonSaveAs = document.getElementById("buttonSaveAs") as HTMLButtonElement;
 		this.titleElt = document.getElementById("title") as HTMLDivElement;
-		this.editorElt = document.getElementById("editor") as HTMLDivElement;
+		this._editorElt = document.getElementById("editor") as HTMLDivElement;
 	}
 
 	init(){
 		console.log("render :: init()");
 		this._ipc.init();
 		this.initButtons();
-		this.initEditor();
+
+		if(this._currentFile){
+			this.setCurrentFile(this._currentFile);
+		}
 	}
 
 	initButtons(){
@@ -82,21 +85,30 @@ class Renderer {
 		});
 	}
 
-	initEditor(){
-		// initialize editor
-		/*this._editor = new IpynbEditor(
-			this._currentFile,
-			this.editorElt,
-			this._ipc
-		);*/
-		
+	setCurrentFile(file:IPossiblyUntitledFile):void {
+		// clean up current editor
+		/** @todo (6/9/20) improve performance by not completely
+		 * deleting old editor when new file has same type as old one */
+		if(this._editor){ this._editor.destroy(); }
+
+		console.log("render :: setCurrentFile", file);
+		this._currentFile = file;
+
+		// create new editor
 		this._editor = new MarkdownEditor(
 			this._currentFile,
-			this.editorElt,
+			this._editorElt,
 			this._ipc
-		);
-
+		)
 		this._editor.init();
+
+		console.log(this._editor);
+	}
+
+	setCurrentFileName(fileName:string):void {
+		if(this._editor){
+			this._editor.setCurrentFileName(fileName);
+		}
 	}
 }
 

@@ -59,18 +59,28 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 	init() {
 		// only initialize once
 		if(this._initialized){ return; }
+		// create prosemirror config
+		let config = {
+			schema: this._proseSchema,
+			plugins: [
+				keymap(baseKeymap),
+				keymap(buildKeymap_markdown(this._proseSchema)),
+				buildInputRules_markdown(this._proseSchema)
+			]
+		}
+		// create prosemirror state (from file)
+		let state:ProseEditorState;
+		if(this._currentFile && this._currentFile.contents){
+			state = this.parseContents(this._currentFile.contents);
+		} else {
+			state = ProseEditorState.create(config);
+		}
+
+		console.log("editor-markdown :: init ::", state);
+		
 		// create prosemirror instance
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
-			state: ProseEditorState.create({
-				doc: ProseDOMParser.fromSchema(this._proseSchema).parse(
-					document.getElementById("pm-content") as HTMLElement
-				),
-				plugins: [
-					keymap(baseKeymap),
-					keymap(buildKeymap_markdown(this._proseSchema)),
-					buildInputRules_markdown(this._proseSchema)
-				]
-			}),
+			state: state,
 			nodeViews: {
 				"math_inline": (node, view, getPos) => {
 					return new InlineMathView(node, view, getPos as (() => number));

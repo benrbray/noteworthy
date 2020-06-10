@@ -14,28 +14,16 @@ export default class RendererIPC {
 
 		ipcRenderer.on(FILE_IO.FILE_OPENED, (event:Event, file:IFileWithContents)=> {
 			console.log("RendererIPC :: FILE_OPENED");
-			if(!this._app._editor){ 
-				console.log("RenderIPC :: no active editor!");
-				return;
-			}
-			this._app._editor.setCurrentFile(file);
+			this._app.setCurrentFile(file);
 		});
 
 		ipcRenderer.on(FILE_IO.FILE_SAVED, (event: Event, arg: Object) => {
 			console.log("RendererIPC :: FILE_SAVED", event, arg);
-			if (!this._app._editor) {
-				console.log("RenderIPC :: no active editor!");
-				return;
-			}
 		});
 
 		ipcRenderer.on(FILE_IO.FILE_SAVED_AS, (event: Event, fileName:string) => {
 			console.log("RendererIPC :: FILE_SAVED_AS", event, fileName);
-			if (!this._app._editor) {
-				console.log("RenderIPC :: no active editor!");
-				return;
-			}
-			this._app._editor.setCurrentFileName(fileName);
+			this._app.setCurrentFileName(fileName);
 		});
 	}
 

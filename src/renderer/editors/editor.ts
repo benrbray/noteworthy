@@ -23,7 +23,6 @@ export abstract class Editor<TDocumentModel=any> {
 
 		// save params
 		this._editorElt = editorElt;
-		this._editorElt.textContent = this._currentFile.contents;
 		this._ipc = ipc;
 	}
 
