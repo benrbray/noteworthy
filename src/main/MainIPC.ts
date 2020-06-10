@@ -66,16 +66,16 @@ export default class MainIPC {
 		console.log("MainIPC :: DIALOG_FOLDER_OPEN");
 
 		// open file dialog
-		const dirNames: string[] | undefined = dialog.showOpenDialogSync(
+		const dirPaths: string[] | undefined = dialog.showOpenDialogSync(
 			this._app.window.window,
 			{
 				properties: ['openDirectory', 'createDirectory'],
 				//filters: FILE_FILTERS
 			}
 		);
-		if (!dirNames || !dirNames.length) return;
+		if (!dirPaths || !dirPaths.length) return;
 
-		this._app.setActiveDir(dirNames[0]);
+		this._app.setActiveDir(dirPaths[0]);
 	}
 
 	handle_dialogFileOpen(){
