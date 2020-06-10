@@ -3,7 +3,7 @@ import { EditorView as ProseEditorView } from "prosemirror-view";
 import { Schema as ProseSchema, DOMParser as ProseDOMParser } from "prosemirror-model";
 import RendererIPC from "@renderer/RendererIPC";
 import { FancySchema } from "@common/pm-schema";
-import { EditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
+import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
 import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
 import { Editor } from "./editor";
@@ -18,24 +18,24 @@ import { InlineMathView } from "./inlinemath";
 ////////////////////////////////////////////////////////////
 
 // editor class
-export class IpynbEditor extends Editor {
+export class IpynbEditor extends Editor<ProseEditorState> {
 
 	_proseEditorView: ProseEditorView | null;
 	_proseSchema: ProseSchema;
-	_ipc: RendererIPC;
-	_editorElt: HTMLElement;
 	_keymap: ProsePlugin;
+	_initialized: boolean;
 
+	// == Constructor =================================== //
+	
 	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, ipc: RendererIPC) {
-		super(file);
+		super(file, editorElt, ipc);
 
 		// no editor until initialized
+		this._initialized = false;
 		this._proseEditorView = null;
 		this._proseSchema = ipynbSchema;
-		this._editorElt = editorElt;
-		this._ipc = ipc;
 
-		const insertStar = (state: EditorState, dispatch: ((tr: Transaction) => void)) => {
+		const insertStar = (state: ProseEditorState, dispatch: ((tr: Transaction) => void)) => {
 			var type = this._proseSchema.nodes.star;
 			var ref = state.selection;
 			var $from = ref.$from;
@@ -50,9 +50,14 @@ export class IpynbEditor extends Editor {
 		})
 	}
 
+	// == Lifecycle ===================================== //
+
 	init() {
+		// initialize only once
+		if(this._initialized){ return; }
+		// create prosemirror instance
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
-			state: EditorState.create({
+			state: ProseEditorState.create({
 				doc: ProseDOMParser.fromSchema(this._proseSchema).parse(
 					document.getElementById("pm-ipynb-content") as HTMLElement
 				),
@@ -68,39 +73,25 @@ export class IpynbEditor extends Editor {
 				},
 			}
 		});
+		// initialized
+		this._initialized = true;
 	}
 
-	setCurrentFileName(fileName: string) {
-		if (!this._currentFile) {
-			this._currentFile = new IUntitledFile();
-		}
-
-		this._currentFile.name = fileName;
+	destroy(): void {
+		// destroy prosemirror instance
+		this._proseEditorView?.destroy();
+		this._proseEditorView = null;
+		// de-initialize
+		this._initialized = false;
 	}
 
-	setCurrentFile(fileInfo: IPossiblyUntitledFile | null) {
-		// destroy current editor
-		if (this._proseEditorView) {
-			this._proseEditorView.destroy();
-			delete this._proseEditorView;
-		}
+	// == Document Model ================================ //
 
-		// if fileInfo not present, create new untitled file
-		/** @todo (6/9/20) properly set modtime/creationtime */
-		if (!fileInfo) {
-			fileInfo = {
-				name: undefined,
-				contents: "",
-				modTime: -1,
-				creationTime: -1
-			}
-		}
+	serializeContents(): string {
+		throw new Error("Method not implemented.");
+	}
 
-		// set current file
-		this._currentFile = fileInfo;
-
-		// [ProseMirror] read state from file, if possible
-		let state: EditorState;
+	parseContents(contents: string): ProseEditorState {
 		let config = {
 			schema: this._proseSchema,
 			plugins: [
@@ -110,53 +101,19 @@ export class IpynbEditor extends Editor {
 			]
 		}
 
-		if (fileInfo == null) {
-			state = EditorState.create(config);
-		} else {
-			let parsed = ipynbParser.parse(fileInfo.contents);
-			console.log(parsed);
-			
-			state = EditorState.fromJSON(config, parsed);
-		}
-
-		// [ProseMirror] create new editor
-		this._proseEditorView = new ProseEditorView(this._editorElt, {
-			state,
-			nodeViews: {
-				"math_inline": (node, view, getPos) => {
-					return new InlineMathView(node, view, getPos as (() => number));
-				},
-			}
-		});
+		// parse
+		let parsed = ipynbParser.parse(contents);
+		console.log(parsed);
+		return ProseEditorState.fromJSON(config, parsed);
 	}
 
+	setContents(contents: ProseEditorState): void {
+		this._proseEditorView?.updateState(contents);
+	}
+
+	// == File Management =============================== //
+
 	saveCurrentFile(saveas: boolean = true) {
-		/*if (!this._currentFile) {
-			console.log("renderer :: saveCurrentFile() :: no open file, creating untitled");
-			this._currentFile = {
-				fileName: null,
-				fileText: ""
-			}
-		}
-
-		if (!this._proseEditorView) {
-			console.log("renderer :: saveCurrentFile() :: no editor!");
-			return;
-		}
-
-		// update file contents based on editor state
-		this._currentFile.fileText = ipynbSerializer.serialize(
-			this._proseEditorView.state.toJSON()
-		);
-
-		// TODO: keep track of whether _currentFile.contents are stale?
-
-		// if file is untitled, ask the user for a save location
-		if (saveas || this._currentFile.fileName == null) {
-			this._ipc.openSaveAsDialog(this._currentFile);
-		} else {
-			this._ipc.requestFileSave(this._currentFile);
-		}
-		// TODO: watch for success/failure?*/
+		console.warn("editor-ipynb :: saving not implemented");
 	}
 }

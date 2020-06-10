@@ -3,7 +3,7 @@ import { EditorView as ProseEditorView } from "prosemirror-view";
 import { Schema as ProseSchema, DOMParser as ProseDOMParser } from "prosemirror-model";
 import RendererIPC from "@renderer/RendererIPC";
 import { FancySchema } from "@common/pm-schema";
-import { EditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
+import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
 import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
 import { Editor } from "./editor";
@@ -18,24 +18,28 @@ import { InlineMathView } from "./inlinemath";
 ////////////////////////////////////////////////////////////
 
 // editor class
-export class MarkdownEditor extends Editor {
+export class MarkdownEditor extends Editor<ProseEditorState> {
 
 	_proseEditorView: ProseEditorView | null;
 	_proseSchema: ProseSchema;
 	_ipc: RendererIPC;
 	_editorElt: HTMLElement;
 	_keymap: ProsePlugin;
+	_initialized:boolean;
+
+	// == Constructor =================================== //
 
 	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, ipc: RendererIPC) {
-		super(file);
+		super(file, editorElt, ipc);
 
 		// no editor until initialized
+		this._initialized = false;
 		this._proseEditorView = null;
 		this._proseSchema = markdownSchema;
 		this._editorElt = editorElt;
 		this._ipc = ipc;
 
-		const insertStar = (state: EditorState, dispatch: ((tr: Transaction) => void)) => {
+		const insertStar = (state: ProseEditorState, dispatch: ((tr: Transaction) => void)) => {
 			var type = this._proseSchema.nodes.star;
 			var ref = state.selection;
 			var $from = ref.$from;
@@ -50,9 +54,14 @@ export class MarkdownEditor extends Editor {
 		})
 	}
 
+	// == Lifecycle ===================================== //
+
 	init() {
+		// only initialize once
+		if(this._initialized){ return; }
+		// create prosemirror instance
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
-			state: EditorState.create({
+			state: ProseEditorState.create({
 				doc: ProseDOMParser.fromSchema(this._proseSchema).parse(
 					document.getElementById("pm-content") as HTMLElement
 				),
@@ -68,83 +77,43 @@ export class MarkdownEditor extends Editor {
 				},
 			}
 		});
+		// initialized
+		this._initialized = true;
 	}
 
-	setCurrentFileName(fileName: string) {
-		if (!this._currentFile) {
-			this._currentFile = new IUntitledFile();
-		}
+	destroy(): void {
+		// destroy prosemirror instance
+		this._proseEditorView?.destroy();
+		this._proseEditorView = null;
+		// de-initialize
+		this._initialized = false;
+	}
+	// == Document Model ================================ //
 
-		this._currentFile.name = fileName;
+	serializeContents(): string {
+		if(!this._proseEditorView){ return ""; }
+		return markdownSerializer.serialize(this._proseEditorView.state.doc);
 	}
 
-	setCurrentFile(file: IPossiblyUntitledFile | null) {
-		// destroy current editor
-		if (this._proseEditorView) {
-			this._proseEditorView.destroy();
-			delete this._proseEditorView;
-		}
-
-		console.log("setCurrentFile :: ", file);
-
-		// if fileInfo not present, create new untitled file
-		if (!file) {
-			file = new IUntitledFile();
-		}
-
-		// set current file
-		this._currentFile = file;
-
-		// [ProseMirror] read state from file, if possible
-		let state: EditorState;
-		if (file == null) {
-			state = EditorState.create({
-				schema: this._proseSchema
-			});
-		} else {
-			state = EditorState.create({
-				doc: markdownParser.parse(file.contents),
-				plugins: [
-					keymap(baseKeymap),
-					keymap(buildKeymap_markdown(this._proseSchema)),
-					buildInputRules_markdown(this._proseSchema)
-				]
-			});
-		}
-
-		// [ProseMirror] create new editor
-		this._proseEditorView = new ProseEditorView(this._editorElt, {
-			state,
-			nodeViews: {
-				"math_inline": (node, view, getPos) => {
-					return new InlineMathView(node, view, getPos as (() => number));
-				},
-			}
+	parseContents(contents: string):ProseEditorState {
+		console.log("editor-markdown :: parseContents", contents);
+		return ProseEditorState.create({
+			doc: markdownParser.parse(contents),
+			plugins: [
+				keymap(baseKeymap),
+				keymap(buildKeymap_markdown(this._proseSchema)),
+				buildInputRules_markdown(this._proseSchema)
+			]
 		});
 	}
 
-	saveCurrentFile(saveas: boolean = true) {
-		if (!this._currentFile) {
-			console.log("renderer :: saveCurrentFile() :: no open file, cannot save");
+	setContents(contents: ProseEditorState): void {
+		console.log("editor-markdown :: setContents", contents);
+		if(!this._proseEditorView){
+			console.warn("editor-markdown :: setContents :: no editor!");
 			return;
 		}
 
-		if (!this._proseEditorView) {
-			console.log("renderer :: saveCurrentFile() :: no editor!");
-			return;
-		}
-
-		// update file contents based on editor state
-		this._currentFile.contents = markdownSerializer.serialize(this._proseEditorView.state.doc);
-
-		// TODO: keep track of whether _currentFile.contents are stale?
-
-		// if file is untitled, ask the user for a save location
-		if (saveas || this._currentFile.name == null) {
-			this._ipc.openSaveAsDialog(this._currentFile);
-		} else {
-			this._ipc.requestFileSave(this._currentFile);
-		}
-		// TODO: watch for success/failure?
+		this._proseEditorView.updateState(contents);
 	}
 }
