@@ -1,6 +1,7 @@
 // node imports
 import { clipboard, ipcRenderer } from "electron";
 import * as fs from "fs";
+import * as pathlib from "path";
 
 // prosemirror imports
 import { EditorState, Transaction } from "prosemirror-state";
@@ -94,12 +95,30 @@ class Renderer {
 		console.log("render :: setCurrentFile", file);
 		this._currentFile = file;
 
-		// create new editor
-		this._editor = new ProseMirrorEditor(
-			this._currentFile,
-			this._editorElt,
-			this._ipc
-		)
+		// get extension type
+		let ext:string = pathlib.extname(this._currentFile.path || "");
+		console.log("setCurrentFile :: extension ", ext);
+
+		switch (ext) {
+			case ".ipynb":
+				this._editor = new IpynbEditor(
+					this._currentFile, this._editorElt, this._ipc
+				);
+				break;
+			case ".json":
+				this._editor = new ProseMirrorEditor(
+					this._currentFile, this._editorElt, this._ipc
+				);
+				break;
+			case ".md":
+			case ".txt":
+			default:
+				this._editor = new MarkdownEditor(
+					this._currentFile, this._editorElt, this._ipc
+				);
+				break;
+		}
+
 		this._editor.init();
 	}
 
