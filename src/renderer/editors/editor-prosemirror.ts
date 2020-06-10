@@ -3,12 +3,12 @@ import { EditorView as ProseEditorView } from "prosemirror-view";
 import { Schema as ProseSchema, DOMParser as ProseDOMParser } from "prosemirror-model";
 import RendererIPC from "@renderer/RendererIPC";
 import { FancySchema } from "@common/pm-schema";
-import { EditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
+import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
 import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
 import { Editor } from "./editor";
 
-export class ProseMirrorEditor extends Editor<EditorState> {
+export class ProseMirrorEditor extends Editor<ProseEditorState> {
 
 	_proseEditorView: ProseEditorView | null;
 	_proseSchema: ProseSchema;
@@ -25,7 +25,7 @@ export class ProseMirrorEditor extends Editor<EditorState> {
 		this._proseEditorView = null;
 		this._proseSchema = FancySchema;
 
-		const insertStar = (state: EditorState, dispatch: ((tr: Transaction) => void)) => {
+		const insertStar = (state: ProseEditorState, dispatch: ((tr: Transaction) => void)) => {
 			var type = this._proseSchema.nodes.star;
 			var ref = state.selection;
 			var $from = ref.$from;
@@ -43,15 +43,23 @@ export class ProseMirrorEditor extends Editor<EditorState> {
 	// == Lifecycle ===================================== //
 
 	init() {
-		if(this._initialized) { return; }
+		// initialize only once
+		if(this._initialized){ return; }
+		// create prosemirror config
+		let config = {
+			schema: this._proseSchema,
+			plugins: [ this._keymap, keymap(baseKeymap) ]
+		};
+		// create prosemirror state (from file)
+		let state:ProseEditorState;
+		if (this._currentFile && this._currentFile.contents) {
+			state = this.parseContents(this._currentFile.contents);
+		} else {
+			state = ProseEditorState.create(config);
+		}
 		// create prosemirror instance
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
-			state: EditorState.create({
-				doc: ProseDOMParser.fromSchema(FancySchema).parse(
-					document.getElementById("pm-content") as HTMLElement
-				),
-				plugins: [this._keymap, keymap(baseKeymap)]
-			})
+			state: state,
 		});
 		// initialized
 		this._initialized = true;
@@ -75,14 +83,14 @@ export class ProseMirrorEditor extends Editor<EditorState> {
 		);
 	}
 
-	parseContents(contents: string):EditorState {
+	parseContents(contents: string): ProseEditorState {
 		let config = {
 			schema: FancySchema,
 			plugins: [this._keymap, keymap(baseKeymap)]
 		}
-		return EditorState.fromJSON( config, JSON.parse(contents) )
+		return ProseEditorState.fromJSON( config, JSON.parse(contents) )
 	}
-	setContents(content: EditorState): void {
+	setContents(content: ProseEditorState): void {
 		this._proseEditorView?.updateState(content);
 	}
 }

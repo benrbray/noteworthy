@@ -75,9 +75,6 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		} else {
 			state = ProseEditorState.create(config);
 		}
-
-		console.log("editor-markdown :: init ::", state);
-		
 		// create prosemirror instance
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
 			state: state,
