@@ -32,7 +32,7 @@ export interface ISubDirectory extends IDirectory {
 	parent: IDirectory;
 }
 
-// -- File ---------------------------------------------- //
+// -- File ---------------------------------------------- //}
 
 export interface IFileDesc extends IDirEntry {
 	dirPath: string;
@@ -41,29 +41,32 @@ export interface IFileDesc extends IDirEntry {
 	creationTime: number;
 	lineFeed: "\n"|"\n\r"|"\r\n";
 }
+
+
 export interface IFileWithContents extends IDirEntry {
 	contents: string;
 }
 
-export class UntitledFile {
-	fileName: null;
-	fileText: string;
+export class IUntitledFile implements Omit<IFileWithContents, "parent"|"path"|"name"|"hash"|"dirPath"> {
+	name?: undefined;
+	path?: undefined;
+	dirPath?: undefined;
+	parent?: undefined;
+	modTime: -1;
+	creationTime: -1;
+	contents: string;
 
-	constructor(){
-		this.fileText = "";
+	constructor(contents?:string){
+		this.modTime = -1;
+		this.creationTime = -1;
+		this.contents = contents || "";
 	}
 }
+export type IPossiblyUntitledFile = IFileWithContents | IUntitledFile;
 
 export class FileHash extends String {} 
 
 /////////////////// OLD
-
-export interface INamedFile {
-	fileName: string,
-	fileText: string;
-}
-
-export type IFileInfo = UntitledFile | INamedFile;
 
 export const readFile = (fileName: string): string => {
 	let fileText = '';
@@ -76,6 +79,7 @@ export const readFile = (fileName: string): string => {
 };
 
 export const saveFile = (fileName: string, fileText: string): void => {
+	console.log("saveFile ::", fileName, fileText);
 	try {
 		fs.writeFileSync(fileName, fileText, 'UTF-8');
 	} catch (err) {

@@ -1,6 +1,8 @@
+// node imports
 import { clipboard, ipcRenderer } from "electron";
 import * as fs from "fs";
 
+// prosemirror imports
 import { EditorState, Transaction } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import { Schema, DOMParser } from "prosemirror-model";
@@ -10,12 +12,12 @@ import { findWrapping, StepMap } from "prosemirror-transform"
 import { keymap } from "prosemirror-keymap"
 import { baseKeymap, toggleMark } from "prosemirror-commands"
 import { undo, redo } from "prosemirror-history"
+
+// project imports
 import RendererIPC from "./RendererIPC";
-import { IFileInfo } from "@common/fileio";
+import { IPossiblyUntitledFile } from "@common/fileio";
 import { FancySchema, PlainSchema } from "@common/pm-schema";
 import { Plugin as ProsePlugin } from "prosemirror-state";
-
-import { INamedFile, UntitledFile } from "@common/fileio";
 import { ProseMirrorEditor } from "./editors/editor-prosemirror";
 import { MarkdownEditor } from "./editors/editor-markdown";
 import { IpynbEditor } from "./editors/editor-ipynb";
@@ -35,14 +37,16 @@ class Renderer {
 
 	// prosemirror
 	_editor:ProseMirrorEditor|null;
-	_currentFile:IFileInfo;
+	_currentFile:IPossiblyUntitledFile;
 
 	constructor(){
 		// initialize objects
 		this._ipc = new RendererIPC(this);
+		/** @todo (6/9/20) propery set modTime/creationTime */
 		this._currentFile = {
-			fileName: null,
-			fileText: ""
+			contents: "",
+			modTime: -1,
+			creationTime: -1
 		};
 		
 		this._editor = null;
@@ -80,17 +84,17 @@ class Renderer {
 
 	initEditor(){
 		// initialize editor
-		this._editor = new IpynbEditor(
-			this._currentFile,
-			this.editorElt,
-			this._ipc
-		);
-		
-		/*this._editor = new MarkdownEditor(
+		/*this._editor = new IpynbEditor(
 			this._currentFile,
 			this.editorElt,
 			this._ipc
 		);*/
+		
+		this._editor = new MarkdownEditor(
+			this._currentFile,
+			this.editorElt,
+			this._ipc
+		);
 
 		this._editor.init();
 	}

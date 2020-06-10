@@ -1,4 +1,4 @@
-import { IFileInfo, UntitledFile } from "@common/fileio";
+import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
 import { EditorView as ProseEditorView } from "prosemirror-view";
 import { Schema as ProseSchema, DOMParser as ProseDOMParser } from "prosemirror-model";
 import RendererIPC from "@renderer/RendererIPC";
@@ -26,7 +26,7 @@ export class IpynbEditor extends Editor {
 	_editorElt: HTMLElement;
 	_keymap: ProsePlugin;
 
-	constructor(file: IFileInfo | null, editorElt: HTMLElement, ipc: RendererIPC) {
+	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, ipc: RendererIPC) {
 		super(file);
 
 		// no editor until initialized
@@ -72,16 +72,13 @@ export class IpynbEditor extends Editor {
 
 	setCurrentFileName(fileName: string) {
 		if (!this._currentFile) {
-			this._currentFile = {
-				fileName: null,
-				fileText: "",
-			}
+			this._currentFile = new IUntitledFile();
 		}
 
-		this._currentFile.fileName = fileName;
+		this._currentFile.name = fileName;
 	}
 
-	setCurrentFile(fileInfo: IFileInfo | null) {
+	setCurrentFile(fileInfo: IPossiblyUntitledFile | null) {
 		// destroy current editor
 		if (this._proseEditorView) {
 			this._proseEditorView.destroy();
@@ -89,10 +86,13 @@ export class IpynbEditor extends Editor {
 		}
 
 		// if fileInfo not present, create new untitled file
+		/** @todo (6/9/20) properly set modtime/creationtime */
 		if (!fileInfo) {
 			fileInfo = {
-				fileName: null,
-				fileText: ""
+				name: undefined,
+				contents: "",
+				modTime: -1,
+				creationTime: -1
 			}
 		}
 
@@ -113,7 +113,7 @@ export class IpynbEditor extends Editor {
 		if (fileInfo == null) {
 			state = EditorState.create(config);
 		} else {
-			let parsed = ipynbParser.parse(fileInfo.fileText);
+			let parsed = ipynbParser.parse(fileInfo.contents);
 			console.log(parsed);
 			
 			state = EditorState.fromJSON(config, parsed);

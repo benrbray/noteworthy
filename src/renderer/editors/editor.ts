@@ -1,4 +1,4 @@
-import { IFileInfo, UntitledFile } from "@common/fileio";
+import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
 import { EditorView as ProseEditorView } from "prosemirror-view";
 import { Schema as ProseSchema, DOMParser as ProseDOMParser } from "prosemirror-model";
 import RendererIPC from "@renderer/RendererIPC";
@@ -8,12 +8,12 @@ import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
 
 export class Editor {
-	_currentFile:IFileInfo;
+	_currentFile:IPossiblyUntitledFile;
 	_changed:boolean;
 
-	constructor(file:IFileInfo|null){
+	constructor(file:IPossiblyUntitledFile|null){
 		// create untitled file if needed
-		this._currentFile = file || (new UntitledFile());
+		this._currentFile = file || (new IUntitledFile());
 		this._changed = false;
 	}
 }

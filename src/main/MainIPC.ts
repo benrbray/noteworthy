@@ -1,5 +1,5 @@
 import { ipcMain, dialog } from "electron";
-import { FILE_IO, readFile, saveFile, IFileInfo, INamedFile } from "@common/fileio";
+import { FILE_IO, readFile, saveFile, IUntitledFile, IFileWithContents, IPossiblyUntitledFile } from "@common/fileio";
 import App from "./app"
 
 export default class MainIPC {
@@ -22,13 +22,13 @@ export default class MainIPC {
 		});
 			
 		// DIALOG_SAVE_AS
-		ipcMain.on(FILE_IO.DIALOG_SAVE_AS, (evt: Event, fileInfo: IFileInfo) => {
-			this.handle_dialogFileSaveAs(fileInfo);
+		ipcMain.on(FILE_IO.DIALOG_SAVE_AS, (evt: Event, file: IPossiblyUntitledFile) => {
+			this.handle_dialogFileSaveAs(file);
 		});
 		
 		// DIALOG_SAVE_AS
-		ipcMain.on(FILE_IO.FILE_SAVE, (evt:Event, fileInfo: INamedFile) => {
-			this.handle_requestFileSave(fileInfo);
+		ipcMain.on(FILE_IO.FILE_SAVE, (evt:Event, file: IFileWithContents) => {
+			this.handle_requestFileSave(file);
 		});
 		
 		this._initialized = true;
@@ -45,10 +45,10 @@ export default class MainIPC {
 				this.handle_dialogFolderOpen();
 				break;
 			case FILE_IO.DIALOG_SAVE_AS:
-				this.handle_dialogFileSaveAs(arg as IFileInfo);
+				this.handle_dialogFileSaveAs(arg as IPossiblyUntitledFile);
 				break;
 			case FILE_IO.FILE_SAVE:
-				this.handle_requestFileSave(arg as INamedFile);
+				this.handle_requestFileSave(arg as IFileWithContents);
 				break;
 			default:
 				break;
@@ -92,15 +92,16 @@ export default class MainIPC {
 		);
 		if (!fileNames || !fileNames.length) return;
 
-		const fileText = readFile(fileNames[0]);
+		const fileText:string = readFile(fileNames[0]);
+
 		console.log(fileNames[0]);
 		this._app.window.window.webContents.send(FILE_IO.FILE_OPENED, {
-			fileName: fileNames[0],
-			fileText
+			name: fileNames[0],
+			contents: fileText
 		});
 	}
 
-	handle_dialogFileSaveAs(fileInfo: IFileInfo) {
+	handle_dialogFileSaveAs(file: IPossiblyUntitledFile) {
 		if (!this._app.window) { return; }
 		console.log("MainIPC :: DIALOG_SAVE_AS");
 
@@ -108,12 +109,12 @@ export default class MainIPC {
 			//TODO: better default "save as" path?
 			this._app.window.window,
 			{
-				defaultPath: fileInfo.fileName || "",
+				defaultPath: file.name || "",
 				//filters: FILE_FILTERS
 			}
 		);
 		if (!newFileName) return;
-		saveFile(newFileName, fileInfo.fileText);
+		saveFile(newFileName, file.contents);
 
 		// send new file name to renderer
 		// TODO: handle this event in renderer!!
@@ -122,11 +123,11 @@ export default class MainIPC {
 
 
 
-	handle_requestFileSave(fileInfo: INamedFile) {
+	handle_requestFileSave(file: IFileWithContents) {
 		if (!this._app.window) { return; }
 
 		console.log("MainIPC :: FILE_SAVE");
-		saveFile(fileInfo.fileName, fileInfo.fileText);
+		saveFile(file.name, file.contents);
 			// TODO: send success/fail back to renderer?
 	}
 }

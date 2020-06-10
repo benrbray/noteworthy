@@ -1,4 +1,4 @@
-import { IFileInfo, UntitledFile } from "@common/fileio";
+import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
 import { EditorView as ProseEditorView } from "prosemirror-view";
 import { Schema as ProseSchema, DOMParser as ProseDOMParser } from "prosemirror-model";
 import RendererIPC from "@renderer/RendererIPC";
@@ -16,7 +16,7 @@ export class ProseMirrorEditor extends Editor {
 	_editorElt: HTMLElement;
 	_keymap: ProsePlugin;
 
-	constructor(file: IFileInfo | null, editorElt: HTMLElement, ipc: RendererIPC) {
+	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, ipc: RendererIPC) {
 		super(file);
 
 		// no editor until initialized
@@ -53,16 +53,13 @@ export class ProseMirrorEditor extends Editor {
 
 	setCurrentFileName(fileName: string) {
 		if (!this._currentFile) {
-			this._currentFile = {
-				fileName: null,
-				fileText: "",
-			}
+			this._currentFile = new IUntitledFile();
 		}
 
-		this._currentFile.fileName = fileName;
+		this._currentFile.name = fileName;
 	}
 
-	setCurrentFile(fileInfo: IFileInfo | null) {
+	setCurrentFile(file: IPossiblyUntitledFile | null) {
 		// destroy current editor
 		if (this._proseEditorView) {
 			this._proseEditorView.destroy();
@@ -70,15 +67,12 @@ export class ProseMirrorEditor extends Editor {
 		}
 
 		// if fileInfo not present, create new untitled file
-		if (!fileInfo) {
-			fileInfo = {
-				fileName: null,
-				fileText: ""
-			}
+		if (!file) {
+			file = new IUntitledFile();
 		}
 
 		// set current file
-		this._currentFile = fileInfo;
+		this._currentFile = file;
 
 		// [ProseMirror] config
 		let state: EditorState;
@@ -88,12 +82,12 @@ export class ProseMirrorEditor extends Editor {
 		}
 
 		// [ProseMirror] read state from file, if possible
-		if (fileInfo == null) {
+		if (file == null) {
 			state = EditorState.create(config);
 		} else {
 			state = EditorState.fromJSON(
 				config,
-				JSON.parse(fileInfo.fileText)
+				JSON.parse(file.contents)
 			)
 		}
 
@@ -103,11 +97,8 @@ export class ProseMirrorEditor extends Editor {
 
 	saveCurrentFile(saveas: boolean = true) {
 		if (!this._currentFile) {
-			console.log("renderer :: saveCurrentFile() :: no open file, creating untitled");
-			this._currentFile = {
-				fileName: null,
-				fileText: ""
-			}
+			console.log("renderer :: saveCurrentFile() :: no open file, cannot save");
+			return;
 		}
 
 		if (!this._proseEditorView) {
@@ -116,14 +107,14 @@ export class ProseMirrorEditor extends Editor {
 		}
 
 		// update file contents based on editor state
-		this._currentFile.fileText = JSON.stringify(
+		this._currentFile.contents = JSON.stringify(
 			this._proseEditorView.state.toJSON(), undefined, "\t"
 		);
 
 		// TODO: keep track of whether _currentFile.contents are stale?
 
 		// if file is untitled, ask the user for a save location
-		if (saveas || this._currentFile.fileName == null) {
+		if (saveas || this._currentFile.name == null) {
 			this._ipc.openSaveAsDialog(this._currentFile);
 		} else {
 			this._ipc.requestFileSave(this._currentFile);

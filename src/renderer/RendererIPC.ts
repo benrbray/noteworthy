@@ -1,6 +1,6 @@
 import { ipcRenderer } from "electron";
 import Renderer from "./render";
-import { FILE_IO, IFileInfo, INamedFile } from "@common/fileio";
+import { FILE_IO, IFileWithContents, IPossiblyUntitledFile } from "@common/fileio";
 
 export default class RendererIPC {
 	_app:Renderer;
@@ -12,13 +12,13 @@ export default class RendererIPC {
 	init(){
 		console.log("RendererIPC :: init()");
 
-		ipcRenderer.on(FILE_IO.FILE_OPENED, (event:Event, fileInfo:INamedFile)=> {
+		ipcRenderer.on(FILE_IO.FILE_OPENED, (event:Event, file:IFileWithContents)=> {
 			console.log("RendererIPC :: FILE_OPENED");
 			if(!this._app._editor){ 
 				console.log("RenderIPC :: no active editor!");
 				return;
 			}
-			this._app._editor.setCurrentFile(fileInfo);
+			this._app._editor.setCurrentFile(file);
 		});
 
 		ipcRenderer.on(FILE_IO.FILE_SAVED, (event: Event, arg: Object) => {
@@ -46,12 +46,12 @@ export default class RendererIPC {
 		ipcRenderer.send(FILE_IO.DIALOG_OPEN);
 	}
 
-	openSaveAsDialog(fileInfo:IFileInfo) {
+	openSaveAsDialog(fileInfo:IPossiblyUntitledFile) {
 		console.log("RendererIPC :: openSaveAsDialog()");
 		ipcRenderer.send(FILE_IO.DIALOG_SAVE_AS, fileInfo);
 	}
 
-	requestFileSave(fileInfo:INamedFile){
+	requestFileSave(fileInfo:IFileWithContents){
 		console.log("RendererIPC :: requestFileSave()");
 		ipcRenderer.send(FILE_IO.FILE_SAVE, fileInfo);
 	}
