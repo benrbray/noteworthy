@@ -1,34 +1,5 @@
 import { Schema, Node as ProsemirrorNode } from "prosemirror-model";
 
-/*export let ipynbSchema = new Schema({
-	nodes: {
-		doc: {
-			content: "cell+"
-		},
-		paragraph: {
-			group: "block",
-			content: "inline*",
-			toDOM() { return ["p", 0] },
-			parseDOM: [{ tag: "p" }]
-		},
-		text: {
-			group: "inline"
-		},
-		cell_markdown: {
-			group: "cell",
-			content: "paragraph+",
-			toDOM() { return ["cell_markdown", 0] },
-			parseDOM: [{ tag: "cell_markdown" }]
-		},
-		cell_code: {
-			group: "cell",
-			content: "text*",
-			toDOM() { return ["cell_code", 0] },
-			parseDOM: [{ tag: "cell_code" }]
-		},
-	}
-});*/
-
 export const ipynbSchema = new Schema({
 	nodes: {
 		doc: {
