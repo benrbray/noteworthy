@@ -114,7 +114,7 @@ export const markdownSerializer = new MarkdownSerializer({
 		state.write("$")
 		//state.closeBlock(node)
 	},
-	math_block(state, node) {
+	math_display(state, node) {
 		state.write("$$" + (node.attrs.params || "") + "\n")
 		state.text(node.textContent, false)
 		state.ensureNewLine()

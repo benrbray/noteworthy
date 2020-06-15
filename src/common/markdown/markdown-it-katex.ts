@@ -105,7 +105,7 @@ const math_inline:RuleInline = (state:StateInline, silent:boolean) => {
 	return true;
 }
 
-const math_block:RuleBlock = (state:StateBlock, start:number, end:number, silent:boolean) => {
+const math_display:RuleBlock = (state:StateBlock, start:number, end:number, silent:boolean) => {
 	var firstLine, lastLine, next, lastPos, found = false, token,
 		pos = state.bMarks[start] + state.tShift[start],
 		max = state.eMarks[start]
@@ -147,7 +147,7 @@ const math_block:RuleBlock = (state:StateBlock, start:number, end:number, silent
 
 	state.line = next + 1;
 
-	token = state.push('math_block', 'math', 0);
+	token = state.push('math_display', 'math', 0);
 	token.block = true;
 	token.content = (firstLine && firstLine.trim() ? firstLine + '\n' : '')
 		+ state.getLines(start + 1, next, state.tShift[start], true)
@@ -218,9 +218,9 @@ export const math_plugin:MarkdownIt.PluginWithOptions = (md:MarkdownIt, pluginOp
 	}
 
 	md.inline.ruler.after('escape', 'math_inline', math_inline);
-	md.block.ruler.after('blockquote', 'math_block', math_block, {
+	md.block.ruler.after('blockquote', 'math_display', math_display, {
 		alt: ['paragraph', 'reference', 'blockquote', 'list']
 	});
 	md.renderer.rules.math_inline = inlineRenderer;
-	md.renderer.rules.math_block = blockRenderer;
+	md.renderer.rules.math_display = blockRenderer;
 }

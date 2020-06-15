@@ -2,7 +2,7 @@ import markdownit from "markdown-it"
 import { math_plugin } from "./markdown-it-katex"
 import { Schema, Mark } from "prosemirror-model"
 
-export const schema = new Schema({
+export const markdownSchema = new Schema({
 	nodes: {
 		doc: {
 			content: "block+"
@@ -121,17 +121,17 @@ export const schema = new Schema({
 		inline: true,
 		atom: true,
 		marks: "",
-		parseDOM: [{tag: "inlinemath"}],
-		toDOM(node) { return ["inlinemath", node.attrs, 0] }
+		parseDOM: [{tag: "math-inline"}],
+		toDOM(node) { return ["math-inline", node.attrs, 0] }
 	},
 
-	math_block: {
+	math_display: {
 		group: "block",
 		content: "text*",
 		defining: true,
 		marks: "",
-		parseDOM: [{tag: "displaymath"}],
-		toDOM(node) { return ["displaymath", node.attrs, 0] }
+		parseDOM: [{tag: "math-display"}],
+		toDOM(node) { return ["math-display", node.attrs, 0] }
 	}
 	},
 
@@ -256,7 +256,7 @@ function attrs(spec, token) {
 // Code content is represented as a single token with a `content`
 // property in Markdown-it.
 function noOpenClose(type) {
-	return type == "code_inline" || type == "code_block" || type == "fence" || type == "math_inline" || type == "math_block";
+	return type == "code_inline" || type == "code_block" || type == "fence" || type == "math_inline" || type == "math_display";
 }
 
 function withoutTrailingNewline(str) {
@@ -386,7 +386,7 @@ let md = markdownit("commonmark", {html:false}).use(
 	math_plugin
 )
 
-export const markdownParser = new MarkdownParser(schema, md, {
+export const markdownParser = new MarkdownParser(markdownSchema, md, {
 	blockquote: {block: "blockquote"},
 	paragraph: {block: "paragraph"},
 	list_item: {block: "list_item"},
@@ -411,5 +411,5 @@ export const markdownParser = new MarkdownParser(schema, md, {
 	})},
 	code_inline: {mark: "code"},
 	math_inline: { block: "math_inline", getAttrs: tok => ({params: tok.info || ""})},
-	math_block: { block: "math_block", getAttrs: tok => ({params: tok.info || ""})}
+	math_display: { block: "math_display", getAttrs: tok => ({params: tok.info || ""})}
 })
