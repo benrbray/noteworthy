@@ -1,10 +1,12 @@
 import Renderer from './render';
 
+// css
 import "./main.less";
 import "@root/node_modules/prosemirror-view/style/prosemirror.css";
 import "@root/node_modules/katex/dist/katex.min.css";
+import "@lib/prosemirror-math/style/math.css";
 
-/* RENDERER */
+////////////////////////////////////////////////////////////
 
 let renderer:Renderer;
 
