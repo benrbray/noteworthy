@@ -12,7 +12,7 @@ import MarkdownIt = require('markdown-it');
 import Token = require('markdown-it/lib/token');
 import { Fragment, Mark, Node as ProsemirrorNode, Schema } from 'prosemirror-model';
 
-export let schema:Schema;
+export let markdownSchema:Schema;
 
 export interface TokenConfig {
     /**

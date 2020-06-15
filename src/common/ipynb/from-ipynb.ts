@@ -32,7 +32,7 @@ export class IpynbParser {
 		let proseContent = [];
 
 		/** @todo invisible placeholders for empty cells? */
-		
+
 		for(let cell of notebook.cells){
 			if(cell.cell_type == "markdown"){
 				let cellText:string = cell.source.join("");

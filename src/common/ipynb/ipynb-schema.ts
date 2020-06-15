@@ -158,17 +158,17 @@ export const ipynbSchema = new Schema({
 			inline: true,
 			atom: true,
 			marks: "",
-			parseDOM: [{ tag: "inlinemath" }],
-			toDOM(node) { return ["inlinemath", node.attrs, 0] }
+			parseDOM: [{ tag: "math-inline" }],
+			toDOM(node) { return ["math-inline", node.attrs, 0] }
 		},
 
-		math_block: {
+		math_display: {
 			group: "block",
 			content: "text*",
 			defining: true,
 			marks: "",
-			parseDOM: [{ tag: "displaymath" }],
-			toDOM(node) { return ["displaymath", node.attrs, 0] }
+			parseDOM: [{ tag: "math-display" }],
+			toDOM(node) { return ["math-display", node.attrs, 0] }
 		}
 	},
 

@@ -13,8 +13,8 @@ import { markdownSchema, markdownParser, markdownSerializer } from "@common/mark
 import { buildInputRules_markdown, buildKeymap_markdown } from "@common/pm-schema";
 
 // views
-import { InlineMathView } from "./inlinemath";
 import { MathView, ICursorPosObserver } from "@lib/prosemirror-math/src/math-nodeview";
+import { mathInputRules } from "@common/inputrules";
 
 ////////////////////////////////////////////////////////////
 
@@ -56,7 +56,8 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 			plugins: [
 				keymap(baseKeymap),
 				keymap(buildKeymap_markdown(this._proseSchema)),
-				buildInputRules_markdown(this._proseSchema)
+				buildInputRules_markdown(this._proseSchema),
+				mathInputRules
 			]
 		}
 		// create prosemirror state (from file)
@@ -129,7 +130,8 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 			plugins: [
 				keymap(baseKeymap),
 				keymap(buildKeymap_markdown(this._proseSchema)),
-				buildInputRules_markdown(this._proseSchema)
+				buildInputRules_markdown(this._proseSchema),
+				mathInputRules
 			]
 		});
 	}
