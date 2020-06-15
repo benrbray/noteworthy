@@ -134,6 +134,14 @@ inlinemath .math-render { display: inline-block; cursor: pointer; }
 inlinemath.ProseMirror-selectednode .math-src { display: inline; }
 inlinemath.ProseMirror-selectednode .math-render { display: none; }
 
+code {
+	display: block;
+	padding: 0.5em;
+	background-color: #ddd;
+	font-family: "Consolas", "Ubuntu Mono", monospace;
+	font-size: 0.9em;
+}
+
 //// IPYNB ///////////////////////////////////////////////////
 
 cell_markdown {
@@ -154,4 +162,21 @@ cell_code {
 cell_markdown:focus-within {
 	outline: 3px solid black;
 	border: 1px solid blue;
+}
+
+//// JOURNAL ///////////////////////////////////////////////
+
+.journal-entry {
+	padding: 0.5em;
+	border: 1px solid gray;
+	border-radius: 5px;
+}
+
+.journal-entry p:first-child {
+	margin-block-start: 0;
+}
+
+.journal-entry p {
+	margin-block-end: 0;
+	margin-block-start: 0.5em;
 }

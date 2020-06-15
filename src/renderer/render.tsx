@@ -22,6 +22,8 @@ import { Plugin as ProsePlugin } from "prosemirror-state";
 import { ProseMirrorEditor } from "./editors/editor-prosemirror";
 import { MarkdownEditor } from "./editors/editor-markdown";
 import { IpynbEditor } from "./editors/editor-ipynb";
+import { Explorer } from "./explorer/explorer";
+import { JournalEditor } from "./editors/editor-journal";
 
 class Renderer {
 
@@ -29,16 +31,20 @@ class Renderer {
 	_ipc:RendererIPC;
 
 	// ui elements
-	buttonNew: HTMLButtonElement;
-	buttonOpen: HTMLButtonElement;
-	buttonSave: HTMLButtonElement;
-	buttonSaveAs: HTMLButtonElement;
-	titleElt: HTMLDivElement;
+	_buttonNew: HTMLButtonElement;
+	_buttonOpen: HTMLButtonElement;
+	_buttonSave: HTMLButtonElement;
+	_buttonSaveAs: HTMLButtonElement;
+	_titleElt: HTMLDivElement;
 	_editorElt: HTMLDivElement;
+	_sidebarElt: HTMLDivElement;
 
 	// prosemirror
 	_editor:ProseMirrorEditor|null;
 	_currentFile:IPossiblyUntitledFile;
+
+	// sidebar
+	_explorer:Explorer|undefined;
 
 	constructor(){
 		// initialize objects
@@ -53,18 +59,20 @@ class Renderer {
 		this._editor = null;
 
 		// dom elements
-		this.buttonNew = document.getElementById("buttonNew") as HTMLButtonElement;
-		this.buttonOpen = document.getElementById("buttonOpen") as HTMLButtonElement;
-		this.buttonSave = document.getElementById("buttonSave") as HTMLButtonElement;
-		this.buttonSaveAs = document.getElementById("buttonSaveAs") as HTMLButtonElement;
-		this.titleElt = document.getElementById("title") as HTMLDivElement;
+		this._buttonNew = document.getElementById("buttonNew") as HTMLButtonElement;
+		this._buttonOpen = document.getElementById("buttonOpen") as HTMLButtonElement;
+		this._buttonSave = document.getElementById("buttonSave") as HTMLButtonElement;
+		this._buttonSaveAs = document.getElementById("buttonSaveAs") as HTMLButtonElement;
+		this._titleElt = document.getElementById("title") as HTMLDivElement;
 		this._editorElt = document.getElementById("editor") as HTMLDivElement;
+		this._sidebarElt = document.getElementById("sidebar") as HTMLDivElement;
 	}
 
 	init(){
 		console.log("render :: init()");
 		this._ipc.init();
 		this.initButtons();
+		this.initExplorer();
 
 		if(this._currentFile){
 			this.setCurrentFile(this._currentFile);
@@ -72,18 +80,22 @@ class Renderer {
 	}
 
 	initButtons(){
-		this.buttonOpen.addEventListener("click", () => {
+		this._buttonOpen.addEventListener("click", () => {
 			if(!this._editor){ return; }
 			this._ipc.openFileDialog();
 		});
-		this.buttonSave.addEventListener("click", () => {
+		this._buttonSave.addEventListener("click", () => {
 			if (!this._editor) { return; }
 			this._editor.saveCurrentFile(false);
 		});
-		this.buttonSaveAs.addEventListener("click", () => {
+		this._buttonSaveAs.addEventListener("click", () => {
 			if (!this._editor) { return; }
 			this._editor.saveCurrentFile(true);
 		});
+	}
+
+	initExplorer(){
+		this._explorer = new Explorer(this._sidebarElt);
 	}
 
 	setCurrentFile(file:IPossiblyUntitledFile):void {
@@ -107,6 +119,11 @@ class Renderer {
 				break;
 			case ".json":
 				this._editor = new ProseMirrorEditor(
+					this._currentFile, this._editorElt, this._ipc
+				);
+				break;
+			case ".journal":
+				this._editor = new JournalEditor(
 					this._currentFile, this._editorElt, this._ipc
 				);
 				break;

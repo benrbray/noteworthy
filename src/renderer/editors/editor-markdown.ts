@@ -78,11 +78,11 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		// create prosemirror instance
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
 			state: state,
-			nodeViews: {
+			/*nodeViews: {
 				"math_inline": (node, view, getPos) => {
 					return new InlineMathView(node, view, getPos as (() => number));
 				},
-			}
+			}*/
 		});
 		// initialized
 		this._initialized = true;

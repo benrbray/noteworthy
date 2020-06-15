@@ -1,10 +1,15 @@
-import "prosemirror-model";
+import {Node } from "prosemirror-model";
 
 declare module "prosemirror-model" {
 	interface Fragment {
 		// as of (3/31/20) official @types/prosemirror-model
 		// was missing Fragment.content, so we define it here
 		content: Node[];
+	}
+
+	interface NodeType {
+		hasRequiredAttrs(): boolean;
+		createAndFill(attrs?:Object, content?: Fragment|Node|Node[], marks?:Mark[]): Node;
 	}
 }
 

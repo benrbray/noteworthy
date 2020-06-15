@@ -1,6 +1,6 @@
 import { ipcRenderer } from "electron";
 import Renderer from "./render";
-import { FILE_IO, IFileWithContents, IPossiblyUntitledFile } from "@common/fileio";
+import { FILE_IO, IFileWithContents, IPossiblyUntitledFile, IDirEntry } from "@common/fileio";
 
 export default class RendererIPC {
 	_app:Renderer;
@@ -21,9 +21,15 @@ export default class RendererIPC {
 			console.log("RendererIPC :: FILE_SAVED", event, arg);
 		});
 
-		ipcRenderer.on(FILE_IO.FILE_SAVED_AS, (event: Event, filePath:string) => {
+		ipcRenderer.on(FILE_IO.FILE_SAVED_AS, (event: Event, filePath: string) => {
 			console.log("RendererIPC :: FILE_SAVED_AS", event, filePath);
 			this._app.setCurrentFilePath(filePath);
+		});
+
+		ipcRenderer.on("filetree-changed", (event: Event, fileTree: IDirEntry[]) => {
+			console.log("RendererIPC :: filetree-changed", event, fileTree);
+			if(!this._app._explorer){ return; }
+			this._app._explorer.setFileTree(fileTree);
 		});
 	}
 
