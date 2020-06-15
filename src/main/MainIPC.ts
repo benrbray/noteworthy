@@ -1,5 +1,5 @@
 import { ipcMain, dialog } from "electron";
-import { FILE_IO, readFile, saveFile, IUntitledFile, IFileWithContents, IPossiblyUntitledFile } from "@common/fileio";
+import { FILE_IO, readFile, saveFile, IUntitledFile, IFileWithContents, IPossiblyUntitledFile, IDirEntry } from "@common/fileio";
 import App from "./app"
 
 export default class MainIPC {
@@ -50,6 +50,9 @@ export default class MainIPC {
 			case FILE_IO.FILE_SAVE:
 				this.handle_requestFileSave(arg as IFileWithContents);
 				break;
+			case "filetree-changed":
+				this.handle_fileTreeChanged(arg as IDirEntry[]);
+				break;
 			default:
 				break;
 		}
@@ -61,7 +64,7 @@ export default class MainIPC {
 
 	}
 
-	handle_dialogFolderOpen(){
+	private handle_dialogFolderOpen(){
 		if (!this._app.window) { return; }
 		console.log("MainIPC :: DIALOG_FOLDER_OPEN");
 
@@ -78,7 +81,7 @@ export default class MainIPC {
 		this._app.setActiveDir(dirPaths[0]);
 	}
 
-	handle_dialogFileOpen(){
+	private handle_dialogFileOpen(){
 		if (!this._app.window) { return; }
 		console.log("MainIPC :: DIALOG_OPEN");
 
@@ -101,7 +104,7 @@ export default class MainIPC {
 		});
 	}
 
-	handle_dialogFileSaveAs(file: IPossiblyUntitledFile) {
+	private handle_dialogFileSaveAs(file: IPossiblyUntitledFile) {
 		if (!this._app.window) { return; }
 		console.log("MainIPC :: DIALOG_SAVE_AS");
 
@@ -121,13 +124,19 @@ export default class MainIPC {
 		this._app.window.window.webContents.send(FILE_IO.FILE_SAVED_AS, newFilePath);
 	}
 
-
-
-	handle_requestFileSave(file: IFileWithContents) {
+	private handle_requestFileSave(file: IFileWithContents) {
 		if (!this._app.window) { return; }
 
 		console.log("MainIPC :: FILE_SAVE");
 		saveFile(file.path, file.contents);
 			// TODO: send success/fail back to renderer?
+	}
+
+	private handle_fileTreeChanged(fileTree: IDirEntry[]) {
+		if (!this._app.window) { return; }
+
+		console.log("MainIPC :: filetree-changed");
+
+		this._app.window.window.webContents.send("filetree-changed", fileTree);
 	}
 }

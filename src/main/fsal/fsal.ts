@@ -37,6 +37,10 @@ export default class FSAL extends EventEmitter {
 		this._projectDir = projectDir;
 		this._watchdog = new FSALWatchdog(projectDir);
 
+		this._watchdog.on("chokidar-event", (event:string, info) => {
+			console.log(`fsal :: chokidar-event :: ${event}`, info);
+		});
+
 		this._state = {
 			activeFile : null,
 			openFiles  : [],
@@ -112,10 +116,11 @@ export default class FSAL extends EventEmitter {
 	 * @returns TRUE if successful, FALSE otherwise
 	 * @emits fsal-state-changed
 	 */
-	setRootDirectory(dir:IDirectory):boolean {
+	async setRootDirectory(dir:IDirectory):Promise<boolean> {
 		this._state.rootDirectory = dir;
-		this.emit("fsal-state-changed", "rootDirectory");
-		return true;
+		this.emit("fsal-state-changed", "rootDirectory", dir.path);
+		let success = await this.loadPath(dir.path);
+		return success;
 	}
 
 	/**
@@ -190,4 +195,18 @@ export default class FSAL extends EventEmitter {
 		return this._state.activeFile;
 	}
 
+	// == FILE TREE ===================================== //
+
+	getFileTree():IDirEntry[] {
+		let result:IDirEntry[] = [];
+		for(let root of this._state.fileTree){
+			result.push(this.getMetadataFor(root));
+		}
+
+		return result;
+	}
+
+	getMetadataFor(dirEntry:IDirEntry):IDirEntry {
+		return dirEntry;
+	}
 }

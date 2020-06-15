@@ -59,8 +59,10 @@ export default class FSALWatchdog extends EventEmitter {
 
 		// chokidar events
 		this._process.on("all", (event:string,path:string) => {
-			console.log("chokidar ::", event, path);
-			this.emit("fsal-changed", event, path);
+			console.log("fsal-watcher :: chokidar ::", event, path);
+			this.emit(`chokidar-event`, event, {
+				path
+			});
 		});
 	}
 
@@ -77,6 +79,7 @@ export default class FSALWatchdog extends EventEmitter {
 	 * @returns self (for chainability)
 	 */
 	watch(p:string){
+		console.log("fsal-watcher :: watch ::", p);
 		// ignore duplicate paths
 		if (this._paths.includes(p)) { return this; }
 		// add the path

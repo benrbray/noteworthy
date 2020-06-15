@@ -66,7 +66,14 @@ export default class App {
 	initFSAL(){
 		this._fsal.init();
 		this._fsal.on("fsal-state-changed", (objPath, info) => {
-			console.log("app :: fsal-state-changed ::", objPath);
+			console.log("app :: fsal-state-changed ::", objPath, info);
+			switch(objPath){
+				case "filetree":
+					this._ipc.send("filetree-changed", this._fsal.getFileTree());
+					break;
+				default:
+					break;
+			}
 		})
 	}
 
