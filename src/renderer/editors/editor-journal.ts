@@ -1,7 +1,6 @@
-import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
+// prosemirror imports
 import { EditorView as ProseEditorView } from "prosemirror-view";
 import { Schema as ProseSchema, DOMParser as ProseDOMParser, NodeType, ContentMatch } from "prosemirror-model";
-import RendererIPC from "@renderer/RendererIPC";
 import { EditorState as ProseEditorState, Transaction, 
 	Plugin as ProsePlugin, Selection } from "prosemirror-state";
 import { findWrapping } from "prosemirror-transform";
@@ -9,8 +8,14 @@ import { baseKeymap, toggleMark, wrapIn, chainCommands,
 	splitBlock, newlineInCode, createParagraphNear, 
 	lift, liftEmptyBlock, selectParentNode } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
-import { Editor } from "./editor";
+
+// project imports
+import RendererIPC from "@renderer/RendererIPC";
 import { journalSchema } from "@common/prosemirror/schema/journal-schema";
+import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
+import { Editor } from "./editor";
+
+////////////////////////////////////////////////////////////
 
 export class JournalEditor extends Editor<ProseEditorState> {
 
@@ -58,14 +63,6 @@ export class JournalEditor extends Editor<ProseEditorState> {
 				if (dispatch) dispatch(state.tr.wrap(range, wrapping).scrollIntoView())
 				return true
 			}
-		}
-
-		function defaultBlockAt(match:ContentMatch) {
-			for (let i = 0; i < match.edgeCount; i++) {
-				let { type } = match.edge(i)
-				if (type.isTextblock && !type.hasRequiredAttrs()) return type
-			}
-			return null
 		}
 
 		function insertAfter(state: ProseEditorState, dispatch?: ((tr: Transaction) => void)) {

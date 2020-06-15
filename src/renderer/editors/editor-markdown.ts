@@ -1,5 +1,5 @@
 import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
-import { EditorView as ProseEditorView } from "prosemirror-view";
+import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
 import { Schema as ProseSchema, DOMParser as ProseDOMParser } from "prosemirror-model";
 import RendererIPC from "@renderer/RendererIPC";
 import { FancySchema } from "@common/pm-schema";
@@ -14,6 +14,7 @@ import { buildInputRules_markdown, buildKeymap_markdown } from "@common/pm-schem
 
 // views
 import { InlineMathView } from "./inlinemath";
+import { MathView, ICursorPosObserver } from "@lib/prosemirror-math/src/math-nodeview";
 
 ////////////////////////////////////////////////////////////
 
@@ -39,18 +40,8 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		this._editorElt = editorElt;
 		this._ipc = ipc;
 
-		const insertStar = (state: ProseEditorState, dispatch: ((tr: Transaction) => void)) => {
-			var type = this._proseSchema.nodes.star;
-			var ref = state.selection;
-			var $from = ref.$from;
-			if (!$from.parent.canReplaceWith($from.index(), $from.index(), type)) { return false }
-			dispatch(state.tr.replaceSelectionWith(type.create()));
-			return true
-		}
-
 		this._keymap = this._keymap = keymap({
-			"Ctrl-b": toggleMark(this._proseSchema.marks.shouting),
-			"Ctrl-Space": insertStar,
+			/** @todo fill in */
 		})
 	}
 
@@ -76,13 +67,38 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 			state = ProseEditorState.create(config);
 		}
 		// create prosemirror instance
+		let nodeViews: ICursorPosObserver[] = [];
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
 			state: state,
-			/*nodeViews: {
+			nodeViews: {
 				"math_inline": (node, view, getPos) => {
-					return new InlineMathView(node, view, getPos as (() => number));
+					let nodeView = new MathView(
+						node, view, getPos as (() => number), { displayMode: false },
+						() => { nodeViews.splice(nodeViews.indexOf(nodeView)); },
+					);
+					nodeViews.push(nodeView);
+					return nodeView;
 				},
-			}*/
+				"math_display": (node, view, getPos) => {
+					let nodeView = new MathView(
+						node, view, getPos as (() => number), { displayMode: true },
+						() => { nodeViews.splice(nodeViews.indexOf(nodeView)); }
+					);
+					nodeViews.push(nodeView);
+					return nodeView;
+				},
+			},
+			dispatchTransaction: (tr: Transaction): void => {
+				let proseView:EditorView = (this._proseEditorView as EditorView);
+
+				// update 
+				for (let mathView of nodeViews) {
+					mathView.updateCursorPos(proseView.state);
+				}
+
+				// apply transaction
+				proseView.updateState(proseView.state.apply(tr));
+			}
 		});
 		// initialized
 		this._initialized = true;
@@ -104,8 +120,12 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 
 	parseContents(contents: string):ProseEditorState {
 		console.log("editor-markdown :: parseContents", contents);
+
+		let parsed = markdownParser.parse(contents);
+		console.log(parsed);
+
 		return ProseEditorState.create({
-			doc: markdownParser.parse(contents),
+			doc: parsed,
 			plugins: [
 				keymap(baseKeymap),
 				keymap(buildKeymap_markdown(this._proseSchema)),
