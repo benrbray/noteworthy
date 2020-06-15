@@ -1,5 +1,8 @@
 import Renderer from './render';
 
+// other imports
+import { Titlebar, Color } from "custom-electron-titlebar";
+
 // css
 import "./main.less";
 import "@root/node_modules/prosemirror-view/style/prosemirror.css";
@@ -14,6 +17,11 @@ onload = function(){
 
 	renderer = new Renderer();
 	renderer.init();
+
+	// create titlebar
+	new Titlebar({
+		backgroundColor: Color.fromHex("#ECECEC")
+	});
 
 	/* HOT MODULE REPLACEMENT */
 
