@@ -1,4 +1,4 @@
-import {Node } from "prosemirror-model";
+import { Node as ProseNode } from "prosemirror-model";
 
 declare module "prosemirror-model" {
 	interface Fragment {
@@ -9,7 +9,7 @@ declare module "prosemirror-model" {
 
 	interface NodeType {
 		hasRequiredAttrs(): boolean;
-		createAndFill(attrs?:Object, content?: Fragment|Node|Node[], marks?:Mark[]): Node;
+		createAndFill(attrs?:Object, content?: Fragment|ProseNode|ProseNode[], marks?:Mark[]): ProseNode;
 	}
 }
 
