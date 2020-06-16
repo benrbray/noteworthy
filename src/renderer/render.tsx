@@ -1,24 +1,9 @@
 // node imports
-import { clipboard, ipcRenderer } from "electron";
-import * as fs from "fs";
 import * as pathlib from "path";
-
-// prosemirror imports
-import { EditorState, Transaction } from "prosemirror-state";
-import { EditorView } from "prosemirror-view";
-import { Schema, DOMParser } from "prosemirror-model";
-import { schema } from "prosemirror-schema-basic";
-import { addListNodes } from "prosemirror-schema-list";
-import { findWrapping, StepMap } from "prosemirror-transform"
-import { keymap } from "prosemirror-keymap"
-import { baseKeymap, toggleMark } from "prosemirror-commands"
-import { undo, redo } from "prosemirror-history"
 
 // project imports
 import RendererIPC from "./RendererIPC";
 import { IPossiblyUntitledFile } from "@common/fileio";
-import { FancySchema, PlainSchema } from "@common/pm-schema";
-import { Plugin as ProsePlugin } from "prosemirror-state";
 import { ProseMirrorEditor } from "./editors/editor-prosemirror";
 import { MarkdownEditor } from "./editors/editor-markdown";
 import { IpynbEditor } from "./editors/editor-ipynb";

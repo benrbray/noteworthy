@@ -1,11 +1,15 @@
-import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
+
+// prosemirror imports
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
-import { Schema as ProseSchema, DOMParser as ProseDOMParser } from "prosemirror-model";
-import RendererIPC from "@renderer/RendererIPC";
-import { FancySchema } from "@common/pm-schema";
-import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
+import { Schema as ProseSchema, DOMParser as ProseDOMParser, MarkType } from "prosemirror-model";
 import { baseKeymap, toggleMark } from "prosemirror-commands";
+import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin, EditorState } from "prosemirror-state";
+import { history } from "prosemirror-history";
 import { keymap } from "prosemirror-keymap";
+
+// project imports
+import RendererIPC from "@renderer/RendererIPC";
+import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
 import { Editor } from "./editor";
 
 // markdown
@@ -15,6 +19,8 @@ import { buildInputRules_markdown, buildKeymap_markdown } from "@common/pm-schem
 // views
 import { MathView, ICursorPosObserver } from "@lib/prosemirror-math/src/math-nodeview";
 import { mathInputRules } from "@common/inputrules";
+import { openPrompt, TextField } from "@common/prompt/prompt";
+import { gapCursor } from "prosemirror-gapcursor";
 
 ////////////////////////////////////////////////////////////
 
@@ -40,8 +46,46 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		this._editorElt = editorElt;
 		this._ipc = ipc;
 
-		this._keymap = this._keymap = keymap({
-			/** @todo fill in */
+		function markActive(state:EditorState, type:MarkType) {
+			let { from, $from, to, empty } = state.selection
+			if (empty) return type.isInSet(state.storedMarks || $from.marks())
+			else return state.doc.rangeHasMark(from, to, type)
+		}
+
+		this._keymap = keymap({
+			"Tab": (state, dispatch, view) => {
+				dispatch(state.tr.deleteSelection().insertText("\t"));
+				return true;
+			},
+			"Ctrl-s": (state, dispatch, view) => {
+				this.saveCurrentFile(false);
+				return true;
+			},
+			"Ctrl-k": (state, dispatch, view) => {
+				console.log("link toggle");
+				let markType = this._proseSchema.marks.link;
+				if(markActive(state, markType)) {
+					console.log("link active");
+					toggleMark(markType)(state, dispatch)
+					return true
+				}
+				console.log("opening prompt");
+				openPrompt({
+					title: "Create a link",
+					fields: {
+						href: new TextField({
+							label: "Link target",
+							required: true
+						}),
+						title: new TextField({ label: "Title" })
+					},
+					callback(attrs: { [key: string]: any; } | undefined) {
+						toggleMark(markType, attrs)(view.state, view.dispatch)
+						view.focus()
+					}
+				})
+				return true;
+			}
 		})
 	}
 
@@ -54,10 +98,13 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		let config = {
 			schema: this._proseSchema,
 			plugins: [
-				keymap(baseKeymap),
 				keymap(buildKeymap_markdown(this._proseSchema)),
+				keymap(baseKeymap),
+				this._keymap,
 				buildInputRules_markdown(this._proseSchema),
-				mathInputRules
+				mathInputRules,
+				history(),
+				gapCursor()
 			]
 		}
 		// create prosemirror state (from file)
@@ -128,10 +175,13 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		return ProseEditorState.create({
 			doc: parsed,
 			plugins: [
-				keymap(baseKeymap),
+				// note: keymap order matters!
 				keymap(buildKeymap_markdown(this._proseSchema)),
+				keymap(baseKeymap),
+				this._keymap,
 				buildInputRules_markdown(this._proseSchema),
-				mathInputRules
+				mathInputRules,
+				history()
 			]
 		});
 	}

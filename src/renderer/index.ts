@@ -7,6 +7,7 @@ import { Titlebar, Color } from "custom-electron-titlebar";
 import "./main.less";
 import "@root/node_modules/prosemirror-view/style/prosemirror.css";
 import "@root/node_modules/katex/dist/katex.min.css";
+import "@root/node_modules/prosemirror-gapcursor/style/gapcursor.css";
 import "@lib/prosemirror-math/style/math.css";
 
 ////////////////////////////////////////////////////////////

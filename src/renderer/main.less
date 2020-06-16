@@ -6,13 +6,22 @@ body {
 	margin: 0;
 }
 
+a {
+	color: steelblue;
+}
+
+li p {
+	margin: 0;
+}
+
+
 /* User Interface --------------------------------------- */
 
 #app {
 	display: grid;
 	grid-template-areas: "sidebar header" "sidebar content" "sidebar footer";
 	grid-template-rows: 2em 1fr 2em;
-	grid-template-columns: 200px 1fr;
+	grid-template-columns: 0 1fr;
 	
 	width: 100%;
 	height: 100%;
@@ -179,4 +188,60 @@ cell_markdown:focus-within {
 .journal-entry p {
 	margin-block-end: 0;
 	margin-block-start: 0.5em;
+}
+
+//// PROMPT ////////////////////////////////////////////////
+
+.ProseMirror-prompt {
+  background: white;
+  padding: 5px 10px 5px 15px;
+  border: 1px solid silver;
+  position: fixed;
+  border-radius: 3px;
+  z-index: 11;
+  box-shadow: -.5px 2px 5px rgba(0, 0, 0, .2);
+}
+
+.ProseMirror-prompt h5 {
+  margin: 0;
+  font-weight: normal;
+  font-size: 100%;
+  color: #444;
+}
+
+.ProseMirror-prompt input[type="text"],
+.ProseMirror-prompt textarea {
+  background: #eee;
+  border: none;
+  outline: none;
+}
+
+.ProseMirror-prompt input[type="text"] {
+  padding: 0 4px;
+}
+
+.ProseMirror-prompt-close {
+  position: absolute;
+  left: 2px; top: 1px;
+  color: #666;
+  border: none; background: transparent; padding: 0;
+}
+
+.ProseMirror-prompt-close:after {
+  content: "✕";
+  font-size: 12px;
+}
+
+.ProseMirror-invalid {
+  background: #ffc;
+  border: 1px solid #cc7;
+  border-radius: 4px;
+  padding: 5px 10px;
+  position: absolute;
+  min-width: 10em;
+}
+
+.ProseMirror-prompt-buttons {
+  margin-top: 5px;
+  display: none;
 }

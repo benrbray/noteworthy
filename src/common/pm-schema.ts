@@ -29,48 +29,6 @@ export const PlainSchema = new Schema({
 	}
 });
 
-export const FancySchema = new Schema({
-	nodes: {
-		text: {
-			group: "inline"
-		},
-		star: {
-			inline: true,
-			group: "inline",
-			toDOM() { return ["star", "*"] },
-			parseDOM: [{ tag: "star" }]
-		},
-		paragraph: {
-			group: "block",
-			content: "inline*",
-			toDOM() { return ["p", 0] },
-			parseDOM: [{ tag: "p" }]
-		},
-		boring_paragraph: {
-			group: "block",
-			content: "text*",
-			marks: "",
-			toDOM() { return ["p", { class: "boring" }, 0] },
-			parseDOM: [{ tag: "p.boring", priority: 60 }]
-		},
-		doc: {
-			content: "block+"
-		}
-	},
-	marks: {
-		shouting: {
-			toDOM() { return ["shouting", 0] },
-			parseDOM: [{ tag: "shouting" }]
-		},
-		link: {
-			attrs: { href: {} },
-			toDOM(node) { return ["a", { href: node.attrs.href }, 0] },
-			parseDOM: [{ tag: "a", getAttrs(dom) { return { href: (dom as HTMLAnchorElement).href } } }],
-			inclusive: false
-		}
-	}
-});
-
 // : (NodeType) → InputRule
 // Given a blockquote node type, returns an input rule that turns `"> "`
 // at the start of a textblock into a blockquote.
@@ -209,7 +167,9 @@ export function buildKeymap_markdown(schema:Schema, mapKeys?:{ [key:string] : st
 	if (type = schema.nodes.list_item) {
 		bind("Enter", splitListItem(type))
 		bind("Mod-[", liftListItem(type))
+		bind("Shift-Tab", liftListItem(type))
 		bind("Mod-]", sinkListItem(type))
+		bind("Tab", sinkListItem(type))
 	}
 	if (type = schema.nodes.paragraph)
 		bind("Shift-Ctrl-0", setBlockType(type))
