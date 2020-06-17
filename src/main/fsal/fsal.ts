@@ -9,6 +9,7 @@ import isDir from "@common/util/is-dir";
 import FSALWatchdog from "./fsal-watcher";
 import * as FSALFile from "./fsal-file";
 import * as FSALDir from "./fsal-dir";
+import { FsalEvents } from "@common/events";
 
 ////////////////////////////////////////////////////////////
 
@@ -20,7 +21,7 @@ export default class FSAL extends EventEmitter {
 	// open files
 	private _state: {
 		/** supports working from a single root directory */
-		rootDirectory:IDirectory|null;
+		workspaceDir:IDirectory|null;
 		/** any number of files can be open within the root dir */
 		openFiles:IFileDesc[];
 		/** the currently active file */
@@ -37,21 +38,21 @@ export default class FSAL extends EventEmitter {
 		this._projectDir = projectDir;
 		this._watchdog = new FSALWatchdog(projectDir);
 
-		this._watchdog.on("chokidar-event", (event:string, info) => {
+		this._watchdog.on(FsalEvents.CHOKIDAR_EVENT, (event:string, info) => {
 			console.log(`fsal :: chokidar-event :: ${event}`, info);
 		});
 
 		this._state = {
+			workspaceDir: null,
 			activeFile : null,
 			openFiles  : [],
-			rootDirectory: null,
 			fileTree: []
 		}
 	}
 
 	// == LIFECYCLE ===================================== //
 
-	init(){
+	async init(){
 		console.log("fsal :: init()");
 		this._watchdog.init();
 	}
@@ -70,7 +71,7 @@ export default class FSAL extends EventEmitter {
 		let file:IFileDesc = await FSALFile.parseFile(filePath);
 		this._state.fileTree.push(file);
 		console.log(`${Date.now() - start} ms: Loaded file ${filePath}`) // DEBUG
-		this.emit("fsal-state-changed", "filetree");
+		this.emit(FsalEvents.STATE_CHANGED, "filetree");
 	}
 
 	/**
@@ -83,7 +84,7 @@ export default class FSAL extends EventEmitter {
 		let dir:IDirectory = await FSALDir.parseDir(dirPath);
 		this._state.fileTree.push(dir);
 		console.log(`${Date.now() - start} ms: Loaded directory ${dirPath}`) // DEBUG
-		this.emit("fsal-state-changed", "filetree");
+		this.emit(FsalEvents.STATE_CHANGED, "filetree");
 	}
 
 	/**
@@ -104,7 +105,7 @@ export default class FSAL extends EventEmitter {
 			return false;
 		}
 
-		this.emit("fsal-state-changed", "filetree");
+		this.emit(FsalEvents.STATE_CHANGED, "filetree");
 		return true;
 	}
 
@@ -116,9 +117,9 @@ export default class FSAL extends EventEmitter {
 	 * @returns TRUE if successful, FALSE otherwise
 	 * @emits fsal-state-changed
 	 */
-	async setRootDirectory(dir:IDirectory):Promise<boolean> {
-		this._state.rootDirectory = dir;
-		this.emit("fsal-state-changed", "rootDirectory", dir.path);
+	async setWorkspaceDir(dir:IDirectory):Promise<boolean> {
+		this._state.workspaceDir = dir;
+		this.emit(FsalEvents.STATE_CHANGED, "rootDirectory", dir.path);
 		let success = await this.loadPath(dir.path);
 		return success;
 	}
@@ -127,7 +128,7 @@ export default class FSAL extends EventEmitter {
 	 * Get the current working directory.
 	 */
 	getRootDirectory():(IDirectory|null){
-		return this._state.rootDirectory;
+		return this._state.workspaceDir;
 	}
 
 	// == OPEN/CLOSE FILES ============================== //
@@ -142,7 +143,7 @@ export default class FSAL extends EventEmitter {
 		if(this._state.openFiles.includes(file)){ return false; }
 		console.log("fsal :: opening file", file.path);
 		this._state.openFiles.push(file);
-		this.emit("fsal-state-changed", "openFiles")
+		this.emit(FsalEvents.STATE_CHANGED, "openFiles")
 		return true;
 	}
 
@@ -156,7 +157,7 @@ export default class FSAL extends EventEmitter {
 		if(this._state.openFiles.includes(file)){
 			console.log("fsal :: closing file", file.path);
 			this._state.openFiles.splice(this._state.openFiles.indexOf(file), 1)
-			this.emit('fsal-state-changed', 'openFiles')
+			this.emit(FsalEvents.STATE_CHANGED, 'openFiles')
 			return true;
 		} else {
 			return false;
@@ -187,7 +188,7 @@ export default class FSAL extends EventEmitter {
 
 		// mark active
 		this._state.activeFile = file;
-		this.emit("fsal-state-changed", "activeFile");
+		this.emit(FsalEvents.STATE_CHANGED, "activeFile");
 		return true;
 	}
 

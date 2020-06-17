@@ -1,6 +1,7 @@
 import { ipcMain, dialog } from "electron";
-import { FILE_IO, readFile, saveFile, IUntitledFile, IFileWithContents, IPossiblyUntitledFile, IDirEntry } from "@common/fileio";
+import { readFile, saveFile, IUntitledFile, IFileWithContents, IPossiblyUntitledFile, IDirEntry } from "@common/fileio";
 import App from "./app"
+import { UserEvents, FsalEvents, FileEvents } from "@common/events";
 
 export default class MainIPC {
 
@@ -16,18 +17,18 @@ export default class MainIPC {
 		if(this._initialized){ return; }
 		console.log("MainIPC :: init()");
 		
-		// DIALOG_OPEN
-		ipcMain.on(FILE_IO.DIALOG_OPEN, (evt:Event) => { 
+		// DIALOG_FILE_OPEN
+		ipcMain.on(UserEvents.DIALOG_FILE_OPEN, (evt:Event) => { 
 			this.handle_dialogFileOpen();
 		});
 			
-		// DIALOG_SAVE_AS
-		ipcMain.on(FILE_IO.DIALOG_SAVE_AS, (evt: Event, file: IPossiblyUntitledFile) => {
+		// DIALOG_FILE_SAVEAS
+		ipcMain.on(UserEvents.DIALOG_FILE_SAVEAS, (evt: Event, file: IPossiblyUntitledFile) => {
 			this.handle_dialogFileSaveAs(file);
 		});
 		
-		// DIALOG_SAVE_AS
-		ipcMain.on(FILE_IO.FILE_SAVE, (evt:Event, file: IFileWithContents) => {
+		// REQUEST_FILE_SAVE
+		ipcMain.on(UserEvents.REQUEST_FILE_SAVE, (evt:Event, file: IFileWithContents) => {
 			this.handle_requestFileSave(file);
 		});
 		
@@ -38,19 +39,19 @@ export default class MainIPC {
 		console.log("MainIPC :: send ::", cmd, arg);
 
 		switch (cmd) {
-			case FILE_IO.FILE_OPEN:
+			case UserEvents.DIALOG_FILE_OPEN:
 				this.handle_dialogFileOpen();
 				break;
-			case FILE_IO.FOLDER_OPEN:
+			case UserEvents.DIALOG_WORKSPACE_OPEN:
 				this.handle_dialogFolderOpen();
 				break;
-			case FILE_IO.DIALOG_SAVE_AS:
+			case UserEvents.DIALOG_FILE_SAVEAS:
 				this.handle_dialogFileSaveAs(arg as IPossiblyUntitledFile);
 				break;
-			case FILE_IO.FILE_SAVE:
+			case UserEvents.REQUEST_FILE_SAVE:
 				this.handle_requestFileSave(arg as IFileWithContents);
 				break;
-			case "filetree-changed":
+			case FsalEvents.FILETREE_CHANGED:
 				this.handle_fileTreeChanged(arg as IDirEntry[]);
 				break;
 			default:
@@ -78,7 +79,7 @@ export default class MainIPC {
 		);
 		if (!dirPaths || !dirPaths.length) return;
 
-		this._app.setActiveDir(dirPaths[0]);
+		this._app.setWorkspaceDir(dirPaths[0]);
 	}
 
 	private handle_dialogFileOpen(){
@@ -98,7 +99,7 @@ export default class MainIPC {
 		const fileText:string = readFile(filePaths[0]);
 
 		console.log(filePaths[0]);
-		this._app.window.window.webContents.send(FILE_IO.FILE_OPENED, {
+		this._app.window.window.webContents.send(FileEvents.FILE_DID_OPEN, {
 			path: filePaths[0],
 			contents: fileText
 		});
@@ -121,7 +122,7 @@ export default class MainIPC {
 
 		// send new file path to renderer
 		// TODO: handle this event in renderer!!
-		this._app.window.window.webContents.send(FILE_IO.FILE_SAVED_AS, newFilePath);
+		this._app.window.window.webContents.send(FileEvents.FILE_DID_SAVEAS, newFilePath);
 	}
 
 	private handle_requestFileSave(file: IFileWithContents) {
@@ -137,6 +138,6 @@ export default class MainIPC {
 
 		console.log("MainIPC :: filetree-changed");
 
-		this._app.window.window.webContents.send("filetree-changed", fileTree);
+		this._app.window.window.webContents.send(FsalEvents.FILETREE_CHANGED, fileTree);
 	}
 }

@@ -1,5 +1,6 @@
 import chokidar, { FSWatcher } from "chokidar";
 import { EventEmitter } from "events";
+import { FsalEvents } from "@common/events";
 
 ////////////////////////////////////////////////////////////
 
@@ -19,7 +20,7 @@ export default class FSALWatchdog extends EventEmitter {
 		this._isBooting = false;
 	}
 
-	init(){
+	async init(){
 		console.log("fsal-watcher :: init()");
 
 		// don't boot up twice, and only boot if there's at least one path
@@ -60,7 +61,7 @@ export default class FSALWatchdog extends EventEmitter {
 		// chokidar events
 		this._process.on("all", (event:string,path:string) => {
 			console.log("fsal-watcher :: chokidar ::", event, path);
-			this.emit(`chokidar-event`, event, {
+			this.emit(FsalEvents.CHOKIDAR_EVENT, event, {
 				path
 			});
 		});

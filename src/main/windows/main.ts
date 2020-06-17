@@ -5,8 +5,7 @@ import * as fs from 'fs';
 //import * as mkdirp from 'mkdirp';
 import * as path from 'path';
 import Route from './route';
-
-import { FILE_IO } from "@common/fileio";
+import { UserEvents } from '@common/events';
 
 /* MAIN */
 
@@ -28,11 +27,11 @@ export default class Main extends Route {
 				submenu: [
 					{
 						label: "Open Folder...",
-						click: () => { global.ipc.send(FILE_IO.FOLDER_OPEN); }
+						click: () => { global.ipc.send(UserEvents.DIALOG_WORKSPACE_OPEN); }
 					},
 					{
 						label: "Open File...",
-						click: () => { global.ipc.send(FILE_IO.FILE_OPEN); }
+						click: () => { global.ipc.send(UserEvents.DIALOG_FILE_OPEN); }
 					},
 					{
 						label: "Close All",
@@ -43,11 +42,11 @@ export default class Main extends Route {
 					},
 					{
 						label: "Save",
-						click: () => { global.ipc.send(FILE_IO.FILE_SAVE); }
+						click: () => { global.ipc.send(UserEvents.REQUEST_FILE_SAVE); }
 					},
 					{
 						label: "Save As...",
-						click: () => { global.ipc.send(FILE_IO.DIALOG_SAVE_AS); }
+						click: () => { global.ipc.send(UserEvents.DIALOG_FILE_SAVEAS); }
 					},
 					{
 						type: "separator"

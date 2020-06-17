@@ -1,20 +1,30 @@
 import { app, ipcMain as ipc, Event, Menu, shell } from "electron";
 import { enforceMacOSAppLocation, is } from 'electron-util';
+import { EventEmitter } from "events";
 import * as fs from "fs";
+import path from "path";
 import Main from "./windows/main";
 import Window from "./windows/window";
 import MainIPC from "./MainIPC";
 import FSAL from "./fsal/fsal";
 
 import * as FSALDir from "./fsal/fsal-dir";
+import { CrossRefProvider } from "./providers/crossref-provider";
+import { IDirectory } from "@common/fileio";
+import { FsalEvents, IpcEvents, AppEvents } from "@common/events";
 
-export default class App {
+export default class App extends EventEmitter {
 	window: Window | undefined;
 	
 	private _ipc:MainIPC;
 	private _fsal:FSAL;
 
+	// providers
+	private _crossRefProvider:CrossRefProvider|undefined;
+
 	constructor(){
+		super();
+
 		this._ipc = new MainIPC(this);
 		this._fsal = new FSAL("C:/Users/Ben/Documents/notabledata/notes");
 
@@ -44,13 +54,13 @@ export default class App {
 			 * @param  {Object} arg An optional object with data.
 			 * @return {void}     Does not return.
 			 */
-			send: (cmd, arg) => { this._ipc.send(cmd, arg); },
+			send: (cmd:string, arg?:Object):void => { this._ipc.send(cmd, arg); },
 			/**
 			 * Sends a message to the renderer and displays it as a notification.
 			 * @param  {String} msg The message to be sent.
 			 * @return {void}       Does not return.
 			 */
-			notify: (msg:any) => { this._ipc.send('notify', msg); },
+			notify: (msg:string):void => { this._ipc.send(IpcEvents.NOTIFY, msg); },
 			/**
 			 * Sends an error to the renderer process that should be displayed using
 			 * a dedicated dialog window (is used, e.g., during export when Pandoc
@@ -59,17 +69,20 @@ export default class App {
 			 * @param  {Object} msg        The error object
 			 * @return {void}            Does not return.
 			 */
-			notifyError: (msg:any) => { this._ipc.send('notify-error', msg); }
+			notifyError: (msg:any): void => { this._ipc.send(IpcEvents.NOTIFY_ERROR, msg); }
 		}
 	}
 
 	initFSAL(){
 		this._fsal.init();
-		this._fsal.on("fsal-state-changed", (objPath, info) => {
+		this._fsal.on(FsalEvents.STATE_CHANGED, (objPath, info) => {
 			console.log("app :: fsal-state-changed ::", objPath, info);
 			switch(objPath){
 				case "filetree":
-					this._ipc.send("filetree-changed", this._fsal.getFileTree());
+					this._ipc.send(FsalEvents.FILETREE_CHANGED, this._fsal.getFileTree());
+					break;
+				case "workspace":
+					this.emit(FsalEvents.WORKSPACE_CHANGED);
 					break;
 				default:
 					break;
@@ -97,9 +110,9 @@ export default class App {
 		this.window.init();
 	}
 
-	async setActiveDir(dirPath:string){
-		let dir = await FSALDir.parseDir(dirPath);
-		this._fsal.setRootDirectory(dir);
+	async setWorkspaceDir(dirPath:string){
+		let dir:IDirectory = await FSALDir.parseDir(dirPath);
+		this._fsal.setWorkspaceDir(dir);
 	}
 
 	async openFile(filePath:string){
@@ -162,7 +175,7 @@ export default class App {
 		// TODO: this line comes from Notable, but it seems to
 		// prevent the application from actually closing.  Why was it here?
 		//event.preventDefault();
-		this.window.window.webContents.send("app-quit")
+		this.window.window.webContents.send(AppEvents.APP_QUIT)
 	}
 
 	__forceQuit = () => {

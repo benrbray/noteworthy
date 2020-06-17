@@ -1,17 +1,5 @@
 import fs from "fs";
 
-export enum FILE_IO {
-	DIALOG_OPEN = "dialog-open",
-	DIALOG_SAVE_AS = "dialog-save-as",
-	FOLDER_OPEN = "folder-open",
-	FILE_OPEN = "file-open",
-	FILE_SAVE = "file-save",
-	FILE_SAVE_AS = "file-save-as",
-	FILE_OPENED = "file-opened",
-	FILE_SAVED = "file-saved",
-	FILE_SAVED_AS = "file-saved-as"
-}
-
 // -- Directory Entry ----------------------------------- //
 
 export interface IDirEntry {
@@ -19,13 +7,17 @@ export interface IDirEntry {
 	path:string;
 	name:string;
 	hash:FileHash;
-	modTime: number,
+	modTime: number;
 }
 
 // -- Directory ----------------------------------------- //
 
 export interface IDirectory extends IDirEntry {
 	children: IDirEntry[];
+}
+
+export interface IWorkspaceDir extends IDirectory {
+	workspaceDataPath:string;
 }
 
 export interface ISubDirectory extends IDirectory {
@@ -64,7 +56,7 @@ export class IUntitledFile implements Omit<IFileWithContents, "parent"|"path"|"n
 }
 export type IPossiblyUntitledFile = IFileWithContents | IUntitledFile;
 
-export class FileHash extends String {} 
+export type FileHash = string; 
 
 /////////////////// OLD
 
