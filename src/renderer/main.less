@@ -1,5 +1,13 @@
+@import url('../../assets/fonts/lora/lora.css');
+
+:root {
+	--code-font: "Consolas", "Ubuntu Mono", monospace;
+	--serif-font: "Lora", serif;
+	--sans-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
 body {
-	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	font-family: var(--sans-font);
 	height: 100vh;
 	width: 100%;
 	padding: 0;
@@ -13,6 +21,15 @@ a {
 li p {
 	margin: 0;
 }
+
+em.ul {
+	font-style: normal;
+	text-decoration: underline;
+}
+
+a.wikilink { font-family: var(--code-font); }
+a.wikilink::before { content: "[["; color: #e0e0e0; }
+a.wikilink::after { content: "]]"; color: #e0e0e0; }
 
 
 /* User Interface --------------------------------------- */
@@ -51,6 +68,7 @@ li p {
 }
 
 #app {
+
 	h1::before { content: "# ";     color: #ccc; margin-left: 0.5rem; }
 	h2::before { content: "## ";    color: #ccc; margin-left: 0.5rem; }
 	h3::before { content: "### ";   color: #ccc; margin-left: 0.5rem; }
@@ -60,6 +78,8 @@ li p {
 
 	p {
 		margin-left: 0.5em;
+		font-size: 20px;
+		font-family: var(--serif-font);
 	}
 }
 
@@ -149,6 +169,11 @@ code {
 	background-color: #ddd;
 	font-family: "Consolas", "Ubuntu Mono", monospace;
 	font-size: 0.9em;
+}
+
+p code {
+	display: inline;
+	padding: 0;
 }
 
 //// IPYNB ///////////////////////////////////////////////////

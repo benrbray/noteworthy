@@ -21,6 +21,7 @@ import { MathView, ICursorPosObserver } from "@lib/prosemirror-math/src/math-nod
 import { mathInputRules } from "@common/inputrules";
 import { openPrompt, TextField } from "@common/prompt/prompt";
 import { gapCursor } from "prosemirror-gapcursor";
+import mathSelectPlugin from "@root/lib/prosemirror-math/src/plugins/math-select";
 
 ////////////////////////////////////////////////////////////
 
@@ -62,6 +63,9 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				return true;
 			},
 			"Ctrl-k": (state, dispatch, view) => {
+				// only insert link when highlighting text
+				if(state.selection.empty){ return false; }
+
 				console.log("link toggle");
 				let markType = this._proseSchema.marks.link;
 				if(markActive(state, markType)) {
@@ -85,6 +89,30 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 					}
 				})
 				return true;
+			},
+			"Ctrl-e": (state, dispatch, view) => {
+				let { $from, $to } = state.selection;
+				// selection must be entirely within a single node
+				if(!$from.sameParent($to)){ return false; }
+				
+				console.log($from);
+				console.log($from.node(), $from.parent)
+				console.log("isText?", $from.node().isText, $from.node().isTextblock);
+				// get selected node
+
+				// marks
+				console.log($from.marks());
+				for(let mark of $from.marks()){
+					if(mark.type.name == "link"){
+						let new_href = prompt("change link:", mark.attrs.href);
+						dispatch(state.tr.setNodeMarkup($from.pos, undefined, {
+							href: new_href,
+							title: mark.attrs.title
+						}));
+					}
+				}
+
+				return true;
 			}
 		})
 	}
@@ -103,6 +131,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				this._keymap,
 				buildInputRules_markdown(this._proseSchema),
 				mathInputRules,
+				mathSelectPlugin,
 				history(),
 				gapCursor()
 			]
@@ -144,6 +173,8 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 					mathView.updateCursorPos(proseView.state);
 				}
 
+				console.log("selection :: ", tr.selection.from, tr.selection.to)
+
 				// apply transaction
 				proseView.updateState(proseView.state.apply(tr));
 			}
@@ -181,7 +212,9 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				this._keymap,
 				buildInputRules_markdown(this._proseSchema),
 				mathInputRules,
-				history()
+				mathSelectPlugin,
+				history(),
+				gapCursor()
 			]
 		});
 	}

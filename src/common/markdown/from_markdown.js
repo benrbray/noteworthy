@@ -113,26 +113,27 @@ export const markdownSchema = new Schema({
 			selectable: false,
 			parseDOM: [{tag: "br"}],
 			toDOM() { return ["br"] }
-	},
-	
-	math_inline: {
-		group: "inline",
-		content: "text*",
-		inline: true,
-		atom: true,
-		marks: "",
-		parseDOM: [{tag: "math-inline"}],
-		toDOM(node) { return ["math-inline", node.attrs, 0] }
-	},
-
-	math_display: {
-		group: "block",
-		content: "text*",
-		defining: true,
-		marks: "",
-		parseDOM: [{tag: "math-display"}],
-		toDOM(node) { return ["math-display", node.attrs, 0] }
-	}
+		},
+		math_inline: {
+			group: "inline math",
+			content: "text*",
+			inline: true,
+			atom: true,
+			toDOM: () => ["math-inline", { class: "math-node" }, 0],
+			parseDOM: [{
+				tag: "math-inline"
+			}]
+		},
+		math_display: {
+			group: "block math",
+			content: "text*",
+			atom: true,
+			code: true,
+			toDOM: () => ["math-display", { class: "math-node" }, 0],
+			parseDOM: [{
+				tag: "math-display"
+			}]
+		},
 	},
 
 	marks: {
@@ -161,8 +162,39 @@ export const markdownSchema = new Schema({
 		},
 
 		code: {
+			inclusive: false,
 			parseDOM: [{tag: "code"}],
 			toDOM() { return ["code"] }
+		},
+
+		underline: {
+			inclusive: false,
+			parseDOM: [
+				{tag: "em.ul"},
+				{style: "text-decoration", getAttrs: value => value == "underline" && null }
+			],
+			toDOM() { return ["em", { class : "ul" }] }
+		},
+
+		strike: {
+			inclusive: false,
+			parseDOM: [
+				{tag: "s"},
+				{style: "text-decoration", getAttrs: value => value == "line-through" && null }
+			],
+			toDOM() { return ["s"] }
+		},
+
+		wikilink: {
+			attrs: {
+				href: {},
+				title: {default: null}
+			},
+			inclusive: true,
+			parseDOM: [{tag: "a[href].wikilink", getAttrs(dom) {
+				return {href: dom.getAttribute("href"), title: dom.getAttribute("title")}
+			}}],
+			toDOM(node) { return ["a", Object.assign({ class: "wikilink" }, node.attrs)] }
 		}
 	}
 })
@@ -213,11 +245,30 @@ class MarkdownParseState {
 	}
 
 	parseTokens(toks) {
+		console.log(toks);
 		for (let i = 0; i < toks.length; i++) {
 			let tok = toks[i]
-			let handler = this.tokenHandlers[tok.type]
-			if (!handler)
-				throw new Error("Token type `" + tok.type + "` not supported by Markdown parser")
+			let tokenType = tok.type;
+
+			// html_inline tokens have a `content` property, storing
+			// the html tag as a string like "<div>" or "</div>"
+			if(tokenType === "html_inline"){
+				// extract tag name
+				let match = tok.content.match(/<(\/?)([a-zA-Z\-]+)>/);
+				if(!match){ throw new Error("Invalid html_token!", tok.content); }
+
+				// determine open / closed
+				let closed = (match[1] === "/") ? true : false;
+				tokenType = match[2] + (closed ? "_close" : "_open");
+			}
+			
+			// fetch token handler for this type
+			let handler = this.tokenHandlers[tokenType];
+			if (!handler) { throw new Error(
+				"Token type `" + tokenType + "` not supported by Markdown parser"
+			); }
+
+			// handle token
 			handler(this, tok)
 		}
 	}
@@ -256,7 +307,11 @@ function attrs(spec, token) {
 // Code content is represented as a single token with a `content`
 // property in Markdown-it.
 function noOpenClose(type) {
-	return type == "code_inline" || type == "code_block" || type == "fence" || type == "math_inline" || type == "math_display";
+	let tags = [
+		"code_inline", "code_block", "fence",
+		"math_inline", "math_display"
+	];
+	return tags.includes(type);
 }
 
 function withoutTrailingNewline(str) {
@@ -268,40 +323,45 @@ function noOp() {}
 function tokenHandlers(schema, tokens) {
 	let handlers = Object.create(null)
 	for (let type in tokens) {
-		let spec = tokens[type]
+		let spec = tokens[type]; 
+		
+		// some token specs may override html tag
+		let tokenType = (spec.html ? spec.html : type);
+		
+		// define token handlers
 		if (spec.block) {
 			let nodeType = schema.nodeType(spec.block)
-			if (noOpenClose(type)) {
-				handlers[type] = (state, tok) => {
+			if (noOpenClose(tokenType)) {
+				handlers[tokenType] = (state, tok) => {
 					state.openNode(nodeType, attrs(spec, tok))
 					state.addText(withoutTrailingNewline(tok.content))
 			state.closeNode()
 				}
 			} else {
-				handlers[type + "_open"] = (state, tok) => state.openNode(nodeType, attrs(spec, tok))
-				handlers[type + "_close"] = state => state.closeNode()
+				handlers[tokenType + "_open"] = (state, tok) => state.openNode(nodeType, attrs(spec, tok))
+				handlers[tokenType + "_close"] = state => state.closeNode()
 			}
 		} else if (spec.node) {
 			let nodeType = schema.nodeType(spec.node)
-			handlers[type] = (state, tok) => state.addNode(nodeType, attrs(spec, tok))
+			handlers[tokenType] = (state, tok) => state.addNode(nodeType, attrs(spec, tok))
 		} else if (spec.mark) {
 			let markType = schema.marks[spec.mark]
-			if (noOpenClose(type)) {
-				handlers[type] = (state, tok) => {
+			if (noOpenClose(tokenType)) {
+				handlers[tokenType] = (state, tok) => {
 					state.openMark(markType.create(attrs(spec, tok)))
 					state.addText(withoutTrailingNewline(tok.content))
 					state.closeMark(markType)
 				}
 			} else {
-				handlers[type + "_open"] = (state, tok) => state.openMark(markType.create(attrs(spec, tok)))
-				handlers[type + "_close"] = state => state.closeMark(markType)
+				handlers[tokenType + "_open"] = (state, tok) => state.openMark(markType.create(attrs(spec, tok)))
+				handlers[tokenType + "_close"] = state => state.closeMark(markType)
 			}
 		} else if (spec.ignore) {
-			if (noOpenClose(type)) {
-				handlers[type] = noOp
+			if (noOpenClose(tokenType)) {
+				handlers[tokenType] = noOp
 			} else {
-				handlers[type + '_open'] = noOp
-				handlers[type + '_close'] = noOp
+				handlers[tokenType + '_open'] = noOp
+				handlers[tokenType + '_close'] = noOp
 			}
 		} else {
 			throw new RangeError("Unrecognized parsing spec " + JSON.stringify(spec))
@@ -312,6 +372,7 @@ function tokenHandlers(schema, tokens) {
 	handlers.inline = (state, tok) => state.parseTokens(tok.children)
 	handlers.softbreak = handlers.softbreak || (state => state.addText("\n"))
 
+	console.log("handlers", handlers);
 	return handlers
 }
 
@@ -381,10 +442,12 @@ export class MarkdownParser {
 
 // :: MarkdownParser
 // A parser parsing unextended [CommonMark](http://commonmark.org/),
-// without inline HTML, and producing a document in the basic schema.
-let md = markdownit("commonmark", {html:false}).use(
+// with inline HTML, and producing a document in the basic schema.
+let md = markdownit({html:true}).use(
 	math_plugin
 )
+
+console.log("TEST!!!!", md.render("~~strike~~"));
 
 export const markdownParser = new MarkdownParser(markdownSchema, md, {
 	blockquote: {block: "blockquote"},
@@ -402,7 +465,8 @@ export const markdownParser = new MarkdownParser(markdownSchema, md, {
 		alt: tok.children[0] && tok.children[0].content || null
 	})},
 	hardbreak: {node: "hard_break"},
-
+	s: { mark: "strike" },
+	u: { mark: "underline" },
 	em: {mark: "em"},
 	strong: {mark: "strong"},
 	link: {mark: "link", getAttrs: tok => ({

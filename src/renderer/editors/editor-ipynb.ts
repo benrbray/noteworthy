@@ -2,7 +2,6 @@ import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
 import { Schema as ProseSchema, DOMParser as ProseDOMParser } from "prosemirror-model";
 import RendererIPC from "@renderer/RendererIPC";
-import { FancySchema } from "@common/pm-schema";
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
 import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";

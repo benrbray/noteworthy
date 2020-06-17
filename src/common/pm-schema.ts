@@ -1,7 +1,7 @@
-import { Schema, NodeType } from "prosemirror-model";
+import { Schema, NodeType, MarkType, Node as ProseNode } from "prosemirror-model";
 import {
 	inputRules, wrappingInputRule, textblockTypeInputRule,
-	smartQuotes, emDash, ellipsis, undoInputRule
+	smartQuotes, emDash, ellipsis, undoInputRule, InputRule
 } from "prosemirror-inputrules"
 import {
 	wrapIn, setBlockType, chainCommands, toggleMark, exitCode,
@@ -9,7 +9,7 @@ import {
 } from "prosemirror-commands"
 import { wrapInList, splitListItem, liftListItem, sinkListItem } from "prosemirror-schema-list"
 import { undo, redo } from "prosemirror-history"
-import { Transaction, EditorState, Plugin } from "prosemirror-state";
+import { Transaction, EditorState, Plugin, SelectionRange, TextSelection } from "prosemirror-state";
 import { ProseCommand } from "./types";
 
 export const PlainSchema = new Schema({
@@ -69,16 +69,74 @@ export function headingRule(nodeType: NodeType, maxLevel:number) {
 		nodeType, match => ({ level: match[1].length }))
 }
 
+function markApplies(doc:ProseNode, ranges:SelectionRange[], type:MarkType):boolean {
+	for (let i = 0; i < ranges.length; i++) {
+		let { $from, $to } = ranges[i]
+		let can = $from.depth == 0 ? doc.type.allowsMarkType(type) : false
+		doc.nodesBetween($from.pos, $to.pos, node => {
+			if (can) return false
+			can = node.inlineContent && node.type.allowsMarkType(type)
+		})
+		if (can) return true
+	}
+	return false
+}
+
+function markInputRule(pattern: RegExp, markType: MarkType, getAttrs?: (match: string[]) => any) {
+	return new InputRule(pattern, (state, match, start, end) => {
+		console.log(match, start, end);
+		// only apply marks to non-empty text selections
+		if (!(state.selection instanceof TextSelection)){ return null; }
+		
+		// determine if mark applies to match
+		let $start = state.doc.resolve(start);
+		let $end = state.doc.resolve(end);
+		let range = [new SelectionRange($start, $end)];
+		if(!markApplies(state.doc, range, markType)){ return null; }
+
+		// apply mark
+		let tr = state.tr.replaceWith(start, end, markType.schema.text(match[1],));
+		return tr.addMark(
+			tr.mapping.map(start),
+			tr.mapping.map(end),
+			markType.create(getAttrs ? getAttrs(match) : null)
+		).removeStoredMark(markType).insertText(match[3]);
+	});
+}
+
+export function boldRule(markType: MarkType):InputRule {
+	return markInputRule(/\*\*([^\s](.*[^\s])?)\*\*(.)$/, markType);
+}
+export function italicRule(markType: MarkType): InputRule {
+	return markInputRule(/(?<!\*)\*([^\s\*](.*[^\s])?)\*([^\*])$/, markType);
+}
+export function underlineRule(markType: MarkType): InputRule {
+	return markInputRule(/_([^\s_](.*[^\s_])?)_(.)$/, markType);
+}
+export function wikilinkRule(markType: MarkType): InputRule {
+	return markInputRule(/\[\[([^\s](.*[^\s])?)\]\](.)$/, markType);
+}
+export function strikeRule(markType: MarkType): InputRule {
+	return markInputRule(/~([^\s~](.*[^\s~])?)~(.)$/, markType);
+}
+
 // : (Schema) → Plugin
 // A set of input rules for creating the basic block quotes, lists,
 // code blocks, and heading.
 export function buildInputRules_markdown(schema:Schema) {
 	let rules = smartQuotes.concat(ellipsis, emDash), type
+	// nodes
 	if (type = schema.nodes.blockquote) rules.push(blockQuoteRule(type))
 	if (type = schema.nodes.ordered_list) rules.push(orderedListRule(type))
 	if (type = schema.nodes.bullet_list) rules.push(bulletListRule(type))
 	if (type = schema.nodes.code_block) rules.push(codeBlockRule(type))
 	if (type = schema.nodes.heading) rules.push(headingRule(type, 6))
+	// marks
+	if (type = schema.marks.strong) rules.push(boldRule(type));
+	if (type = schema.marks.em) rules.push(italicRule(type));
+	if (type = schema.marks.wikilink) rules.push(wikilinkRule(type));
+	if (type = schema.marks.underline) rules.push(underlineRule(type));
+	if (type = schema.marks.strike) rules.push(strikeRule(type));
 	return inputRules({ rules })
 }
 
