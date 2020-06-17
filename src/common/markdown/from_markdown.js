@@ -245,7 +245,6 @@ class MarkdownParseState {
 	}
 
 	parseTokens(toks) {
-		console.log(toks);
 		for (let i = 0; i < toks.length; i++) {
 			let tok = toks[i]
 			let tokenType = tok.type;
@@ -372,7 +371,6 @@ function tokenHandlers(schema, tokens) {
 	handlers.inline = (state, tok) => state.parseTokens(tok.children)
 	handlers.softbreak = handlers.softbreak || (state => state.addText("\n"))
 
-	console.log("handlers", handlers);
 	return handlers
 }
 
@@ -446,8 +444,6 @@ export class MarkdownParser {
 let md = markdownit({html:true}).use(
 	math_plugin
 )
-
-console.log("TEST!!!!", md.render("~~strike~~"));
 
 export const markdownParser = new MarkdownParser(markdownSchema, md, {
 	blockquote: {block: "blockquote"},
