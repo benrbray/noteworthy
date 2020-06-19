@@ -37,6 +37,7 @@ export default class App extends EventEmitter {
 	init(){
 		// services
 		this.initIPC();
+		this.initProviders();
 		this.initFSAL();
 
 		// menus
@@ -73,16 +74,31 @@ export default class App extends EventEmitter {
 		}
 	}
 
+	initProviders(){
+		this._crossRefProvider = new CrossRefProvider(this,
+			path.join(app.getPath('userData'), 'crossref.json')
+		);
+		this._crossRefProvider.init();
+		this._fsal.registerWorkspacePlugin(this._crossRefProvider);
+	}
+
+	destroyProviders(){
+		if(this._crossRefProvider){
+			this._fsal.unregisterWorkspacePlugin(this._crossRefProvider);
+			this._crossRefProvider.destroy();
+		}
+	}
+
 	initFSAL(){
 		this._fsal.init();
-		this._fsal.on(FsalEvents.STATE_CHANGED, (objPath, info) => {
-			console.log("app :: fsal-state-changed ::", objPath, info);
+		this._fsal.on(FsalEvents.STATE_CHANGED, (objPath, ...args) => {
+			console.log("app :: fsal-state-changed ::", objPath, ...args);
 			switch(objPath){
 				case "filetree":
 					this._ipc.send(FsalEvents.FILETREE_CHANGED, this._fsal.getFileTree());
 					break;
 				case "workspace":
-					this.emit(FsalEvents.WORKSPACE_CHANGED);
+					this.emit(FsalEvents.WORKSPACE_CHANGED, ...args);
 					break;
 				default:
 					break;
@@ -93,6 +109,8 @@ export default class App extends EventEmitter {
 	initContextMenu(){}
 	initMenu(){}
 	async initDebug(){}
+
+	// == Quitting ====================================== //
 
 	quit(){
 		console.log("app :: quit");

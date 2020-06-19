@@ -32,7 +32,7 @@ export default class FSALWatchdog extends EventEmitter {
 		// directories that should be ignored and a function that returns true
 		// for all files that are _not_ in the filetypes list (whitelisting)
 		// Further reading: https://github.com/micromatch/anymatch
-		let ignoreDirs: RegExp[] = [/(^|[/\\])\../];
+		let ignoreDirs: (RegExp|string)[] = [/(^|[/\\])\../, '**/.typeright/*'];
 		
 		this._process = chokidar.watch(this._projectDir, {
 			ignored: ignoreDirs,
@@ -89,7 +89,7 @@ export default class FSALWatchdog extends EventEmitter {
 		if (this.isBooting()) { return this; }
 		// start the watchdog if needed
 		if (!this._process) { this.init();          }
-		else               { this._process.add(p); }
+		else                { this._process.add(p); }
 		// chainable
 		return this;
 	}
@@ -101,9 +101,10 @@ export default class FSALWatchdog extends EventEmitter {
 	 */
 	unwatch(p:string){
 		if (!this._process)           { return this; }
-		if (!this._paths.includes(p)) { return this; }
-		// unwatch
-		this._paths.splice(this._paths.indexOf(p), 1);
+		// remove from watched paths
+		let index:number = this._paths.indexOf(p);
+		if (index < 0) { return this; }
+		this._paths.splice(index, 1);
 		this._process.unwatch(p);
 		return this;
 	}

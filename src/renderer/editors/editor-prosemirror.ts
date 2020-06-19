@@ -2,7 +2,7 @@ import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
 import { EditorView as ProseEditorView } from "prosemirror-view";
 import { Schema as ProseSchema, DOMParser as ProseDOMParser } from "prosemirror-model";
 import RendererIPC from "@renderer/RendererIPC";
-import { FancySchema } from "@common/pm-schema";
+import { PlainSchema } from "@common/pm-schema";
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
 import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
@@ -23,21 +23,8 @@ export class ProseMirrorEditor extends Editor<ProseEditorState> {
 		// no editor until initialized
 		this._initialized = false;
 		this._proseEditorView = null;
-		this._proseSchema = FancySchema;
-
-		const insertStar = (state: ProseEditorState, dispatch: ((tr: Transaction) => void)) => {
-			var type = this._proseSchema.nodes.star;
-			var ref = state.selection;
-			var $from = ref.$from;
-			if (!$from.parent.canReplaceWith($from.index(), $from.index(), type)) { return false }
-			dispatch(state.tr.replaceSelectionWith(type.create()));
-			return true
-		}
-
-		this._keymap = this._keymap = keymap({
-			"Ctrl-b": toggleMark(FancySchema.marks.shouting),
-			"Ctrl-Space": insertStar,
-		})
+		this._proseSchema = PlainSchema;
+		this._keymap = keymap(baseKeymap);
 	}
 
 	// == Lifecycle ===================================== //
@@ -48,7 +35,7 @@ export class ProseMirrorEditor extends Editor<ProseEditorState> {
 		// create prosemirror config
 		let config = {
 			schema: this._proseSchema,
-			plugins: [ this._keymap, keymap(baseKeymap) ]
+			plugins: [ this._keymap ]
 		};
 		// create prosemirror state (from file)
 		let state:ProseEditorState;
@@ -85,8 +72,8 @@ export class ProseMirrorEditor extends Editor<ProseEditorState> {
 
 	parseContents(contents: string): ProseEditorState {
 		let config = {
-			schema: FancySchema,
-			plugins: [this._keymap, keymap(baseKeymap)]
+			schema: PlainSchema,
+			plugins: [this._keymap]
 		}
 		return ProseEditorState.fromJSON( config, JSON.parse(contents) )
 	}

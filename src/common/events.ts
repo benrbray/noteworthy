@@ -1,12 +1,12 @@
 export const FsalEvents = {
 	WORKSPACE_CHANGED: "fsal-workspace-changed",
+	WORKSPACE_SYNC: "fsal-workspace-sync",
 	FILETREE_CHANGED: "fsal-filetree-changed",
 	STATE_CHANGED: "fsal-state-changed",
 	CHOKIDAR_EVENT : "fsal-chokidar-event",
 }
 
 export const MainEvents = {
-	WORKSPACE_CHANGED : "main-workspace-changed",
 }
 
 export const UserEvents = {

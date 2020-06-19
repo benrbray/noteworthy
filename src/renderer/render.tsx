@@ -36,6 +36,7 @@ class Renderer {
 		this._ipc = new RendererIPC(this);
 		/** @todo (6/9/20) propery set modTime/creationTime */
 		this._currentFile = {
+			type: "file",
 			contents: "",
 			modTime: -1,
 			creationTime: -1

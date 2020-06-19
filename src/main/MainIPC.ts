@@ -96,7 +96,10 @@ export default class MainIPC {
 		);
 		if (!filePaths || !filePaths.length) return;
 
-		const fileText:string = readFile(filePaths[0]);
+		const fileText:string|null = readFile(filePaths[0]);
+		if(!fileText){
+			throw new Error("MainIPC :: failed to read file");
+		}
 
 		console.log(filePaths[0]);
 		this._app.window.window.webContents.send(FileEvents.FILE_DID_OPEN, {

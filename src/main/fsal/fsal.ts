@@ -1,7 +1,9 @@
 import { EventEmitter } from "events";
+import fs from "fs";
+import * as pathlib from "path";
 
 // project imports
-import { FileHash, IFileDesc, IDirectory, IDirEntry } from "@common/fileio";
+import { FileHash, IFileDesc, IDirectory, IDirEntry, IDirectoryMeta, readFile, WorkspaceMeta, IFileMeta, FileCmp, IWorkspaceDir } from "@common/fileio";
 import isFile from "@common/util/is-file";
 import isDir from "@common/util/is-dir";
 
@@ -10,6 +12,7 @@ import FSALWatchdog from "./fsal-watcher";
 import * as FSALFile from "./fsal-file";
 import * as FSALDir from "./fsal-dir";
 import { FsalEvents } from "@common/events";
+import { WorkspaceProvider } from "@main/providers/provider";
 
 ////////////////////////////////////////////////////////////
 
@@ -20,8 +23,6 @@ export default class FSAL extends EventEmitter {
 
 	// open files
 	private _state: {
-		/** supports working from a single root directory */
-		workspaceDir:IDirectory|null;
 		/** any number of files can be open within the root dir */
 		openFiles:IFileDesc[];
 		/** the currently active file */
@@ -29,6 +30,16 @@ export default class FSAL extends EventEmitter {
 		/** the full filetree */
 		fileTree: IDirEntry[];
 	}
+
+	/** supports working from a single root directory */
+	private _workspace: null | {
+		dir:IDirectory;
+		metadata:WorkspaceMeta;
+		metaPath:string;
+	}
+
+	/** plugins which need to know about changes to the workspace */
+	private _workspacePlugins : WorkspaceProvider[] = [];
 
 	// == CONSTRUCTOR =================================== //
 
@@ -43,11 +54,12 @@ export default class FSAL extends EventEmitter {
 		});
 
 		this._state = {
-			workspaceDir: null,
 			activeFile : null,
 			openFiles  : [],
 			fileTree: []
 		}
+
+		this._workspace = null;
 	}
 
 	// == LIFECYCLE ===================================== //
@@ -68,7 +80,9 @@ export default class FSAL extends EventEmitter {
 	 */
 	private async _loadFile(filePath:string):Promise<void> {
 		let start:number = Date.now();
-		let file:IFileDesc = await FSALFile.parseFile(filePath);
+		let file:IFileDesc|null = await FSALFile.parseFile(filePath);
+		if(!file){ return; }
+
 		this._state.fileTree.push(file);
 		console.log(`${Date.now() - start} ms: Loaded file ${filePath}`) // DEBUG
 		this.emit(FsalEvents.STATE_CHANGED, "filetree");
@@ -109,7 +123,66 @@ export default class FSAL extends EventEmitter {
 		return true;
 	}
 
-	// == ROOT DIRECTORY ================================ //
+	// -- Workspace Metadata ---------------------------- //
+
+	async loadWorkspaceMetadataFromFile(path: string):Promise<WorkspaceMeta|null> {
+		let fileContents = readFile(path);
+		if(!fileContents){ return null; }
+		let workspaceJSON = JSON.parse(fileContents);
+		return WorkspaceMeta.fromJSON(workspaceJSON);
+	}
+
+	async writeWorkspaceMetadata():Promise<boolean> {
+		// ensure metadata exists
+		if(!this._workspace) {
+			throw new Error("fsal :: no workspace metadata to write!");
+		}
+		// write metadata to file
+		let path:string = this._workspace.metaPath;
+		try {
+			// ensure directory exists
+			let dirname = pathlib.dirname(path)
+			if(!fs.existsSync(dirname)){ fs.mkdirSync(dirname); }
+			// write metadata
+			fs.writeFileSync(path, JSON.stringify(
+				this._workspace.metadata, undefined, 2)
+			);
+		} catch(err){
+			console.error("fsal :: error writing metadata", err);
+			return false;
+		}
+		console.log("fsal :: workspace metadata saved to", path);
+		return true;
+	}
+
+	getWorkspaceMetadataPath(workspacePath:string):string {
+		return pathlib.join(workspacePath, ".typeright", "workspace.json");
+	}
+
+	// == FILE / DIR UNLOADING ========================== //
+
+	unloadAll():void {
+		for(let p of Object.keys(this._state.fileTree)){
+			this._watchdog.unwatch(p);
+		}
+
+		this._state.fileTree = [];
+		this._state.openFiles = [];
+		this._state.activeFile = null;
+
+		if(this._workspace){
+			delete this._workspace.metadata;
+			delete this._workspace.dir;
+			this._workspace = null;
+		}
+
+		this.emit(FsalEvents.STATE_CHANGED, 'filetree')
+		this.emit(FsalEvents.STATE_CHANGED, 'openFiles')
+		this.emit(FsalEvents.STATE_CHANGED, 'openDirectory')
+		this.emit(FsalEvents.STATE_CHANGED, 'activeFile')
+	}
+
+	// == WORKSPACE ===================================== //
 
 	/**
 	 * Set the current working directory.
@@ -118,17 +191,129 @@ export default class FSAL extends EventEmitter {
 	 * @emits fsal-state-changed
 	 */
 	async setWorkspaceDir(dir:IDirectory):Promise<boolean> {
-		this._state.workspaceDir = dir;
-		this.emit(FsalEvents.STATE_CHANGED, "rootDirectory", dir.path);
-		let success = await this.loadPath(dir.path);
+		// unload previous workspace
+		this.unloadAll();
+
+		// load (possibly stale) workspace metadata from file
+		let metaPath = this.getWorkspaceMetadataPath(dir.path);
+		let savedMeta:WorkspaceMeta|null = await this.loadWorkspaceMetadataFromFile(metaPath);
+		if(!savedMeta){ savedMeta = new WorkspaceMeta(); }
+		this._workspace = { 
+			dir: dir,
+			metadata: savedMeta,
+			metaPath: metaPath
+		}
+		
+		// check for changes between current file list and saved metadata,
+		// and process added/changed/deleted files if needed
+		let success:boolean = await this.updateWorkspace();
 		return success;
+	}
+
+	async updateWorkspace():Promise<boolean>{
+		if(!this._workspace){ throw new Error("fsal :: cannot refresh! no workspace exists!"); }
+		
+		// check for changes between workspace state and files on disk
+		let currentFiles = FSALDir.getFlattenedFiles(this._workspace.dir);
+		let fileChanges = this._workspace.metadata.compareFiles(currentFiles);
+
+		// handle deletions
+		for (let hash of fileChanges.deleted) {
+			// get file metadata
+			let file = this._workspace.metadata.files[hash];
+			this.handleWorkspaceFileDeleted(file);
+		}
+
+		// handle creations
+		for (let hash of fileChanges.added) {
+			// get file metadata
+			let file: IFileMeta = currentFiles[hash];
+			this.handleWorkspaceFileCreated(file);
+		}
+
+		// handle changes
+		for (let hash of fileChanges.changed) {
+			// get file metadata
+			let file: IFileMeta = currentFiles[hash];
+			this.handleWorkspaceFileChanged(file);
+		}
+
+		// write updated workspace data to disk
+		this.writeWorkspaceMetadata();
+		return true;
+	}
+
+
+	/**
+	 * Called when a file has been changed in the workspace.
+	 * @param file Metadata for the deleted file.
+	 */
+	handleWorkspaceFileDeleted(file:IFileMeta){
+		if(!this._workspace){ return; }
+		// notify plugins
+		for (let plugin of this._workspacePlugins) {
+			plugin.handleFileDeleted(file);
+		}
+		// remove file metadata
+		delete this._workspace.metadata.files[file.hash];
+	}
+
+	/**
+	 * Called when a file has been created in the workspace.
+	 * Parses file contents and notifies plugins of the change.
+	 * @param file The up-to-date file metadata.
+	 */
+	handleWorkspaceFileCreated(file: IFileMeta) {
+		if (!this._workspace) { return; }
+		// read file contents
+		let contents = readFile(file.path);
+		if(contents === null){
+			throw new Error(`fsal :: handleWorkspaceFileCreated() :: error reading file :: ${file.path}`);
+		}
+		// notify plugins
+		for (let plugin of this._workspacePlugins) {
+			plugin.handleFileCreated(file, contents);
+		}
+		// add to workspace
+		this._workspace.metadata.files[file.hash] = file;
+	}
+
+	/**
+	 * Called when a file has been changed in the workspace.
+	 * Parses file contents and notifies plugins of the change.
+	 * @param file The up-to-date file metadata.
+	 */
+	handleWorkspaceFileChanged(file: IFileMeta) {
+		if (!this._workspace) { return; }
+		// read file contents
+		let contents = readFile(file.path);
+		if (contents === null) {
+			throw new Error(`fsal :: handleWorkspaceFileCreated() :: error reading file :: ${file.path}`);
+		}
+		// notify plugins
+		for (let plugin of this._workspacePlugins) {
+			plugin.handleFileChanged(file, contents);
+		}
+		// add to workspace
+		this._workspace.metadata.files[file.hash] = file;
 	}
 
 	/**
 	 * Get the current working directory.
 	 */
-	getRootDirectory():(IDirectory|null){
-		return this._state.workspaceDir;
+	getWorkspaceDir():(IDirectory|null){
+		return this._workspace && this._workspace.dir;
+	}
+
+	registerWorkspacePlugin(plugin:WorkspaceProvider){
+		this._workspacePlugins.push(plugin);
+	}
+
+	unregisterWorkspacePlugin(plugin:WorkspaceProvider){
+		let index = this._workspacePlugins.indexOf(plugin);
+		if(index > -1){
+			this._workspacePlugins.splice(index, 1);
+		}
 	}
 
 	// == OPEN/CLOSE FILES ============================== //
