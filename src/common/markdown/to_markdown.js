@@ -126,7 +126,7 @@ export const markdownSerializer = new MarkdownSerializer({
 	strong: {open: "**", close: "**", mixable: true, expelEnclosingWhitespace: true},
 	underline: {open: "<u>", close: "</u>", mixable: true, expelEnclosingWhitespace: true},
 	strike: {open: "~~", close: "~~", mixable: true, expelEnclosingWhitespace: true},
-	wikilink: {open: "[[", close: "]]", mixable: true, expelEnclosingWhitespace: true},
+	wikilink: {open: "[[", close: "]]", mixable: true, expelEnclosingWhitespace: true, escape:false},
 	link: {
 		open(_state, mark, parent, index) {
 			return isPlainURL(mark, parent, index, 1) ? "<" : "["

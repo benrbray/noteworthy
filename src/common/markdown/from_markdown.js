@@ -1,5 +1,6 @@
 import markdownit from "markdown-it"
 import { math_plugin } from "./markdown-it-katex"
+import { wikilinks_plugin } from "./markdown-it-wikilinks"
 import { Schema, Mark } from "prosemirror-model"
 
 export const markdownSchema = new Schema({
@@ -187,14 +188,11 @@ export const markdownSchema = new Schema({
 
 		wikilink: {
 			attrs: {
-				href: {},
 				title: {default: null}
 			},
 			inclusive: true,
-			parseDOM: [{tag: "a[href].wikilink", getAttrs(dom) {
-				return {href: dom.getAttribute("href"), title: dom.getAttribute("title")}
-			}}],
-			toDOM(node) { return ["a", Object.assign({ class: "wikilink" }, node.attrs)] }
+			parseDOM: [{tag: "span.wikilink" }],
+			toDOM(node) { return ["span", Object.assign({ class: "wikilink" }, node.attrs)] }
 		}
 	}
 })
@@ -308,7 +306,7 @@ function attrs(spec, token) {
 function noOpenClose(type) {
 	let tags = [
 		"code_inline", "code_block", "fence",
-		"math_inline", "math_display"
+		"math_inline", "math_display", "wikilink"
 	];
 	return tags.includes(type);
 }
@@ -441,9 +439,9 @@ export class MarkdownParser {
 // :: MarkdownParser
 // A parser parsing unextended [CommonMark](http://commonmark.org/),
 // with inline HTML, and producing a document in the basic schema.
-let md = markdownit({html:true}).use(
-	math_plugin
-)
+let md = markdownit({html:true})
+	.use(math_plugin)
+	.use(wikilinks_plugin);
 
 export const markdownParser = new MarkdownParser(markdownSchema, md, {
 	blockquote: {block: "blockquote"},
@@ -469,6 +467,7 @@ export const markdownParser = new MarkdownParser(markdownSchema, md, {
 		href: tok.attrGet("href"),
 		title: tok.attrGet("title") || null
 	})},
+	wikilink: {mark:"wikilink"},
 	code_inline: {mark: "code"},
 	math_inline: { block: "math_inline", getAttrs: tok => ({params: tok.info || ""})},
 	math_display: { block: "math_display", getAttrs: tok => ({params: tok.info || ""})}
