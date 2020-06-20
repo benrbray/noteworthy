@@ -21,18 +21,18 @@ export class WorkspaceMeta {
 	/**
 	 * Called when the given path is stale and should be updated,
 	 * including after a file is created, changed, or destroyed.
-	 * @returns TRUE if workspace contains file after update, otherwise FALSE.
+	 * @returns file metadata if exists, otherwise NULL
 	 */
-	async updatePath(filePath: string): Promise<boolean> {
+	async updatePath(filePath: string): Promise<IFileMeta|null> {
 		/** @todo (6/19/20) check if path is a directory? */
 		let file: IFileDesc | null = await FSALFile.parseFile(filePath);
-		if(file === null) { return false; }
+		if(file === null) { return null; }
 
 		// store file info in workspace
 		let fileHash:string = hash(filePath);
-		this.files[fileHash] = FSALFile.getFileMetadata(file);
-
-		return true;
+		let fileMeta:IFileMeta = FSALFile.getFileMetadata(file);
+		this.files[fileHash] = fileMeta;
+		return fileMeta;
 	}
 
 	getFileFromHash(hash: string): IFileMeta | null {

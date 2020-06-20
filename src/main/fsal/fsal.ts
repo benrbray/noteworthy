@@ -79,25 +79,46 @@ export default class FSAL extends EventEmitter {
 	// == EVENTS ======================================== //
 
 	attachEvents(){
-		this._watchdog.on(FsalEvents.CHOKIDAR_EVENT, this.handleChokidarEvent);
+		this._watchdog.on(FsalEvents.CHOKIDAR_EVENT, this.handleChokidarEvent.bind(this));
 	}
 
 	detachEvents(){
-		this._watchdog.off(FsalEvents.CHOKIDAR_EVENT, this.handleChokidarEvent);
+		this._watchdog.off(FsalEvents.CHOKIDAR_EVENT, this.handleChokidarEvent.bind(this));
 	}
 
-	handleChokidarEvent(event:ChokidarEvents, path:string):void {
-		console.log(`fsal :: chokidar-event :: ${event}`, path);
+	async handleChokidarEvent(event:ChokidarEvents, info:{path:string}):Promise<void> {
+		console.log(`fsal :: chokidar-event :: ${event}`, info.path);
 
 		// handle errors
 		if (event == ChokidarEvents.ERROR) {
-			throw new Error(`fsal :: chokidar error :: ${path}`);
+			throw new Error(`fsal :: chokidar error :: ${info}`);
 		}
-
+	
 		/** @todo (6/19/20) what to do about file changes outside workspace? */
 		/** @todo (6/19/20) what to do about file changes when no workspace active? */
-		if(!this._workspace){ return; };
+		if (!this._workspace) { console.error("fsal :: handleChokidarEvent :: no workspace!"); return; };
 
+		// -- Directory Changes ------------------------- //
+
+		if (event == ChokidarEvents.ADD_DIR) {
+			/** @todo (6/19/20) handle chokidar add_dir */
+		} else if (event == ChokidarEvents.UNLINK_DIR) {
+			/** @todo (6/19/20) handle chokidar unlink_dir */
+		}
+
+		// -- File Changes ------------------------------ //
+		
+		// notify workspace of file change
+		await this._workspace.metadata.updatePath(info.path);
+		
+		// notify plugins
+		let file = { path: info.path, hash: hash(info.path) };
+
+		if      (event == ChokidarEvents.UNLINK_FILE) { this.handleWorkspaceFileDeleted(file); }
+		else if (event == ChokidarEvents.CHANGE_FILE) { this.handleWorkspaceFileChanged(file); }
+		else if (event == ChokidarEvents.ADD_FILE)    { this.handleWorkspaceFileCreated(file); }
+		
+		// emit events
 		this.emit(FsalEvents.STATE_CHANGED, "filetree");
 	}
 

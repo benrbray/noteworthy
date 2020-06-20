@@ -9,21 +9,24 @@ export default class FSALWatchdog extends EventEmitter {
 	private _process:FSWatcher|null; // chokidar process
 	private _isBooting:boolean;
 	/** @todo (6/19/20) this should probably be a Set<string> */
-	private _paths:string[];
+	private _paths:Set<string>
 
 	constructor(){
 		super();
 
 		this._process = null;
-		this._paths = [];
+		this._paths = new Set<string>();
 		this._isBooting = false;
 	}
 
-	async init(){
+	/**
+	 * @param p initial path to watch
+	 */
+	async init(p?:string){
 		console.log("fsal-watcher :: init()");
 
 		// don't boot up twice, and only boot if there's at least one path
-		if(this._paths.length < 1 || this.isBooting()){ return; }
+		if(this._paths.size < 1 || this.isBooting()){ return; }
 		this._isBooting = true;
 
 		// chokidar's ignored-setting is compatible to anymatch, so we can
@@ -33,7 +36,7 @@ export default class FSALWatchdog extends EventEmitter {
 		// Further reading: https://github.com/micromatch/anymatch
 		let ignoreDirs: (RegExp|string)[] = [/(^|[/\\])\../, '**/.typeright/*'];
 		
-		this._process = new FSWatcher({
+		this._process = chokidar.watch( (p?p:[]), {
 			ignored: ignoreDirs,
 			persistent: true,
 			ignoreInitial: true
@@ -70,7 +73,7 @@ export default class FSALWatchdog extends EventEmitter {
 			this._process = null;
 		}
 
-		this._paths = [];
+		this._paths.clear();
 		this._isBooting = false;
 	}
 
@@ -87,13 +90,13 @@ export default class FSALWatchdog extends EventEmitter {
 	watch(p:string){
 		console.log("fsal-watcher :: watch ::", p);
 		// ignore duplicate paths
-		if (this._paths.includes(p)) { return this; }
+		if (this._paths.has(p)) { console.log("\tpath already watched");return this; }
 		// add the path
-		this._paths.push(p);
+		this._paths.add(p);
 		// if fsal is booting up, _paths will be watched when chokidar is ready
-		if (this.isBooting()) { return this; }
+		if (this.isBooting()) { console.log("\twatcher booting"); return this; }
 		// start the watchdog if needed
-		if (!this._process) { this.init();          }
+		if (!this._process) { console.log("\tinitializing watcher");this.init(p);          }
 		else                { this._process.add(p); }
 		// chainable
 		return this;
@@ -108,9 +111,7 @@ export default class FSALWatchdog extends EventEmitter {
 		console.log("fsal-watcher :: unwatch ::", p);
 		if (!this._process)           { return this; }
 		// remove from watched paths
-		let index:number = this._paths.indexOf(p);
-		if (index < 0) { return this; }
-		this._paths.splice(index, 1);
+		this._paths.delete(p);
 		this._process.unwatch(p);
 		return this;
 	}
