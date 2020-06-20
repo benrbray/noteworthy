@@ -1,5 +1,5 @@
 {
-  "name": "typeright",
+  "name": "noteworthy",
   "version": "0.0.1",
   "description": "Text editor with rich document semantics, based on ProseMirror.",
   "main": "./dist/index.js",
@@ -39,7 +39,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/benrbray/typeright.git"
+    "url": "git+https://github.com/benrbray/noteworthy.git"
   },
   "keywords": [
     "productivity",
@@ -53,9 +53,9 @@
   },
   "license": "GPL-3.0-or-later",
   "bugs": {
-    "url": "https://github.com/benrbray/typeright/issues"
+    "url": "https://github.com/benrbray/noteworthy/issues"
   },
-  "homepage": "https://github.com/benrbray/typeright#readme",
+  "homepage": "https://github.com/benrbray/noteworthy#readme",
   "dependencies": {
     "chokidar": "^3.4.0",
     "custom-electron-titlebar": "^3.2.2-hotfix62",

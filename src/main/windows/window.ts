@@ -58,7 +58,7 @@ class Window {
 			frame: false, //!is.macos,
 			backgroundColor: (Settings.get('theme') === 'light') ? '#F7F7F7' : '#0F0F0F', //TODO: This won't scale with custom themes
 			show: false,
-			title: "TypeRight", //pkg.productName,
+			title: "Noteworthy", //pkg.productName,
 			titleBarStyle: 'hiddenInset',
 			webPreferences: {
 				nodeIntegration: true,

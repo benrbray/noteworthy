@@ -34,7 +34,7 @@ export default class FSALWatchdog extends EventEmitter {
 		// directories that should be ignored and a function that returns true
 		// for all files that are _not_ in the filetypes list (whitelisting)
 		// Further reading: https://github.com/micromatch/anymatch
-		let ignoreDirs: (RegExp|string)[] = [/(^|[/\\])\../, '**/.typeright/*'];
+		let ignoreDirs: (RegExp|string)[] = [/(^|[/\\])\../, '**/.noteworthy/*'];
 		
 		this._process = chokidar.watch( (p?p:[]), {
 			ignored: ignoreDirs,

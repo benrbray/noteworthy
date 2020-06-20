@@ -163,7 +163,7 @@ export default class FSAL extends EventEmitter {
 	}
 
 	getWorkspaceMetadataPath(workspacePath:string):string {
-		return pathlib.join(workspacePath, ".typeright", "workspace.json");
+		return pathlib.join(workspacePath, ".noteworthy", "workspace.json");
 	}
 
 	// == FILE / DIR UNLOADING ========================== //

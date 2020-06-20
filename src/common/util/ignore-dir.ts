@@ -14,7 +14,7 @@
 const path = require('path')
 
 // Ignored directory patterns
-const ignoreDirs:string[] = ['\.typeright'];//require('../data.json').ignoreDirs
+const ignoreDirs:string[] = ['\.noteworthy'];//require('../data.json').ignoreDirs
 
 /**
 * Returns true, if a directory should be ignored, and false, if not.
