@@ -114,7 +114,7 @@ export function underlineRule(markType: MarkType): InputRule {
 	return markInputRule(/_([^\s_](.*[^\s_])?)_(.)$/, markType);
 }
 export function wikilinkRule(markType: MarkType): InputRule {
-	return markInputRule(/\[\[([^\s](.*[^\s])?)\]\](.)$/, markType);
+	return markInputRule(/\[\[([^\s]([^\]]*[^\s])?)\]\](.)$/, markType);
 }
 export function strikeRule(markType: MarkType): InputRule {
 	return markInputRule(/~([^\s~](.*[^\s~])?)~(.)$/, markType);
