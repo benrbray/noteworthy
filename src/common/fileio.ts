@@ -109,6 +109,10 @@ export class WorkspaceMeta {
 		return result;
 	}
 
+	getFileFromHash(hash:string):IFileMeta|null {
+		return this.files[hash] || null;
+	}
+
 	/** 
 	 * Compare two flattened file lists and report any changes.
 	 * (based on https://stackoverflow.com/revisions/33233053/6)

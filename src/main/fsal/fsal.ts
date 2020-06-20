@@ -11,9 +11,10 @@ import isDir from "@common/util/is-dir";
 import FSALWatchdog from "./fsal-watcher";
 import * as FSALFile from "./fsal-file";
 import * as FSALDir from "./fsal-dir";
-import { FsalEvents } from "@common/events";
+import { FsalEvents, ChokidarEvents } from "@common/events";
 import { WorkspaceProvider } from "@main/providers/provider";
 import { markdownParser } from "@common/markdown";
+import hash from "@common/util/hash";
 
 ////////////////////////////////////////////////////////////
 
@@ -48,11 +49,7 @@ export default class FSAL extends EventEmitter {
 		super();
 
 		this._projectDir = projectDir;
-		this._watchdog = new FSALWatchdog(projectDir);
-
-		this._watchdog.on(FsalEvents.CHOKIDAR_EVENT, (event:string, info) => {
-			console.log(`fsal :: chokidar-event :: ${event}`, info);
-		});
+		this._watchdog = new FSALWatchdog();
 
 		this._state = {
 			activeFile : null,
@@ -68,63 +65,40 @@ export default class FSAL extends EventEmitter {
 	async init(){
 		console.log("fsal :: init()");
 		this._watchdog.init();
+		this.attachEvents();
+	}
+
+	async destroy(){
+		this._watchdog.destroy();
+		this.detachEvents();
 	}
 
 	// == EVENTS ======================================== //
 
-	// == FILE / DIR LOADING ============================ //
-
-	/**
-	 * Opens, reads, and parses a file.
-	 * @param filePath The file to be loaded.
-	 * @emits fsal-state-changed (filetree)
-	 */
-	private async _loadFile(filePath:string):Promise<void> {
-		let start:number = Date.now();
-		let file:IFileDesc|null = await FSALFile.parseFile(filePath);
-		if(!file){ return; }
-
-		this._state.fileTree.push(file);
-		console.log(`${Date.now() - start} ms: Loaded file ${filePath}`) // DEBUG
-		this.emit(FsalEvents.STATE_CHANGED, "filetree");
+	attachEvents(){
+		this._watchdog.on(FsalEvents.CHOKIDAR_EVENT, this.handleChokidarEvent);
 	}
 
-	/**
-	 * Loads the given directory recursively.
-	 * @param dirPath The directory to be loaded.
-	 * @emits fsal-state-changed (filetree)
-	 */
-	private async _loadDir(dirPath:string):Promise<void> {
-		let start:number = Date.now();
-		let dir:IDirectory = await FSALDir.parseDir(dirPath);
-		this._state.fileTree.push(dir);
-		console.log(`${Date.now() - start} ms: Loaded directory ${dirPath}`) // DEBUG
-		this.emit(FsalEvents.STATE_CHANGED, "filetree");
+	detachEvents(){
+		this._watchdog.off(FsalEvents.CHOKIDAR_EVENT, this.handleChokidarEvent);
 	}
 
-	/**
-	 * Loads the given file or directory.
-	 * @param p The directory to be loaded.
-	 * @emits fsal-state-changed (filetree)
-	 * @returns TRUE when successfully loaded, FALSE otherwise
-	 */
-	async loadPath(p:string){
-		if(isFile(p)){
-			await this._loadFile(p);
-			this._watchdog.watch(p);
-		} else if (isDir(p)) {
-			await this._loadDir(p);
-			this._watchdog.watch(p);
-		} else {
-			// path is neiter a file nor a directory!
-			return false;
+	handleChokidarEvent(event:ChokidarEvents, path:string):void {
+		console.log(`fsal :: chokidar-event :: ${event}`, path);
+
+		// handle errors
+		if (event == ChokidarEvents.ERROR) {
+			throw new Error(`fsal :: chokidar error :: ${path}`);
 		}
 
+		/** @todo (6/19/20) what to do about file changes outside workspace? */
+		/** @todo (6/19/20) what to do about file changes when no workspace active? */
+		if(!this._workspace){ return; };
+
 		this.emit(FsalEvents.STATE_CHANGED, "filetree");
-		return true;
 	}
 
-	// -- Workspace Metadata ---------------------------- //
+	// == Workspace Metadata ============================ //
 
 	async loadWorkspaceMetadataFromFile(path: string):Promise<WorkspaceMeta|null> {
 		let fileContents = readFile(path);
@@ -203,6 +177,9 @@ export default class FSAL extends EventEmitter {
 		let metadata:WorkspaceMeta|null = await this.loadWorkspaceMetadataFromFile(metaPath);
 		if(!metadata){ metadata = new WorkspaceMeta(); }
 		this._workspace = { dir, metadata, metaPath };
+
+		// watch workspace directory
+		this._watchdog.watch(dir.path);
 		
 		// check for changes between current file list and saved metadata,
 		// and process added/changed/deleted files if needed
@@ -212,6 +189,9 @@ export default class FSAL extends EventEmitter {
 
 	async closeWorkspace(persist=true):Promise<boolean> {
 		if(!this._workspace){ return true; }
+
+		// unwatch files
+		this._watchdog.unwatch(this._workspace.dir.path);
 
 		// persist workspace metadata
 		let success = (!persist) || await this.writeWorkspaceMetadata();
@@ -273,6 +253,9 @@ export default class FSAL extends EventEmitter {
 	 */
 	handleWorkspaceFileDeleted(file:IFileMeta){
 		if(!this._workspace){ return; }
+
+		/** @todo (6/19/20) determine if file actually belongs to workspace? */
+
 		// notify plugins
 		for (let plugin of this._workspacePlugins) {
 			plugin.handleFileDeleted(file);
@@ -288,12 +271,16 @@ export default class FSAL extends EventEmitter {
 	 */
 	handleWorkspaceFileCreated(file: IFileMeta) {
 		if (!this._workspace) { return; }
+
+		/** @todo (6/19/20) determine if file actually belongs to workspace? */
+
 		// read file contents
 		let contents = readFile(file.path);
 		if(contents === null){
 			throw new Error(`fsal :: handleWorkspaceFileCreated() :: error reading file :: ${file.path}`);
 		}
 		// parse file contents and notify plugins
+		/** @todo (6/19/20) support wikilinks for other file types */
 		if(file.ext == ".md" || file.ext == ".txt"){
 			let doc = markdownParser.parse(contents);
 			for (let plugin of this._workspacePlugins) {
@@ -311,6 +298,9 @@ export default class FSAL extends EventEmitter {
 	 */
 	handleWorkspaceFileChanged(file: IFileMeta) {
 		if (!this._workspace) { return; }
+
+		/** @todo (6/19/20) determine if file actually belongs to workspace? */
+
 		// read file contents
 		let contents = readFile(file.path);
 		if (contents === null) {

@@ -63,6 +63,17 @@ export default class FSALWatchdog extends EventEmitter {
 		});
 	}
 
+	destroy(){
+		if(this._process){
+			this._process.removeAllListeners();
+			this._process.close();
+			this._process = null;
+		}
+
+		this._paths = [];
+		this._isBooting = false;
+	}
+
 	isBooting(){ return this._isBooting; };
 
 	ignoreOnce(){ }
