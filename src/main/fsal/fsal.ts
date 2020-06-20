@@ -256,18 +256,20 @@ export default class FSAL extends EventEmitter {
 		for (let hash of fileChanges.added) {
 			// get file metadata
 			let file: IFileMeta = currentFiles[hash];
-			this.handleWorkspaceFileCreated(file);
+			await this.handleWorkspaceFileCreated(file);
 		}
 
 		// handle changes
 		for (let hash of fileChanges.changed) {
 			// get file metadata
 			let file: IFileMeta = currentFiles[hash];
-			this.handleWorkspaceFileChanged(file);
+			await this.handleWorkspaceFileChanged(file);
 		}
 
 		// write updated workspace data to disk
-		return await this.writeWorkspaceMetadata();
+		let success = await this.writeWorkspaceMetadata();
+		this.emit(FsalEvents.STATE_CHANGED, "filetree");
+		return success;
 	}
 
 
@@ -293,7 +295,7 @@ export default class FSAL extends EventEmitter {
 	 * Parses file contents and notifies plugins of the change.
 	 * @param file The up-to-date file metadata.
 	 */
-	handleWorkspaceFileCreated(file: { path: string, hash: string }) {
+	async handleWorkspaceFileCreated(file: { path: string, hash: string }) {
 		if (!this._workspace) { return; }
 
 		/** @todo (6/19/20) determine if file actually belongs to workspace? */
@@ -313,7 +315,7 @@ export default class FSAL extends EventEmitter {
 			}
 		}
 		// add to workspace
-		this._workspace.metadata.updatePath(file.path);
+		await this._workspace.metadata.updatePath(file.path);
 	}
 
 	/**
@@ -321,7 +323,7 @@ export default class FSAL extends EventEmitter {
 	 * Parses file contents and notifies plugins of the change.
 	 * @param file The up-to-date file metadata.
 	 */
-	handleWorkspaceFileChanged(file: { path: string, hash: string }) {
+	async handleWorkspaceFileChanged(file: { path: string, hash: string }) {
 		if (!this._workspace) { return; }
 
 		/** @todo (6/19/20) determine if file actually belongs to workspace? */
@@ -341,7 +343,7 @@ export default class FSAL extends EventEmitter {
 			}
 		}
 		// add to workspace
-		this._workspace.metadata.updatePath(file.path);
+		await this._workspace.metadata.updatePath(file.path);
 	}
 
 	/**
