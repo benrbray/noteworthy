@@ -105,6 +105,7 @@ export default class FSALWatchdog extends EventEmitter {
 	 * @returns self (for chainability)
 	 */
 	unwatch(p:string){
+		console.log("fsal-watcher :: unwatch ::", p);
 		if (!this._process)           { return this; }
 		// remove from watched paths
 		let index:number = this._paths.indexOf(p);

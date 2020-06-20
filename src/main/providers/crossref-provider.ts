@@ -106,34 +106,34 @@ export class CrossRefProvider implements WorkspaceProvider {
 		/** @todo (6/18/20) */
 	}
 
-	handleFileDeleted(file: IFileMeta): void {
-		console.log("xref :: file-delete", file.name);
-		this.removeWikilinks(file);
+	handleFileDeleted(filePath: string, fileHash: string): void {
+		console.log("xref :: file-delete", filePath);
+		this.removeWikilinks(fileHash);
 	}
 
-	handleFileCreated(file: IFileMeta, doc:ProseNode): void {
-		console.log("xref :: file-create", file.name);
-		this.addWikilinks(file, doc);
+	handleFileCreated(filePath: string, fileHash: string, doc:ProseNode): void {
+		console.log("xref :: file-create", filePath);
+		this.addWikilinks(filePath, fileHash, doc);
 	}
 
-	handleFileChanged(file: IFileMeta, doc:ProseNode): void {
-		console.log("xref :: file-change", file.name);
+	handleFileChanged(filePath: string, fileHash: string, doc:ProseNode): void {
+		console.log("xref :: file-change", filePath);
 
 		// remove wikilinks previously associated with this file
-		this.removeWikilinks(file);
+		this.removeWikilinks(fileHash);
 		// discover wikilinks in new version of file
-		this.addWikilinks(file, doc);
+		this.addWikilinks(filePath, fileHash, doc);
 	}
 
 	// == Tag Management ================================ //
 
-	removeWikilinks(file: IFileMeta) {
+	removeWikilinks(fileHash: string) {
 		// remove document
-		this._doc2tags.delete(file.hash);
+		this._doc2tags.delete(fileHash);
 
 		// remove doc hash from all tags
 		for (let [tag, docs] of this._tag2docs) {
-			docs.delete(file.hash);
+			docs.delete(fileHash);
 			// remove empty tags
 			if (docs.size == 0) {
 				this._tag2docs.delete(tag);
@@ -141,7 +141,7 @@ export class CrossRefProvider implements WorkspaceProvider {
 		}
 
 		for (let [tag, defs] of this._tag2defs) {
-			defs.delete(file.hash);
+			defs.delete(fileHash);
 			// remove empty tags
 			if (defs.size == 0) {
 				this._tag2defs.delete(tag);
@@ -149,40 +149,41 @@ export class CrossRefProvider implements WorkspaceProvider {
 		}
 	}
 
-	addWikilinks(file: IFileMeta, doc: ProseNode) {
+	addWikilinks(filePath: string, fileHash: string, doc: ProseNode) {
 		// get all tags referenced / created by this file
-		let wikilinks: string[] = this.discoverWikilinks(file, doc);
-		let definedTags: string[] = this.getTagsDefinedBy(file, doc);
-		let tags = new Set<string>(this.getTags(file, doc).concat(wikilinks, definedTags));
+		let wikilinks: string[] = this.discoverWikilinks(doc);
+		let definedTags: string[] = this.getTagsDefinedBy(filePath, doc);
+		let tags = new Set<string>(this.getTags(doc).concat(wikilinks, definedTags));
 
 		// doc --> tag
-		this._doc2tags.set(file.hash, tags);
+		this._doc2tags.set(fileHash, tags);
 
 		// tag --> doc
 		for (let tag of tags) {
-			this._tag2docs.get(tag).add(file.hash);
+			this._tag2docs.get(tag).add(fileHash);
 		}
 
 		// tag --> defs
 		for (let tag of definedTags) {
-			this._tag2defs.get(tag).add(file.hash);
+			this._tag2defs.get(tag).add(fileHash);
 		}
 	}
 
 	// == Tag Discovery ================================= //
 
-	getTagsDefinedBy(file:IFileMeta, doc:ProseNode):string[] {
+	getTagsDefinedBy(filePath:string, doc:ProseNode):string[] {
 		/** @todo read defined_tags from yaml metadata */
-		return [this.normalizeWikilink(path.basename(file.name, file.ext))];
+		let ext = path.extname(filePath);
+		return [this.normalizeWikilink(path.basename(filePath, ext))];
 	}
 
-	getTags(file:IFileMeta, doc:ProseNode):string[] {
+	getTags(doc:ProseNode):string[] {
 		/** @todo read tags from yaml metadata */
 		/** @todo create tag for file creationTime */
 		return [];
 	}
 
-	discoverWikilinks(file:IFileMeta, doc:ProseNode){
+	discoverWikilinks(doc:ProseNode){
 		let wikilinks:string[] = [];
 
 		doc.descendants((node:ProseNode, pos:number, parent:ProseNode) => {

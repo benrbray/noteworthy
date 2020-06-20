@@ -3,7 +3,7 @@ import fs from "fs";
 import * as pathlib from "path";
 
 // project imports
-import { FileHash, IFileDesc, IDirectory, IDirEntry, IDirectoryMeta, readFile, WorkspaceMeta, IFileMeta, FileCmp, IWorkspaceDir } from "@common/fileio";
+import { FileHash, IFileDesc, IDirectory, IDirEntry, IDirectoryMeta, readFile, IFileMeta, FileCmp, IWorkspaceDir } from "@common/fileio";
 import isFile from "@common/util/is-file";
 import isDir from "@common/util/is-dir";
 
@@ -15,6 +15,7 @@ import { FsalEvents, ChokidarEvents } from "@common/events";
 import { WorkspaceProvider } from "@main/providers/provider";
 import { markdownParser } from "@common/markdown";
 import hash from "@common/util/hash";
+import { WorkspaceMeta } from "@main/workspace/workspace";
 
 ////////////////////////////////////////////////////////////
 
@@ -69,6 +70,7 @@ export default class FSAL extends EventEmitter {
 	}
 
 	async destroy(){
+		console.log("fsal :: destroy()");
 		this._watchdog.destroy();
 		this.detachEvents();
 	}
@@ -225,21 +227,21 @@ export default class FSAL extends EventEmitter {
 		for (let hash of fileChanges.deleted) {
 			// get file metadata
 			let file = this._workspace.metadata.files[hash];
-			await this.handleWorkspaceFileDeleted(file);
+			this.handleWorkspaceFileDeleted(file);
 		}
 
 		// handle creations
 		for (let hash of fileChanges.added) {
 			// get file metadata
 			let file: IFileMeta = currentFiles[hash];
-			await this.handleWorkspaceFileCreated(file);
+			this.handleWorkspaceFileCreated(file);
 		}
 
 		// handle changes
 		for (let hash of fileChanges.changed) {
 			// get file metadata
 			let file: IFileMeta = currentFiles[hash];
-			await this.handleWorkspaceFileChanged(file);
+			this.handleWorkspaceFileChanged(file);
 		}
 
 		// write updated workspace data to disk
@@ -248,28 +250,28 @@ export default class FSAL extends EventEmitter {
 
 
 	/**
-	 * Called when a file has been changed in the workspace.
+	 * Called when a file has been changed in the workspace folder.
 	 * @param file Metadata for the deleted file.
 	 */
-	handleWorkspaceFileDeleted(file:IFileMeta){
+	handleWorkspaceFileDeleted(file:{path:string, hash:string}){
 		if(!this._workspace){ return; }
 
 		/** @todo (6/19/20) determine if file actually belongs to workspace? */
 
 		// notify plugins
 		for (let plugin of this._workspacePlugins) {
-			plugin.handleFileDeleted(file);
+			plugin.handleFileDeleted(file.path, file.hash);
 		}
 		// remove file metadata
 		delete this._workspace.metadata.files[file.hash];
 	}
 
 	/**
-	 * Called when a file has been created in the workspace.
+	 * Called when a file has been created in the workspace folder.
 	 * Parses file contents and notifies plugins of the change.
 	 * @param file The up-to-date file metadata.
 	 */
-	handleWorkspaceFileCreated(file: IFileMeta) {
+	handleWorkspaceFileCreated(file: { path: string, hash: string }) {
 		if (!this._workspace) { return; }
 
 		/** @todo (6/19/20) determine if file actually belongs to workspace? */
@@ -281,22 +283,23 @@ export default class FSAL extends EventEmitter {
 		}
 		// parse file contents and notify plugins
 		/** @todo (6/19/20) support wikilinks for other file types */
-		if(file.ext == ".md" || file.ext == ".txt"){
+		let ext:string = pathlib.extname(file.path);
+		if(ext == ".md" || ext == ".txt"){
 			let doc = markdownParser.parse(contents);
 			for (let plugin of this._workspacePlugins) {
-				plugin.handleFileCreated(file, doc);
+				plugin.handleFileCreated(file.path, file.hash, doc);
 			}
 		}
 		// add to workspace
-		this._workspace.metadata.files[file.hash] = file;
+		this._workspace.metadata.updatePath(file.path);
 	}
 
 	/**
-	 * Called when a file has been changed in the workspace.
+	 * Called when a file has been changed in the workspace folder.
 	 * Parses file contents and notifies plugins of the change.
 	 * @param file The up-to-date file metadata.
 	 */
-	handleWorkspaceFileChanged(file: IFileMeta) {
+	handleWorkspaceFileChanged(file: { path: string, hash: string }) {
 		if (!this._workspace) { return; }
 
 		/** @todo (6/19/20) determine if file actually belongs to workspace? */
@@ -307,14 +310,16 @@ export default class FSAL extends EventEmitter {
 			throw new Error(`fsal :: handleWorkspaceFileCreated() :: error reading file :: ${file.path}`);
 		}
 		// parse file contents and notify plugins
-		if (file.ext == ".md" || file.ext == ".txt") {
+	/** @todo (6/19/20) support wikilinks for other file types */
+		let ext: string = pathlib.extname(file.path);
+		if (ext == ".md" || ext == ".txt") {
 			let doc = markdownParser.parse(contents);
 			for (let plugin of this._workspacePlugins) {
-				plugin.handleFileChanged(file, doc);
+				plugin.handleFileChanged(file.path, file.hash, doc);
 			}
 		}
 		// add to workspace
-		this._workspace.metadata.files[file.hash] = file;
+		this._workspace.metadata.updatePath(file.path);
 	}
 
 	/**
