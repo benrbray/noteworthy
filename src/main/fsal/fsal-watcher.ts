@@ -1,6 +1,6 @@
 import chokidar, { FSWatcher } from "chokidar";
 import { EventEmitter } from "events";
-import { FsalEvents } from "@common/events";
+import { FsalEvents, ChokidarEvents } from "@common/events";
 
 ////////////////////////////////////////////////////////////
 
@@ -40,7 +40,7 @@ export default class FSALWatchdog extends EventEmitter {
 		});
 
 		// attach events only after chokidar's initial scan is complete
-		this._process.on("ready", (event: string, path: string) => {
+		this._process.on(ChokidarEvents.READY, (event: string, path: string) => {
 			if(!this._process){
 				console.error("chokidar :: ready :: unknown startup error"); 
 				return;
@@ -58,7 +58,7 @@ export default class FSALWatchdog extends EventEmitter {
 		});
 
 		// chokidar events
-		this._process.on("all", (event:string,path:string) => {
+		this._process.on(ChokidarEvents.ALL, (event:string,path:string) => {
 			this.emit(FsalEvents.CHOKIDAR_EVENT, event, { path });
 		});
 	}
