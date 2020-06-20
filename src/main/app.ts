@@ -75,14 +75,14 @@ export default class App extends EventEmitter {
 	}
 
 	initProviders(){
-		this._crossRefProvider = new CrossRefProvider(this,
-			path.join(app.getPath('userData'), 'crossref.json')
-		);
+		// cross-references
+		this._crossRefProvider = new CrossRefProvider(this);
 		this._crossRefProvider.init();
 		this._fsal.registerWorkspacePlugin(this._crossRefProvider);
 	}
 
 	destroyProviders(){
+		// cross-references
 		if(this._crossRefProvider){
 			this._fsal.unregisterWorkspacePlugin(this._crossRefProvider);
 			this._crossRefProvider.destroy();
@@ -128,13 +128,11 @@ export default class App extends EventEmitter {
 		this.window.init();
 	}
 
+	// == Workspaces ==================================== //
+
 	async setWorkspaceDir(dirPath:string){
 		let dir:IDirectory = await FSALDir.parseDir(dirPath);
 		this._fsal.setWorkspaceDir(dir);
-	}
-
-	async openFile(filePath:string){
-
 	}
 
 	// EVENTS //////////////////////////////////////////////

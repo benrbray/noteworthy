@@ -13,6 +13,7 @@ import * as FSALFile from "./fsal-file";
 import * as FSALDir from "./fsal-dir";
 import { FsalEvents } from "@common/events";
 import { WorkspaceProvider } from "@main/providers/provider";
+import { markdownParser } from "@common/markdown";
 
 ////////////////////////////////////////////////////////////
 
@@ -137,6 +138,14 @@ export default class FSAL extends EventEmitter {
 		if(!this._workspace) {
 			throw new Error("fsal :: no workspace metadata to write!");
 		}
+
+		// get plugin data
+		let pluginData: any = Object.create(null);
+		for (let plugin of this._workspacePlugins) {
+			pluginData[plugin.provider_name] = plugin.serialize();
+		}
+		this._workspace.metadata.plugins = pluginData;
+
 		// write metadata to file
 		let path:string = this._workspace.metaPath;
 		try {
@@ -170,12 +179,6 @@ export default class FSAL extends EventEmitter {
 		this._state.openFiles = [];
 		this._state.activeFile = null;
 
-		if(this._workspace){
-			delete this._workspace.metadata;
-			delete this._workspace.dir;
-			this._workspace = null;
-		}
-
 		this.emit(FsalEvents.STATE_CHANGED, 'filetree')
 		this.emit(FsalEvents.STATE_CHANGED, 'openFiles')
 		this.emit(FsalEvents.STATE_CHANGED, 'openDirectory')
@@ -192,6 +195,7 @@ export default class FSAL extends EventEmitter {
 	 */
 	async setWorkspaceDir(dir:IDirectory):Promise<boolean> {
 		// unload previous workspace
+		this.closeWorkspace();
 		this.unloadAll();
 
 		// load (possibly stale) workspace metadata from file
@@ -210,9 +214,33 @@ export default class FSAL extends EventEmitter {
 		return success;
 	}
 
+	async closeWorkspace(persist=true):Promise<boolean> {
+		if(!this._workspace){ return true; }
+
+		// persist workspace metadata
+		let success = (!persist) || await this.writeWorkspaceMetadata();
+
+		if (this._workspace) {
+			delete this._workspace.metadata;
+			delete this._workspace.dir;
+			this._workspace = null;
+		}
+
+		return success;
+	}
+
 	async updateWorkspace():Promise<boolean>{
 		if(!this._workspace){ throw new Error("fsal :: cannot refresh! no workspace exists!"); }
 		
+		// restore plugin state (must happen first,
+		// so that plugins can react to file changes)
+		if(this._workspace.metadata.plugins){
+			for(let plugin of this._workspacePlugins){
+				let data:string = this._workspace.metadata.plugins[plugin.provider_name];
+				if(data){ plugin.deserialize(data); }
+			}
+		}
+
 		// check for changes between workspace state and files on disk
 		let currentFiles = FSALDir.getFlattenedFiles(this._workspace.dir);
 		let fileChanges = this._workspace.metadata.compareFiles(currentFiles);
@@ -221,26 +249,25 @@ export default class FSAL extends EventEmitter {
 		for (let hash of fileChanges.deleted) {
 			// get file metadata
 			let file = this._workspace.metadata.files[hash];
-			this.handleWorkspaceFileDeleted(file);
+			await this.handleWorkspaceFileDeleted(file);
 		}
 
 		// handle creations
 		for (let hash of fileChanges.added) {
 			// get file metadata
 			let file: IFileMeta = currentFiles[hash];
-			this.handleWorkspaceFileCreated(file);
+			await this.handleWorkspaceFileCreated(file);
 		}
 
 		// handle changes
 		for (let hash of fileChanges.changed) {
 			// get file metadata
 			let file: IFileMeta = currentFiles[hash];
-			this.handleWorkspaceFileChanged(file);
+			await this.handleWorkspaceFileChanged(file);
 		}
 
 		// write updated workspace data to disk
-		this.writeWorkspaceMetadata();
-		return true;
+		return await this.writeWorkspaceMetadata();
 	}
 
 
@@ -270,9 +297,12 @@ export default class FSAL extends EventEmitter {
 		if(contents === null){
 			throw new Error(`fsal :: handleWorkspaceFileCreated() :: error reading file :: ${file.path}`);
 		}
-		// notify plugins
-		for (let plugin of this._workspacePlugins) {
-			plugin.handleFileCreated(file, contents);
+		// parse file contents and notify plugins
+		if(file.ext == ".md" || file.ext == ".txt"){
+			let doc = markdownParser.parse(contents);
+			for (let plugin of this._workspacePlugins) {
+				plugin.handleFileCreated(file, doc);
+			}
 		}
 		// add to workspace
 		this._workspace.metadata.files[file.hash] = file;
@@ -290,9 +320,12 @@ export default class FSAL extends EventEmitter {
 		if (contents === null) {
 			throw new Error(`fsal :: handleWorkspaceFileCreated() :: error reading file :: ${file.path}`);
 		}
-		// notify plugins
-		for (let plugin of this._workspacePlugins) {
-			plugin.handleFileChanged(file, contents);
+		// parse file contents and notify plugins
+		if (file.ext == ".md" || file.ext == ".txt") {
+			let doc = markdownParser.parse(contents);
+			for (let plugin of this._workspacePlugins) {
+				plugin.handleFileChanged(file, doc);
+			}
 		}
 		// add to workspace
 		this._workspace.metadata.files[file.hash] = file;

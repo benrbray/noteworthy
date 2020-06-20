@@ -96,14 +96,16 @@ export interface IWorkspaceMetaJSON {
 export class WorkspaceMeta {
 
 	files:{ [hash:string] : IFileMeta };
+	plugins:null|{ [name:string] : any};
 	stale:boolean = true;
 
-	constructor(files:{ [hash:string] : IFileMeta} = {}){
-		this.files = files;
+	constructor(files?: { [hash: string]: IFileMeta }, plugins?: { [name: string]: any }) {
+		this.files = files || {};
+		this.plugins = plugins || null;
 	}
 
 	static fromJSON(json:any):WorkspaceMeta {
-		let result = new WorkspaceMeta(json.files);
+		let result = new WorkspaceMeta(json.files, json.plugins);
 		return result;
 	}
 
