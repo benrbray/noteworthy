@@ -6,15 +6,14 @@ import { FsalEvents } from "@common/events";
 
 export default class FSALWatchdog extends EventEmitter {
 
-	private _projectDir:string;
 	private _process:FSWatcher|null; // chokidar process
 	private _isBooting:boolean;
+	/** @todo (6/19/20) this should probably be a Set<string> */
 	private _paths:string[];
 
-	constructor(projectDir:string){
+	constructor(){
 		super();
 
-		this._projectDir = projectDir;
 		this._process = null;
 		this._paths = [];
 		this._isBooting = false;
@@ -34,7 +33,7 @@ export default class FSALWatchdog extends EventEmitter {
 		// Further reading: https://github.com/micromatch/anymatch
 		let ignoreDirs: (RegExp|string)[] = [/(^|[/\\])\../, '**/.typeright/*'];
 		
-		this._process = chokidar.watch(this._projectDir, {
+		this._process = new FSWatcher({
 			ignored: ignoreDirs,
 			persistent: true,
 			ignoreInitial: true
@@ -60,18 +59,13 @@ export default class FSALWatchdog extends EventEmitter {
 
 		// chokidar events
 		this._process.on("all", (event:string,path:string) => {
-			console.log("fsal-watcher :: chokidar ::", event, path);
-			this.emit(FsalEvents.CHOKIDAR_EVENT, event, {
-				path
-			});
+			this.emit(FsalEvents.CHOKIDAR_EVENT, event, { path });
 		});
 	}
 
 	isBooting(){ return this._isBooting; };
 
-	ignoreOnce(){
-
-	}
+	ignoreOnce(){ }
 
 	// == Watched Paths ================================= //
 
