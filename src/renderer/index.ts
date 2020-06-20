@@ -16,13 +16,13 @@ let renderer:Renderer;
 
 onload = function(){
 
-	renderer = new Renderer();
-	renderer.init();
-
 	// create titlebar
 	new Titlebar({
-		backgroundColor: Color.fromHex("#ECECEC")
+		backgroundColor: Color.fromHex("#DDDDDD")
 	});
+
+	renderer = new Renderer();
+	renderer.init();
 
 	/* HOT MODULE REPLACEMENT */
 

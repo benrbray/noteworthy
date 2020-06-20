@@ -249,21 +249,40 @@ class MarkdownParseState {
 
 			// html_inline tokens have a `content` property, storing
 			// the html tag as a string like "<div>" or "</div>"
-			if(tokenType === "html_inline"){
-				// extract tag name
-				let match = tok.content.match(/<(\/?)([a-zA-Z\-]+)>/);
-				if(!match){ throw new Error("Invalid html_token!", tok.content); }
-
-				// determine open / closed
-				let closed = (match[1] === "/") ? true : false;
-				tokenType = match[2] + (closed ? "_close" : "_open");
+			if(tokenType === "html_inline" || tokenType === "html_block"){
+				// extract tag contents
+				let match = tok.content.trim().match(/<(\/?)([a-zA-Z\-]+)(?:\s*(.*))>/);
+				if(!match){ throw new Error("Invalid html token! " + tok.content); }
+				let closed = (match[1] === "/");
+				let tagName = match[2].toLowerCase();
+				if(!isSupportedHtmlTag(tagName)){
+					throw new Error("Unsupported HTML Tag! " + tok.content);
+				}
+				
+				// extract attrs
+				let attrs = new Map();
+				let attrStr = match[3];
+				if(attrStr.length > 1){
+					match = attrStr.match(/(?:\s*([a-zA-Z\-]+)\s*=\s*([^'"\s]*|'[^']*'|"[^"]*"))/);
+					if(match){
+						console.log("found html attrs", match);
+					}
+				}
+				// determine token type
+				if(isHtmlSingleton(tagName)){
+					tokenType = tagName;
+				} else {
+					tokenType = tagName + (closed ? "_close" : "_open");
+				}
 			}
 			
 			// fetch token handler for this type
 			let handler = this.tokenHandlers[tokenType];
-			if (!handler) { throw new Error(
-				"Token type `" + tokenType + "` not supported by Markdown parser"
-			); }
+			if (!handler) { 
+				console.log(tok);
+				handler = noOp;
+				console.error("Token type `" + tokenType + "` not supported by Markdown parser"); 
+			}
 
 			// handle token
 			handler(this, tok)
@@ -309,6 +328,16 @@ function noOpenClose(type) {
 		"math_inline", "math_display", "wikilink"
 	];
 	return tags.includes(type);
+}
+
+function isHtmlSingleton(tagName){
+	return [ "hr", "br", "img"].includes(tagName)
+}
+function isSupportedHtmlTag(tagName){
+	return [
+		"div", "span", "hr", "br", "img", "u", "s", "em", "b",
+		"h1", "h2", "h3", "h4", "h5", "h6"
+	 ].includes(tagName);
 }
 
 function withoutTrailingNewline(str) {

@@ -32,13 +32,13 @@ em.ul {
 .wikilink::after { content: "]]"; color: #e0e0e0; }
 
 
-/* User Interface --------------------------------------- */
+/* == USER INTERFACE ==================================== */
 
 #app {
 	display: grid;
-	grid-template-areas: "sidebar header" "sidebar content" "sidebar footer";
+	grid-template-areas: "sidebar content" "sidebar content" "footer footer";
 	grid-template-rows: 2em 1fr 2em;
-	grid-template-columns: 0 1fr;
+	grid-template-columns: 200px 1fr;
 	
 	width: 100%;
 	height: 100%;
@@ -46,7 +46,16 @@ em.ul {
 
 #footer {
 	grid-area: footer;
-	background-color: rgb(76, 76, 172);
+	background-color: #ccc;
+	vertical-align: middle;
+}
+
+#title {
+	font-family: var(--code-font);
+	height: 100%;
+	vertical-align: middle;
+	padding-left: 1em;
+	color: #606060;
 }
 
 #header {
@@ -64,7 +73,7 @@ em.ul {
 
 #sidebar {
 	grid-area: sidebar;
-	background-color: rgb(196, 196, 105);
+	background-color: #f3f3f3;
 }
 
 #app {
@@ -78,12 +87,28 @@ em.ul {
 
 	p {
 		margin-left: 0.5em;
-		font-size: 20px;
-		font-family: var(--serif-font);
+		font-size: 18px;
+		font-family: var(--sans-font);
+		text-align: justify;
 	}
 }
 
-/* ProseMirror ------------------------------------------ */
+/* -- File Explorer ------------------------------------- */
+
+.file {
+	color: #616161;
+	padding: 0.1em 0.5em;
+	user-select: none;
+	white-space: nowrap;
+	overflow-x: hidden;
+	text-overflow: ellipsis;
+}
+
+.file:hover {
+	background-color: rgba(0,0,0,0.1);
+}
+
+/* == PROSEMIRROR ======================================= */
 
 shouting { display: inline; text-transform: uppercase; font-weight: bold; }
 
@@ -169,6 +194,7 @@ code {
 	background-color: #ddd;
 	font-family: "Consolas", "Ubuntu Mono", monospace;
 	font-size: 0.9em;
+	text-align: left;
 }
 
 p code {
@@ -182,7 +208,12 @@ cell_markdown {
 	display: block;
 	padding: 10px;
 	margin-block-start: 10px;
-	border: 1px solid gray;
+	box-sizing: border-box;
+}
+
+cell_markdown:hover {
+	outline: 1px solid gray;
+	background-color: #f6f6f6;
 }
 
 cell_code {

@@ -5,7 +5,7 @@ import * as fs from 'fs';
 //import * as mkdirp from 'mkdirp';
 import * as path from 'path';
 import Route from './route';
-import { UserEvents } from '@common/events';
+import { UserEvents, MenuEvents } from '@common/events';
 
 /* MAIN */
 
@@ -42,11 +42,11 @@ export default class Main extends Route {
 					},
 					{
 						label: "Save",
-						click: () => { global.ipc.send(UserEvents.REQUEST_FILE_SAVE); }
+						click: () => { global.ipc.send(MenuEvents.MENU_FILE_SAVE); }
 					},
 					{
 						label: "Save As...",
-						click: () => { global.ipc.send(UserEvents.DIALOG_FILE_SAVEAS); }
+						click: () => { global.ipc.send(MenuEvents.MENU_FILE_SAVEAS); }
 					},
 					{
 						type: "separator"

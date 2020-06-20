@@ -4,6 +4,10 @@ import hash from "@common/util/hash";
 
 export class WorkspaceMeta {
 
+	/** @todo (6/20/20) 
+	 * PROBLEM: if workspace folder is moved on disk, most workspace
+	 * functionality will break and we will need to manually rerefresh
+	 */
 	files: { [hash: string]: IFileMeta };
 	plugins: null | { [name: string]: any };
 	stale: boolean = true;
@@ -35,7 +39,7 @@ export class WorkspaceMeta {
 		return fileMeta;
 	}
 
-	getFileFromHash(hash: string): IFileMeta | null {
+	getFileByHash(hash: string): IFileMeta | null {
 		return this.files[hash] || null;
 	}
 

@@ -1,7 +1,7 @@
 import { ipcMain, dialog } from "electron";
-import { readFile, saveFile, IUntitledFile, IFileWithContents, IPossiblyUntitledFile, IDirEntry } from "@common/fileio";
+import { readFile, saveFile, IUntitledFile, IFileWithContents, IPossiblyUntitledFile, IDirEntry, IDirEntryMeta, IFileMeta } from "@common/fileio";
 import App from "./app"
-import { UserEvents, FsalEvents, FileEvents } from "@common/events";
+import { UserEvents, FsalEvents, FileEvents, MenuEvents } from "@common/events";
 
 export default class MainIPC {
 
@@ -31,6 +31,16 @@ export default class MainIPC {
 		ipcMain.on(UserEvents.REQUEST_FILE_SAVE, (evt:Event, file: IFileWithContents) => {
 			this.handle_requestFileSave(file);
 		});
+
+		// REQUEST_FILE_OPEN_PATH
+		ipcMain.on(UserEvents.REQUEST_FILE_OPEN_PATH, (evt: Event, filePath:string) => {
+			this.handle_requestFileOpen({path: filePath});
+		});
+
+		// REQUEST_FILE_OPEN_HASH
+		ipcMain.on(UserEvents.REQUEST_FILE_OPEN_HASH, (evt: Event, fileHash:string) => {
+			this.handle_requestFileOpen({ hash: fileHash });
+		});
 		
 		this._initialized = true;
 	}
@@ -52,7 +62,14 @@ export default class MainIPC {
 				this.handle_requestFileSave(arg as IFileWithContents);
 				break;
 			case FsalEvents.FILETREE_CHANGED:
-				this.handle_fileTreeChanged(arg as IDirEntry[]);
+				this.handle_fileTreeChanged(arg as IDirEntryMeta[]);
+				break;
+			// -- Menu Events --------------------------- //
+			case MenuEvents.MENU_FILE_SAVE:
+				this._app.window?.window.webContents.send(MenuEvents.MENU_FILE_SAVE);
+				break;
+			case MenuEvents.MENU_FILE_SAVEAS:
+				this._app.window?.window.webContents.send(MenuEvents.MENU_FILE_SAVEAS);
 				break;
 			default:
 				break;
@@ -63,6 +80,33 @@ export default class MainIPC {
 
 	handle(cmd:string, arg: any){
 
+	}
+
+	private handle_requestFileOpen(fileInfo: { hash?: string, path?: string }) {
+		if (!this._app.window) { return; }
+		console.log("MainIPC :: REQUEST_FILE_OPEN");
+
+		let { hash, path } = fileInfo;
+		// validate input
+		if(hash === undefined && path === undefined){
+			throw new Error("MainIPC :: requestFileOpen() :: no file path or hash provided");
+		}
+
+		// load from hash
+		let file:IFileMeta|null;
+		if (hash === undefined || !(file=this._app._fsal.getFileByHash(hash))){
+			/** @todo (6/20/20) load from arbitrary path */
+			throw new Error("file loading from arbitrary path not implemented");
+		}
+
+		// read file contents
+		const fileContents: string | null = readFile(file.path);
+		if (fileContents === null) { throw new Error("MainIPC :: failed to read file"); }
+
+		this._app.window.window.webContents.send(FileEvents.FILE_DID_OPEN, {
+			path: file.path,
+			contents: fileContents
+		});
 	}
 
 	private handle_dialogFolderOpen(){
@@ -96,15 +140,15 @@ export default class MainIPC {
 		);
 		if (!filePaths || !filePaths.length) return;
 
-		const fileText:string|null = readFile(filePaths[0]);
-		if(!fileText){
+		const fileContents:string|null = readFile(filePaths[0]);
+		if(fileContents === null){
 			throw new Error("MainIPC :: failed to read file");
 		}
 
 		console.log(filePaths[0]);
 		this._app.window.window.webContents.send(FileEvents.FILE_DID_OPEN, {
 			path: filePaths[0],
-			contents: fileText
+			contents: fileContents
 		});
 	}
 
@@ -136,7 +180,7 @@ export default class MainIPC {
 			// TODO: send success/fail back to renderer?
 	}
 
-	private handle_fileTreeChanged(fileTree: IDirEntry[]) {
+	private handle_fileTreeChanged(fileTree: IDirEntryMeta[]) {
 		if (!this._app.window) { return; }
 
 		console.log("MainIPC :: filetree-changed");

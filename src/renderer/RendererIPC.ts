@@ -1,7 +1,7 @@
 import { ipcRenderer } from "electron";
 import Renderer from "./render";
-import { IFileWithContents, IPossiblyUntitledFile, IDirEntry } from "@common/fileio";
-import { FileEvents, FsalEvents, UserEvents } from "@common/events";
+import { IFileWithContents, IPossiblyUntitledFile, IDirEntry, IDirEntryMeta } from "@common/fileio";
+import { FileEvents, FsalEvents, UserEvents, MenuEvents } from "@common/events";
 
 export default class RendererIPC {
 	_app:Renderer;
@@ -27,10 +27,20 @@ export default class RendererIPC {
 			this._app.setCurrentFilePath(filePath);
 		});
 
-		ipcRenderer.on(FsalEvents.FILETREE_CHANGED, (event: Event, fileTree: IDirEntry[]) => {
+		ipcRenderer.on(FsalEvents.FILETREE_CHANGED, (event: Event, fileTree: IDirEntryMeta[]) => {
 			console.log("RendererIPC :: filetree-changed", event, fileTree);
 			if(!this._app._explorer){ return; }
 			this._app._explorer.setFileTree(fileTree);
+		});
+
+		ipcRenderer.on(MenuEvents.MENU_FILE_SAVE, (event: Event) => {
+			console.log("RendererIPC :: MENU_FILE_SAVE", event);
+			this._app._editor?.saveCurrentFile(false);
+		});
+
+		ipcRenderer.on(MenuEvents.MENU_FILE_SAVEAS, (event: Event) => {
+			console.log("RendererIPC :: MENU_FILE_SAVEAS", event);
+			this._app._editor?.saveCurrentFile(true);
 		});
 	}
 
@@ -49,6 +59,16 @@ export default class RendererIPC {
 	requestFileSave(fileInfo:IFileWithContents){
 		console.log("RendererIPC :: requestFileSave()");
 		ipcRenderer.send(UserEvents.REQUEST_FILE_SAVE, fileInfo);
+	}
+
+	requestFilePathOpen(filePath: string) {
+		console.log("RendererIPC :: requestFilePathOpen()");
+		ipcRenderer.send(UserEvents.REQUEST_FILE_OPEN_PATH, filePath);
+	}
+
+	requestFileHashOpen(fileHash: string) {
+		console.log("RendererIPC :: requestFileHashOpen()");
+		ipcRenderer.send(UserEvents.REQUEST_FILE_OPEN_HASH, fileHash);
 	}
 
 	////////////////////////////////////////////////////////
@@ -71,6 +91,7 @@ export default class RendererIPC {
 	 * @param (content) message body
 	 */
 	handleEvent(cmd:string, content:any) {
+		console.log("RendererIPC :: handleEvent", cmd);
 		switch (cmd) {
 			// FILE_OPEN
 			case FileEvents.FILE_DID_OPEN:

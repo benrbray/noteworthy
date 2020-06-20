@@ -3,7 +3,7 @@ import fs from "fs";
 import * as pathlib from "path";
 
 // project imports
-import { FileHash, IFileDesc, IDirectory, IDirEntry, IDirectoryMeta, readFile, IFileMeta, FileCmp, IWorkspaceDir } from "@common/fileio";
+import { FileHash, IFileDesc, IDirectory, IDirEntry, IDirectoryMeta, readFile, IFileMeta, FileCmp, IWorkspaceDir, IDirEntryMeta } from "@common/fileio";
 import isFile from "@common/util/is-file";
 import isDir from "@common/util/is-dir";
 
@@ -403,6 +403,11 @@ export default class FSAL extends EventEmitter {
 		return this._state.openFiles.find(file => (file.hash == hash)) || null;
 	}
 
+	getFileByHash(hash:string):(IFileMeta|null) {
+		if(!this._workspace){ return null; }
+		return this._workspace.metadata.getFileByHash(hash);
+	}
+
 	// == ACTIVE FILE =================================== //
 
 	/**
@@ -429,16 +434,17 @@ export default class FSAL extends EventEmitter {
 
 	// == FILE TREE ===================================== //
 
-	getFileTree():IDirEntry[] {
-		let result:IDirEntry[] = [];
-		for(let root of this._state.fileTree){
-			result.push(this.getMetadataFor(root));
+	getFileTree(): IDirEntryMeta[] {
+		// handle empty workspace
+		if(!this._workspace){ return []; }
+
+		let result:IDirEntryMeta[] = [];
+		/** @todo (6/20/20) implement workspace iterator */
+		for(let hash of Object.keys(this._workspace.metadata.files)){
+			let file = this._workspace.metadata.getFileByHash(hash);
+			if(file !== null){ result.push(file); }
 		}
 
 		return result;
-	}
-
-	getMetadataFor(dirEntry:IDirEntry):IDirEntry {
-		return dirEntry;
 	}
 }

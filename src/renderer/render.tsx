@@ -16,10 +16,6 @@ class Renderer {
 	_ipc:RendererIPC;
 
 	// ui elements
-	_buttonNew: HTMLButtonElement;
-	_buttonOpen: HTMLButtonElement;
-	_buttonSave: HTMLButtonElement;
-	_buttonSaveAs: HTMLButtonElement;
 	_titleElt: HTMLDivElement;
 	_editorElt: HTMLDivElement;
 	_sidebarElt: HTMLDivElement;
@@ -45,10 +41,6 @@ class Renderer {
 		this._editor = null;
 
 		// dom elements
-		this._buttonNew = document.getElementById("buttonNew") as HTMLButtonElement;
-		this._buttonOpen = document.getElementById("buttonOpen") as HTMLButtonElement;
-		this._buttonSave = document.getElementById("buttonSave") as HTMLButtonElement;
-		this._buttonSaveAs = document.getElementById("buttonSaveAs") as HTMLButtonElement;
 		this._titleElt = document.getElementById("title") as HTMLDivElement;
 		this._editorElt = document.getElementById("editor") as HTMLDivElement;
 		this._sidebarElt = document.getElementById("sidebar") as HTMLDivElement;
@@ -57,7 +49,6 @@ class Renderer {
 	init(){
 		console.log("render :: init()");
 		this._ipc.init();
-		this.initButtons();
 		this.initExplorer();
 
 		if(this._currentFile){
@@ -65,23 +56,11 @@ class Renderer {
 		}
 	}
 
-	initButtons(){
-		this._buttonOpen.addEventListener("click", () => {
-			if(!this._editor){ return; }
-			this._ipc.openFileDialog();
-		});
-		this._buttonSave.addEventListener("click", () => {
-			if (!this._editor) { return; }
-			this._editor.saveCurrentFile(false);
-		});
-		this._buttonSaveAs.addEventListener("click", () => {
-			if (!this._editor) { return; }
-			this._editor.saveCurrentFile(true);
-		});
-	}
-
 	initExplorer(){
-		this._explorer = new Explorer(this._sidebarElt);
+		let explorerElt = document.createElement("div");
+		explorerElt.className = "explorer";
+		this._sidebarElt.appendChild(explorerElt);
+		this._explorer = new Explorer(this._sidebarElt, this._ipc);
 	}
 
 	setCurrentFile(file:IPossiblyUntitledFile):void {
@@ -92,6 +71,8 @@ class Renderer {
 
 		console.log("render :: setCurrentFile", file);
 		this._currentFile = file;
+
+		this._titleElt.textContent = file.path || "<untitled>";
 
 		// get extension type
 		let ext:string = pathlib.extname(this._currentFile.path || "");

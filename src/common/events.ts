@@ -10,7 +10,14 @@ export enum UserEvents {
 	REQUEST_FILE_SAVE = "request-file-save",
 	DIALOG_FILE_SAVEAS = "dialog-file-saveas",
 	DIALOG_FILE_OPEN = "dialog-file-open",
-	DIALOG_WORKSPACE_OPEN = "dialog-workspace-open"
+	DIALOG_WORKSPACE_OPEN = "dialog-workspace-open",
+	REQUEST_FILE_OPEN_HASH = "request-file-open-hash",
+	REQUEST_FILE_OPEN_PATH = "request-file-open-path",
+}
+
+export enum MenuEvents {
+	MENU_FILE_SAVE = "menu-file-save",
+	MENU_FILE_SAVEAS = "menu-file-saveas"
 }
 
 export enum FileEvents {

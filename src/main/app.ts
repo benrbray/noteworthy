@@ -17,7 +17,7 @@ export default class App extends EventEmitter {
 	window: Window | undefined;
 	
 	private _ipc:MainIPC;
-	private _fsal:FSAL;
+	_fsal:FSAL;
 
 	// providers
 	private _crossRefProvider:CrossRefProvider|undefined;
