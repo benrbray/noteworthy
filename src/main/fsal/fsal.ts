@@ -71,6 +71,7 @@ export default class FSAL extends EventEmitter {
 
 	async destroy(){
 		console.log("fsal :: destroy()");
+		this.closeWorkspace();
 		this._watchdog.destroy();
 		this.detachEvents();
 	}

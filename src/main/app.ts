@@ -116,6 +116,7 @@ export default class App extends EventEmitter {
 		console.log("app :: quit");
 		global.isQuitting = true;
 		this.detach__beforeQuit();
+		this._fsal.destroy();
 		app.quit();
 	}
 
