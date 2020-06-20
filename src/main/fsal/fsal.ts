@@ -200,13 +200,9 @@ export default class FSAL extends EventEmitter {
 
 		// load (possibly stale) workspace metadata from file
 		let metaPath = this.getWorkspaceMetadataPath(dir.path);
-		let savedMeta:WorkspaceMeta|null = await this.loadWorkspaceMetadataFromFile(metaPath);
-		if(!savedMeta){ savedMeta = new WorkspaceMeta(); }
-		this._workspace = { 
-			dir: dir,
-			metadata: savedMeta,
-			metaPath: metaPath
-		}
+		let metadata:WorkspaceMeta|null = await this.loadWorkspaceMetadataFromFile(metaPath);
+		if(!metadata){ metadata = new WorkspaceMeta(); }
+		this._workspace = { dir, metadata, metaPath };
 		
 		// check for changes between current file list and saved metadata,
 		// and process added/changed/deleted files if needed
