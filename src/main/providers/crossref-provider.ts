@@ -97,6 +97,7 @@ export class CrossRefProvider implements WorkspaceProvider {
 	// == Tag Queries =================================== //
 
 	getDefsForTag(tag:string):string[]{
+		tag = this.normalizeTag(tag);
 		return Array.from(this._tag2defs.get(tag).values());
 	}
 
@@ -180,7 +181,7 @@ export class CrossRefProvider implements WorkspaceProvider {
 	getTagsDefinedBy(filePath:string, doc:ProseNode):string[] {
 		/** @todo read defined_tags from yaml metadata */
 		let ext = path.extname(filePath);
-		return [this.normalizeWikilink(path.basename(filePath, ext))];
+		return [this.normalizeTag(path.basename(filePath, ext))];
 	}
 
 	getTags(doc:ProseNode):string[] {
@@ -196,7 +197,7 @@ export class CrossRefProvider implements WorkspaceProvider {
 			if(!node.type.isText){ return true; }
 
 			if(node.marks.find((mark:Mark) => mark.type.name == "wikilink")) {
-				let content:string = this.normalizeWikilink(node.textContent);
+				let content:string = this.normalizeTag(node.textContent);
 				wikilinks.push(content);
 			}
 			return false;
@@ -205,8 +206,8 @@ export class CrossRefProvider implements WorkspaceProvider {
 		return wikilinks;
 	}
 
-	normalizeWikilink(content:string):string {
-		return content.trim().toLowerCase().replace(/[\s]/, "_");
+	normalizeTag(content:string):string {
+		return content.trim().toLowerCase().replace(/[\s-:_]/, "-");
 	}
 
 	// == Persistence =================================== //
