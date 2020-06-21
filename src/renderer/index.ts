@@ -1,15 +1,36 @@
-import render from './render';
+import Renderer from './render';
 
-/* RENDERER */
+// other imports
+import { Titlebar, Color } from "custom-electron-titlebar";
 
-render();
+// css
+import "./main.less";
+import "@root/node_modules/prosemirror-view/style/prosemirror.css";
+import "@root/node_modules/katex/dist/katex.min.css";
+import "@root/node_modules/prosemirror-gapcursor/style/gapcursor.css";
+import "@lib/prosemirror-math/style/math.css";
 
-/* HOT MODULE REPLACEMENT */
+////////////////////////////////////////////////////////////
 
-if (module.hot) {
+let renderer:Renderer;
 
-	module.hot.accept('./render', () => {
-		require('./render').default();
+onload = function(){
+
+	// create titlebar
+	new Titlebar({
+		backgroundColor: Color.fromHex("#DDDDDD")
 	});
 
+	renderer = new Renderer();
+	renderer.init();
+
+	/* HOT MODULE REPLACEMENT */
+
+	if (module.hot) {
+
+		module.hot.accept('./render', () => {
+			require('./render').default();
+		});
+
+	}
 }

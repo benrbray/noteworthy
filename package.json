@@ -1,5 +1,5 @@
 {
-  "name": "typeright",
+  "name": "noteworthy",
   "version": "0.0.1",
   "description": "Text editor with rich document semantics, based on ProseMirror.",
   "main": "./dist/index.js",
@@ -39,7 +39,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/benrbray/typeright.git"
+    "url": "git+https://github.com/benrbray/noteworthy.git"
   },
   "keywords": [
     "productivity",
@@ -53,24 +53,51 @@
   },
   "license": "GPL-3.0-or-later",
   "bugs": {
-    "url": "https://github.com/benrbray/typeright/issues"
+    "url": "https://github.com/benrbray/noteworthy/issues"
   },
-  "homepage": "https://github.com/benrbray/typeright#readme",
+  "homepage": "https://github.com/benrbray/noteworthy#readme",
   "dependencies": {
+    "chokidar": "^3.4.0",
+    "custom-electron-titlebar": "^3.2.2-hotfix62",
     "electron-store": "^5.1.1",
     "electron-util": "^0.14.1",
     "electron-window-state": "^5.0.3",
     "katex": "^0.11.1",
-    "lodash": "^4.17.15"
+    "lodash": "^4.17.15",
+    "markdown-it": "^11.0.0",
+    "prosemirror-commands": "^1.1.4",
+    "prosemirror-gapcursor": "^1.1.5",
+    "prosemirror-history": "^1.1.3",
+    "prosemirror-inputrules": "^1.1.2",
+    "prosemirror-keymap": "^1.1.4",
+    "prosemirror-model": "^1.10.0",
+    "prosemirror-schema-basic": "^1.1.2",
+    "prosemirror-schema-list": "^1.1.2",
+    "prosemirror-state": "^1.3.3",
+    "prosemirror-transform": "^1.2.5",
+    "prosemirror-view": "^1.14.12"
   },
   "devDependencies": {
     "@types/electron-store": "^3.2.0",
     "@types/katex": "^0.11.0",
     "@types/lodash": "^4.14.155",
+    "@types/markdown-it": "^10.0.1",
+    "@types/prosemirror-commands": "^1.0.1",
+    "@types/prosemirror-gapcursor": "^1.0.1",
+    "@types/prosemirror-history": "^1.0.1",
+    "@types/prosemirror-inputrules": "^1.0.2",
+    "@types/prosemirror-keymap": "^1.0.2",
+    "@types/prosemirror-model": "^1.7.2",
+    "@types/prosemirror-schema-basic": "^1.0.1",
+    "@types/prosemirror-schema-list": "^1.0.1",
+    "@types/prosemirror-state": "^1.2.4",
+    "@types/prosemirror-transform": "^1.1.1",
+    "@types/prosemirror-view": "^1.11.4",
     "electron": "^9.0.2",
     "electron-builder": "^22.7.0",
     "electron-webpack": "^2.8.2",
     "electron-webpack-ts": "^4.0.1",
+    "less-loader": "^6.1.0",
     "tsconfig-paths-webpack-plugin": "^3.2.0",
     "typescript": "^3.9.3",
     "webpack": "^4.43.0"

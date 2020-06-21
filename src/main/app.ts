@@ -1,13 +1,33 @@
 import { app, ipcMain as ipc, Event, Menu, shell } from "electron";
 import { enforceMacOSAppLocation, is } from 'electron-util';
+import { EventEmitter } from "events";
 import * as fs from "fs";
+import path from "path";
 import Main from "./windows/main";
 import Window from "./windows/window";
+import MainIPC from "./MainIPC";
+import FSAL from "./fsal/fsal";
 
-export default class App {
+import * as FSALDir from "./fsal/fsal-dir";
+import { CrossRefProvider } from "./providers/crossref-provider";
+import { IDirectory } from "@common/fileio";
+import { FsalEvents, IpcEvents, AppEvents } from "@common/events";
+
+export default class App extends EventEmitter {
 	window: Window | undefined;
+	
+	private _ipc:MainIPC;
+	_fsal:FSAL;
+
+	// providers
+	private _crossRefProvider:CrossRefProvider|undefined;
 
 	constructor(){
+		super();
+
+		this._ipc = new MainIPC(this);
+		this._fsal = new FSAL("C:/Users/Ben/Documents/notabledata/notes");
+
 		this.init();
 		this.events();
 	}
@@ -15,25 +35,112 @@ export default class App {
 	// INITIALIZATION //////////////////////////////////////
 
 	init(){
+		// services
+		this.initIPC();
+		this.initProviders();
+		this.initFSAL();
+
+		// menus
 		this.initContextMenu();
 		this.initMenu();
+	}
+
+	initIPC(){
+		this._ipc.init();
+
+		global.ipc = {
+			/**
+			 * Sends an arbitrary message to the renderer.
+			 * @param  {String} cmd The command to be sent
+			 * @param  {Object} arg An optional object with data.
+			 * @return {void}     Does not return.
+			 */
+			send: (cmd:string, arg?:Object):void => { this._ipc.send(cmd, arg); },
+			/**
+			 * Sends a message to the renderer and displays it as a notification.
+			 * @param  {String} msg The message to be sent.
+			 * @return {void}       Does not return.
+			 */
+			notify: (msg:string):void => { this._ipc.send(IpcEvents.NOTIFY, msg); },
+			/**
+			 * Sends an error to the renderer process that should be displayed using
+			 * a dedicated dialog window (is used, e.g., during export when Pandoc
+			 * throws potentially a lot of useful information for fixing problems in
+			 * the source files).
+			 * @param  {Object} msg        The error object
+			 * @return {void}            Does not return.
+			 */
+			notifyError: (msg:any): void => { this._ipc.send(IpcEvents.NOTIFY_ERROR, msg); }
+		}
+	}
+
+	initProviders(){
+		// cross-references
+		this._crossRefProvider = new CrossRefProvider(this);
+		this._crossRefProvider.init();
+		this._fsal.registerWorkspacePlugin(this._crossRefProvider);
+	}
+
+	destroyProviders(){
+		// cross-references
+		if(this._crossRefProvider){
+			this._fsal.unregisterWorkspacePlugin(this._crossRefProvider);
+			this._crossRefProvider.destroy();
+		}
+	}
+
+	initFSAL(){
+		this._fsal.init();
+		this._fsal.on(FsalEvents.STATE_CHANGED, (objPath, ...args) => {
+			console.log("app :: fsal-state-changed ::", objPath, ...args);
+			switch(objPath){
+				case "filetree":
+					this._ipc.send(FsalEvents.FILETREE_CHANGED, this._fsal.getFileTree());
+					break;
+				case "workspace":
+					this.emit(FsalEvents.WORKSPACE_CHANGED, ...args);
+					break;
+				default:
+					break;
+			}
+		})
 	}
 
 	initContextMenu(){}
 	initMenu(){}
 	async initDebug(){}
 
+	// == Quitting ====================================== //
+
 	quit(){
 		console.log("app :: quit");
 		global.isQuitting = true;
 		this.detach__beforeQuit();
+		this._fsal.destroy();
 		app.quit();
 	}
 
 	load(){
+		if(this.window){
+			/** @todo handle window exists? */
+		}
 		console.log("app :: load")
 		this.window = new Main();
 		this.window.init();
+	}
+
+	// == Workspaces ==================================== //
+
+	async setWorkspaceDir(dirPath:string){
+		let dir:IDirectory = await FSALDir.parseDir(dirPath);
+		this._fsal.setWorkspaceDir(dir);
+	}
+
+	// == Tags ========================================== //
+
+	getDefsForTag(tag:string):string[] {
+		if(!this._crossRefProvider){ return []; }
+		return this._crossRefProvider.getDefsForTag(tag)
 	}
 
 	// EVENTS //////////////////////////////////////////////
@@ -92,7 +199,7 @@ export default class App {
 		// TODO: this line comes from Notable, but it seems to
 		// prevent the application from actually closing.  Why was it here?
 		//event.preventDefault();
-		this.window.window.webContents.send("app-quit")
+		this.window.window.webContents.send(AppEvents.APP_QUIT)
 	}
 
 	__forceQuit = () => {

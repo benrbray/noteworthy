@@ -36,9 +36,7 @@ class Window {
 	initDebug(){
 		if (!Environment.isDevelopment) return;
 
-		this.window.webContents.openDevTools({
-			mode: 'undocked'
-		});
+		this.window.webContents.openDevTools();
 
 		this.window.webContents.on('devtools-opened', () => {
 			this.window.focus();
@@ -57,10 +55,10 @@ class Window {
 			dimensions = _.pick(state, ['x', 'y', 'width', 'height']);
 
 		options = _.merge(dimensions, {
-			frame: !is.macos,
+			frame: false, //!is.macos,
 			backgroundColor: (Settings.get('theme') === 'light') ? '#F7F7F7' : '#0F0F0F', //TODO: This won't scale with custom themes
 			show: false,
-			title: "TypeRight", //pkg.productName,
+			title: "Noteworthy", //pkg.productName,
 			titleBarStyle: 'hiddenInset',
 			webPreferences: {
 				nodeIntegration: true,
