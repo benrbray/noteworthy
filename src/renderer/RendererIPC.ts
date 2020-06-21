@@ -71,6 +71,11 @@ export default class RendererIPC {
 		ipcRenderer.send(UserEvents.REQUEST_FILE_OPEN_HASH, fileHash);
 	}
 
+	requestTagOpen(tag: string) {
+		console.log("RendererIPC :: requestTagOpen()");
+		ipcRenderer.send(UserEvents.REQUEST_TAG_OPEN, tag);
+	}
+
 	////////////////////////////////////////////////////////
 
 	/* DISPATCH

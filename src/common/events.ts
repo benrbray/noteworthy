@@ -13,6 +13,7 @@ export enum UserEvents {
 	DIALOG_WORKSPACE_OPEN = "dialog-workspace-open",
 	REQUEST_FILE_OPEN_HASH = "request-file-open-hash",
 	REQUEST_FILE_OPEN_PATH = "request-file-open-path",
+	REQUEST_TAG_OPEN = "request-tag-open",
 }
 
 export enum MenuEvents {

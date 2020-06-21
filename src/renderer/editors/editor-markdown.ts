@@ -1,7 +1,7 @@
 
 // prosemirror imports
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
-import { Schema as ProseSchema, DOMParser as ProseDOMParser, MarkType } from "prosemirror-model";
+import { Schema as ProseSchema, DOMParser as ProseDOMParser, MarkType, Node as ProseNode } from "prosemirror-model";
 import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin, EditorState } from "prosemirror-state";
 import { history } from "prosemirror-history";
@@ -177,6 +177,15 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 
 				// apply transaction
 				proseView.updateState(proseView.state.apply(tr));
+			},
+			handleClick: (view: ProseEditorView<any>, pos: number, event: MouseEvent) => {
+				let node = view.state.doc.nodeAt(pos);
+				if(node && event.ctrlKey && node.isText){
+					let tag = node.text;
+					if(!tag){ return false; }
+					this._ipc.requestTagOpen(tag);
+				}
+				return true;
 			}
 		});
 		// initialized

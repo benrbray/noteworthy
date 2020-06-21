@@ -94,6 +94,12 @@ export class CrossRefProvider implements WorkspaceProvider {
 		this._tag2defs.clear();
 	}
 
+	// == Tag Queries =================================== //
+
+	getDefsForTag(tag:string):string[]{
+		return Array.from(this._tag2defs.get(tag).values());
+	}
+
 	// == Workspace Events ============================== //
 	
 	async handleWorkspaceClosed(dir: IWorkspaceDir){

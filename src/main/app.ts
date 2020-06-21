@@ -136,6 +136,13 @@ export default class App extends EventEmitter {
 		this._fsal.setWorkspaceDir(dir);
 	}
 
+	// == Tags ========================================== //
+
+	getDefsForTag(tag:string):string[] {
+		if(!this._crossRefProvider){ return []; }
+		return this._crossRefProvider.getDefsForTag(tag)
+	}
+
 	// EVENTS //////////////////////////////////////////////
 
 	events() {
