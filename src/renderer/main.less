@@ -14,9 +14,8 @@ body {
 	margin: 0;
 }
 
-a {
-	color: steelblue;
-}
+/* links */
+a { color: steelblue; text-decoration: none; }
 
 li p {
 	margin: 0;
@@ -27,10 +26,19 @@ em.ul {
 	text-decoration: underline;
 }
 
+/* wikilinks */
 .wikilink { font-family: var(--code-font); color: steelblue; }
-.wikilink::before { content: "[["; color: #e0e0e0; }
-.wikilink::after { content: "]]"; color: #e0e0e0; }
+.wikilink::before { content: "[["; color: #e0e0e0; letter-spacing: -0.1em}
+.wikilink::after { content: "]]"; color: #e0e0e0; letter-spacing: -0.1em}
 
+
+/* active when CTRL key pressed */
+.user-ctrl {
+	.wikilink       { cursor: pointer; }
+	a               { cursor: pointer; }
+	.wikilink:hover { text-decoration: underline; }
+	a:hover         { text-decoration: underline; }
+}
 
 /* == USER INTERFACE ==================================== */
 

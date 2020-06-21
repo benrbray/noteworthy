@@ -1,4 +1,4 @@
-import { ipcRenderer } from "electron";
+import { shell, ipcRenderer } from "electron";
 import Renderer from "./render";
 import { IFileWithContents, IPossiblyUntitledFile, IDirEntry, IDirEntryMeta } from "@common/fileio";
 import { FileEvents, FsalEvents, UserEvents, MenuEvents } from "@common/events";
@@ -74,6 +74,11 @@ export default class RendererIPC {
 	requestTagOpen(tag: string) {
 		console.log("RendererIPC :: requestTagOpen()");
 		ipcRenderer.send(UserEvents.REQUEST_TAG_OPEN, tag);
+	}
+
+	requestExternalLinkOpen(url: string){
+		console.log("RendererIPC :: requestExternalLinkOpen");
+		shell.openExternal(url, { activate: true });
 	}
 
 	////////////////////////////////////////////////////////

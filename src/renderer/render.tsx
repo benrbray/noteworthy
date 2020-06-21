@@ -54,6 +54,17 @@ class Renderer {
 		if(this._currentFile){
 			this.setCurrentFile(this._currentFile);
 		}
+
+		// ctrl handler
+		/** @todo (6/20/20) where should this code go? */
+		const shiftHandler = (evt:KeyboardEvent) => {
+			if(evt.ctrlKey) { document.body.classList.add("user-ctrl");    }
+			else            { document.body.classList.remove("user-ctrl"); }
+		}
+
+		document.addEventListener("keydown", shiftHandler);
+		document.addEventListener("keyup", shiftHandler);
+		document.addEventListener("keypress", shiftHandler);
 	}
 
 	initExplorer(){

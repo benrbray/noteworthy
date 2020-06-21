@@ -1,7 +1,7 @@
 
 // prosemirror imports
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
-import { Schema as ProseSchema, DOMParser as ProseDOMParser, MarkType, Node as ProseNode } from "prosemirror-model";
+import { Schema as ProseSchema, DOMParser as ProseDOMParser, MarkType, Node as ProseNode, Mark } from "prosemirror-model";
 import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin, EditorState } from "prosemirror-state";
 import { history } from "prosemirror-history";
@@ -180,10 +180,21 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 			},
 			handleClick: (view: ProseEditorView<any>, pos: number, event: MouseEvent) => {
 				let node = view.state.doc.nodeAt(pos);
-				if(node && event.ctrlKey && node.isText){
-					let tag = node.text;
-					if(!tag){ return false; }
-					this._ipc.requestTagOpen(tag);
+				if(!node){ return false; }
+
+				// ctrl-click
+				let mark:Mark|null|undefined
+				if(event.ctrlKey && node.isText){
+					// wikilinks
+					if(mark = markdownSchema.marks.wikilink.isInSet(node.marks)){
+						let tag = node.text;
+						if(tag) { this._ipc.requestTagOpen(tag); }
+					}
+					// links
+					else if(mark = markdownSchema.marks.link.isInSet(node.marks)){
+						let url:string = mark.attrs.href;
+						if(url) { this._ipc.requestExternalLinkOpen(url); }
+					}
 				}
 				return true;
 			}
