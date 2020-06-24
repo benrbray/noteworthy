@@ -100,24 +100,33 @@ function markInputRule(pattern: RegExp, markType: MarkType, getAttrs?: (match: s
 			tr.mapping.map(start),
 			tr.mapping.map(end),
 			markType.create(getAttrs ? getAttrs(match) : null)
-		).removeStoredMark(markType).insertText(match[3]);
+		).removeStoredMark(markType).insertText(match[2]);
 	});
 }
 
 export function boldRule(markType: MarkType):InputRule {
-	return markInputRule(/\*\*([^\s](.*[^\s])?)\*\*(.)$/, markType);
+	return markInputRule(/\*\*([^\s](?:.*[^\s])?)\*\*(.)$/, markType);
 }
 export function italicRule(markType: MarkType): InputRule {
-	return markInputRule(/(?<!\*)\*([^\s\*](.*[^\s])?)\*([^\*])$/, markType);
+	return markInputRule(/(?<!\*)\*(?:[^\s\*](.*[^\s])?)\*([^\*])$/, markType);
 }
 export function underlineRule(markType: MarkType): InputRule {
-	return markInputRule(/_([^\s_](.*[^\s_])?)_(.)$/, markType);
+	return markInputRule(/_([^\s_](?:.*[^\s_])?)_(.)$/, markType);
 }
 export function wikilinkRule(markType: MarkType): InputRule {
-	return markInputRule(/\[\[([^\s]([^\]]*[^\s])?)\]\](.)$/, markType);
+	return markInputRule(/\[\[([^\s](?:[^\]]*[^\s])?)\]\](.)$/, markType);
+}
+export function citationRule(markType: MarkType): InputRule {
+	return markInputRule(/@\[([^\s](?:[^\]]*[^\s])?)\](.)$/, markType);
+}
+export function tagRule(markType: MarkType): InputRule {
+	return markInputRule(/#([a-zA-Z0-9-:_/\\]+)([^a-zA-Z0-9-:_/\\])$/, markType);
+}
+export function tagRuleBracketed(markType: MarkType): InputRule {
+	return markInputRule(/#\[([^\s](?:[^\]]*[^\s])?)\](.)$/, markType);
 }
 export function strikeRule(markType: MarkType): InputRule {
-	return markInputRule(/~([^\s~](.*[^\s~])?)~(.)$/, markType);
+	return markInputRule(/~([^\s~](?:.*[^\s~])?)~(.)$/, markType);
 }
 
 // : (Schema) → Plugin
@@ -135,6 +144,11 @@ export function buildInputRules_markdown(schema:Schema) {
 	if (type = schema.marks.strong) rules.push(boldRule(type));
 	if (type = schema.marks.em) rules.push(italicRule(type));
 	if (type = schema.marks.wikilink) rules.push(wikilinkRule(type));
+	if (type = schema.marks.citation) rules.push(citationRule(type));
+	if (type = schema.marks.tag) {
+		rules.push(tagRule(type));
+		rules.push(tagRuleBracketed(type));
+	}
 	if (type = schema.marks.underline) rules.push(underlineRule(type));
 	if (type = schema.marks.strike) rules.push(strikeRule(type));
 	return inputRules({ rules })
