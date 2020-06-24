@@ -89,6 +89,10 @@ export const markdownSerializer = new MarkdownSerializer({
 	list_item(state, node) {
 		state.renderContent(node)
 	},
+	tasklist_item(state, node) {
+		if(node.attrs.checked!==false){ state.write("[x]"); }
+		else                          { state.write("[ ]"); }
+	},
 	paragraph(state, node) {
 		state.renderInline(node)
 		state.closeBlock(node)
@@ -126,6 +130,8 @@ export const markdownSerializer = new MarkdownSerializer({
 	strong: {open: "**", close: "**", mixable: true, expelEnclosingWhitespace: true},
 	underline: {open: "<u>", close: "</u>", mixable: true, expelEnclosingWhitespace: true},
 	strike: {open: "~~", close: "~~", mixable: true, expelEnclosingWhitespace: true},
+	tag: {open: "#[", close: "]", mixable: true, expelEnclosingWhitespace: true, escape:false},
+	citation: {open: "@[", close: "]", mixable: true, expelEnclosingWhitespace: true, escape:false},
 	wikilink: {open: "[[", close: "]]", mixable: true, expelEnclosingWhitespace: true, escape:false},
 	link: {
 		open(_state, mark, parent, index) {
@@ -379,7 +385,9 @@ export class MarkdownSerializerState {
 	// content. If `startOfLine` is true, also escape characters that
 	// has special meaning only at the start of the line.
 	esc(str, startOfLine) {
-		str = str.replace(/[`*\\~\[\]]/g, "\\$&")
+		/** @todo (6/21/20) which characters to escape? */
+		//str = str.replace(/[`*\\~\[\]]/g, "\\$&") <-- original escape
+		str = str.replace(/[`*\\~]/g, "\\$&")
 		if (startOfLine) str = str.replace(/^[:#\-*+]/, "\\$&").replace(/^(\d+)\./, "$1\\.")
 		return str
 	}

@@ -1,7 +1,7 @@
 
 // prosemirror imports
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
-import { Schema as ProseSchema, DOMParser as ProseDOMParser, MarkType, Node as ProseNode, Mark } from "prosemirror-model";
+import { Schema as ProseSchema, DOMParser as ProseDOMParser, MarkType, Node as ProseNode, Mark, Slice } from "prosemirror-model";
 import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin, EditorState } from "prosemirror-state";
 import { history } from "prosemirror-history";
@@ -185,8 +185,9 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				// ctrl-click
 				let mark:Mark|null|undefined
 				if(event.ctrlKey && node.isText){
-					// wikilinks
-					if(mark = markdownSchema.marks.wikilink.isInSet(node.marks)){
+					let markTypes = ["wikilink", "citation", "tag"];
+					// wikilinks, tags, citations
+					if (mark = node.marks.find((mark: Mark) => markTypes.includes(mark.type.name))){
 						let tag = node.text;
 						if(tag) { this._ipc.requestTagOpen(tag); }
 					}

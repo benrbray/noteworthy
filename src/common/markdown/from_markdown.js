@@ -1,201 +1,12 @@
 import markdownit from "markdown-it"
 import { math_plugin } from "./markdown-it-katex"
 import { wikilinks_plugin } from "./markdown-it-wikilinks"
+import { tasklist_plugin } from "./markdown-it-tasklists"
+import { citation_plugin } from "./markdown-it-citations"
+import { tag_plugin } from "./markdown-it-tags"
 import { Schema, Mark } from "prosemirror-model"
 
-export const markdownSchema = new Schema({
-	nodes: {
-		doc: {
-			content: "block+"
-		},
-
-		paragraph: {
-			content: "inline*",
-			group: "block",
-			parseDOM: [{tag: "p"}],
-			toDOM() { return ["p", 0] }
-		},
-
-		blockquote: {
-			content: "block+",
-			group: "block",
-			parseDOM: [{tag: "blockquote"}],
-			toDOM() { return ["blockquote", 0] }
-		},
-
-		horizontal_rule: {
-			group: "block",
-			parseDOM: [{tag: "hr"}],
-			toDOM() { return ["div", ["hr"]] }
-		},
-
-		heading: {
-			attrs: {level: {default: 1}},
-			content: "(text | image)*",
-			group: "block",
-			defining: true,
-			parseDOM: [{tag: "h1", attrs: {level: 1}},
-								 {tag: "h2", attrs: {level: 2}},
-								 {tag: "h3", attrs: {level: 3}},
-								 {tag: "h4", attrs: {level: 4}},
-								 {tag: "h5", attrs: {level: 5}},
-								 {tag: "h6", attrs: {level: 6}}],
-			toDOM(node) { return ["h" + node.attrs.level, 0] }
-		},
-
-		code_block: {
-			content: "text*",
-			group: "block",
-			code: true,
-			defining: true,
-			marks: "",
-			attrs: {params: {default: ""}},
-			parseDOM: [{tag: "pre", preserveWhitespace: "full", getAttrs: node => (
-				{params: node.getAttribute("data-params") || ""}
-			)}],
-			toDOM(node) { return ["pre", node.attrs.params ? {"data-params": node.attrs.params} : {}, ["code", 0]] }
-		},
-
-		ordered_list: {
-			content: "list_item+",
-			group: "block",
-			attrs: {order: {default: 1}, tight: {default: false}},
-			parseDOM: [{tag: "ol", getAttrs(dom) {
-				return {order: dom.hasAttribute("start") ? +dom.getAttribute("start") : 1,
-								tight: dom.hasAttribute("data-tight")}
-			}}],
-			toDOM(node) {
-				return ["ol", {start: node.attrs.order == 1 ? null : node.attrs.order,
-											 "data-tight": node.attrs.tight ? "true" : null}, 0]
-			}
-		},
-
-		bullet_list: {
-			content: "list_item+",
-			group: "block",
-			attrs: {tight: {default: false}},
-			parseDOM: [{tag: "ul", getAttrs: dom => ({tight: dom.hasAttribute("data-tight")})}],
-			toDOM(node) { return ["ul", {"data-tight": node.attrs.tight ? "true" : null}, 0] }
-		},
-
-		list_item: {
-			content: "paragraph block*",
-			defining: true,
-			parseDOM: [{tag: "li"}],
-			toDOM() { return ["li", 0] }
-		},
-
-		text: {
-			group: "inline"
-		},
-
-		image: {
-			inline: true,
-			attrs: {
-				src: {},
-				alt: {default: null},
-				title: {default: null}
-			},
-			group: "inline",
-			draggable: true,
-			parseDOM: [{tag: "img[src]", getAttrs(dom) {
-				return {
-					src: dom.getAttribute("src"),
-					title: dom.getAttribute("title"),
-					alt: dom.getAttribute("alt")
-				}
-			}}],
-			toDOM(node) { return ["img", node.attrs] }
-		},
-
-		hard_break: {
-			inline: true,
-			group: "inline",
-			selectable: false,
-			parseDOM: [{tag: "br"}],
-			toDOM() { return ["br"] }
-		},
-		math_inline: {
-			group: "inline math",
-			content: "text*",
-			inline: true,
-			atom: true,
-			toDOM: () => ["math-inline", { class: "math-node" }, 0],
-			parseDOM: [{
-				tag: "math-inline"
-			}]
-		},
-		math_display: {
-			group: "block math",
-			content: "text*",
-			atom: true,
-			code: true,
-			toDOM: () => ["math-display", { class: "math-node" }, 0],
-			parseDOM: [{
-				tag: "math-display"
-			}]
-		},
-	},
-
-	marks: {
-		em: {
-			parseDOM: [{tag: "i"}, {tag: "em"},
-								 {style: "font-style", getAttrs: value => value == "italic" && null}],
-			toDOM() { return ["em"] }
-		},
-
-		strong: {
-			parseDOM: [{tag: "b"}, {tag: "strong"},
-								 {style: "font-weight", getAttrs: value => /^(bold(er)?|[5-9]\d{2,})$/.test(value) && null}],
-			toDOM() { return ["strong"] }
-		},
-
-		link: {
-			attrs: {
-				href: {},
-				title: {default: null}
-			},
-			inclusive: false,
-			parseDOM: [{tag: "a[href]", getAttrs(dom) {
-				return {href: dom.getAttribute("href"), title: dom.getAttribute("title")}
-			}}],
-			toDOM(node) { return ["a", node.attrs] }
-		},
-
-		code: {
-			inclusive: false,
-			parseDOM: [{tag: "code"}],
-			toDOM() { return ["code"] }
-		},
-
-		underline: {
-			inclusive: false,
-			parseDOM: [
-				{tag: "em.ul"},
-				{style: "text-decoration", getAttrs: value => value == "underline" && null }
-			],
-			toDOM() { return ["em", { class : "ul" }] }
-		},
-
-		strike: {
-			inclusive: false,
-			parseDOM: [
-				{tag: "s"},
-				{style: "text-decoration", getAttrs: value => value == "line-through" && null }
-			],
-			toDOM() { return ["s"] }
-		},
-
-		wikilink: {
-			attrs: {
-				title: {default: null}
-			},
-			inclusive: true,
-			parseDOM: [{tag: "span.wikilink" }],
-			toDOM(node) { return ["span", Object.assign({ class: "wikilink" }, node.attrs)] }
-		}
-	}
-})
+import { markdownSchema } from "./markdown-schema";
 
 function maybeMerge(a, b) {
 	if (a.isText && b.isText && Mark.sameSet(a.marks, b.marks))
@@ -243,6 +54,8 @@ class MarkdownParseState {
 	}
 
 	parseTokens(toks) {
+		//let domParser = new DOMParser();
+
 		for (let i = 0; i < toks.length; i++) {
 			let tok = toks[i]
 			let tokenType = tok.type;
@@ -260,14 +73,30 @@ class MarkdownParseState {
 				}
 				
 				// extract attrs
-				let attrs = new Map();
+				let attrs = {};
+				/** @todo (6/21/20) this won't work outside a BrowserWindow!
+				 * need to come up with a different solution (e.g. jsdom)
+				 */
+				/*if(!closed){
+					let parsed = domParser.parseFromString(match[0], "text/html");
+					if(parsed.body.children.length > 0){
+						attrs = parsed.body.children[0].attributes;
+					} else if(parsed.head.children.length > 0){
+						attrs = parsed.head.children[0].attributes;
+					}
+					if(attrs){ console.log("found attrs", attrs); }
+				}*/
+				
+				// old regex code for parsing attrs
+				/*let attrs = new Map();
 				let attrStr = match[3];
 				if(attrStr.length > 1){
-					match = attrStr.match(/(?:\s*([a-zA-Z\-]+)\s*=\s*([^'"\s]*|'[^']*'|"[^"]*"))/);
-					if(match){
-						console.log("found html attrs", match);
+					let regex = /\s*([a-zA-Z\-]+)(\s*=\s*('((?:[^']|\\')*)'|"((?:[^"]|\\")*)"))?/g;
+					let attrMatch;
+					while(attrMatch = regex.exec(attrStr)){
+						console.log("found attr:", attrMatch);
 					}
-				}
+				}*/
 				// determine token type
 				if(isHtmlSingleton(tagName)){
 					tokenType = tagName;
@@ -314,18 +143,24 @@ class MarkdownParseState {
 }
 
 function attrs(spec, token) {
-	if (spec.getAttrs) return spec.getAttrs(token)
+	// support `class` attr by default
+	let className = token.attrGet("class");
+	if (spec.getAttrs) return {
+		...(className && { class:className }),
+		...spec.getAttrs(token)
+	}
 	// For backwards compatibility when `attrs` is a Function
 	else if (spec.attrs instanceof Function) return spec.attrs(token)
-	else return spec.attrs
+	else return { ...spec.attrs, ...(className && {class:className }) };
 }
 
 // Code content is represented as a single token with a `content`
 // property in Markdown-it.
 function noOpenClose(type) {
 	let tags = [
-		"code_inline", "code_block", "fence",
-		"math_inline", "math_display", "wikilink"
+		"code_inline", "code_block", "fence", 
+		"math_inline", "math_display", "wikilink", 
+		"tasklist_item", "tag", "citation"
 	];
 	return tags.includes(type);
 }
@@ -336,7 +171,7 @@ function isHtmlSingleton(tagName){
 function isSupportedHtmlTag(tagName){
 	return [
 		"div", "span", "hr", "br", "img", "u", "s", "em", "b",
-		"h1", "h2", "h3", "h4", "h5", "h6"
+		"h1", "h2", "h3", "h4", "h5", "h6", "input"
 	 ].includes(tagName);
 }
 
@@ -361,7 +196,7 @@ function tokenHandlers(schema, tokens) {
 				handlers[tokenType] = (state, tok) => {
 					state.openNode(nodeType, attrs(spec, tok))
 					state.addText(withoutTrailingNewline(tok.content))
-			state.closeNode()
+					state.closeNode()
 				}
 			} else {
 				handlers[tokenType + "_open"] = (state, tok) => state.openNode(nodeType, attrs(spec, tok))
@@ -470,7 +305,10 @@ export class MarkdownParser {
 // with inline HTML, and producing a document in the basic schema.
 let md = markdownit({html:true})
 	.use(math_plugin)
-	.use(wikilinks_plugin);
+	.use(wikilinks_plugin)
+	.use(tasklist_plugin)
+	.use(tag_plugin)
+	.use(citation_plugin)
 
 export const markdownParser = new MarkdownParser(markdownSchema, md, {
 	blockquote: {block: "blockquote"},
@@ -491,11 +329,20 @@ export const markdownParser = new MarkdownParser(markdownSchema, md, {
 	s: { mark: "strike" },
 	u: { mark: "underline" },
 	em: {mark: "em"},
+	tag: {mark: "tag"},
+	citation: {mark: "citation"},
 	strong: {mark: "strong"},
 	link: {mark: "link", getAttrs: tok => ({
 		href: tok.attrGet("href"),
 		title: tok.attrGet("title") || null
 	})},
+	tasklist_item: {
+		node: "tasklist_item",
+		getAttrs: tok=> ({
+			label:tok.attrGet("label"),
+			checked:(tok.attrGet("checked")!="false")
+		})
+	},
 	wikilink: {mark:"wikilink"},
 	code_inline: {mark: "code"},
 	math_inline: { block: "math_inline", getAttrs: tok => ({params: tok.info || ""})},

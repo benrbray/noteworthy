@@ -196,7 +196,9 @@ export class CrossRefProvider implements WorkspaceProvider {
 		doc.descendants((node:ProseNode, pos:number, parent:ProseNode) => {
 			if(!node.type.isText){ return true; }
 
-			if(node.marks.find((mark:Mark) => mark.type.name == "wikilink")) {
+			let markTypes = ["wikilink", "tag", "citation"];
+
+			if(node.marks.find((mark:Mark) => markTypes.includes(mark.type.name))) {
 				let content:string = this.normalizeTag(node.textContent);
 				wikilinks.push(content);
 			}

@@ -84,12 +84,12 @@ function isTodoItem(tokens: Token[], index:number) {
 }
 
 function todoify(token: Token, TokenConstructor: ITokenConstructor) {
+	console.log("todoify:", token);
 	if(!token.children){ return; }
 	token.children.unshift(makeCheckbox(token, TokenConstructor));
 	token.children[1].content = token.children[1].content.slice(3);
 	token.content = token.content.slice(3);
-
-	if (useLabelWrapper) {
+	/*if (useLabelWrapper) {
 		if (useLabelAfter) {
 			token.children.pop();
 
@@ -101,36 +101,41 @@ function todoify(token: Token, TokenConstructor: ITokenConstructor) {
 			token.children.unshift(beginLabel(TokenConstructor));
 			token.children.push(endLabel(TokenConstructor));
 		}
-	}
+	}*/
 }
 
 function makeCheckbox(token: Token, TokenConstructor:ITokenConstructor) {
-	var checkbox = new TokenConstructor('html_inline', '', 0);
+	var checkbox = new TokenConstructor('tasklist_item', '', 0);
 	var disabledAttr = disableCheckboxes ? ' disabled="" ' : '';
+	checkbox.attrSet("label", token.content.slice(3).trim());
+	checkbox.content = token.content.slice(3).trim();
 	if (token.content.indexOf('[ ] ') === 0) {
-		checkbox.content = '<input class="task-list-item-checkbox"' + disabledAttr + 'type="checkbox">';
+		checkbox.attrSet("checked", "false");
+		//checkbox.content = '<input class="task-list-item-checkbox"' + disabledAttr + 'type="checkbox">';
 	} else if (token.content.indexOf('[x] ') === 0 || token.content.indexOf('[X] ') === 0) {
-		checkbox.content = '<input class="task-list-item-checkbox" checked=""' + disabledAttr + 'type="checkbox">';
+		checkbox.attrSet("checked", "true");
+		//checkbox.content = '<input class="task-list-item-checkbox" checked=""' + disabledAttr + 'type="checkbox">';
 	}
+	console.log("making checkbox", checkbox);
 	return checkbox;
 }
 
 // these next two functions are kind of hacky; probably should really be a
 // true block-level token with .tag=='label'
 function beginLabel(TokenConstructor: ITokenConstructor) {
-	var token = new TokenConstructor('html_inline', '', 0);
+	var token = new TokenConstructor('tasklist_label', '', 0);
 	token.content = '<label>';
 	return token;
 }
 
 function endLabel(TokenConstructor: ITokenConstructor) {
-	var token = new TokenConstructor('html_inline', '', 0);
+	var token = new TokenConstructor('tasklist_label', '', 0);
 	token.content = '</label>';
 	return token;
 }
 
 function afterLabel(content:string, id:string, TokenConstructor: ITokenConstructor) {
-	var token = new TokenConstructor('html_inline', '', 0);
+	var token = new TokenConstructor('tasklist_label', '', 0);
 	token.content = '<label class="task-list-item-label" for="' + id + '">' + content + '</label>';
 	token.attrs = [["for", id]];
 	return token;

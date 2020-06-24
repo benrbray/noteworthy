@@ -21,23 +21,54 @@ li p {
 	margin: 0;
 }
 
+ul {
+	padding-left: 2em;
+	position: relative;
+}
+
 em.ul {
 	font-style: normal;
 	text-decoration: underline;
 }
 
 /* wikilinks */
-.wikilink { font-family: var(--code-font); color: steelblue; }
+.wikilink { font-family: var(--code-font); font-size: 0.95em; color: steelblue; }
 .wikilink::before { content: "[["; color: #e0e0e0; letter-spacing: -0.1em}
 .wikilink::after { content: "]]"; color: #e0e0e0; letter-spacing: -0.1em}
+
+/* tags */
+.tag { font-family: var(--sans-font); color: steelblue; }
+.tag::before { content: "#"; font-family: var(--code-font);}
+
+/* citation */
+.citation { font-family: var(--code-font); font-size: 0.95em; color: seagreen; }
+.citation::before { content: "@["; color: #e0e0e0; letter-spacing: -0.1em; font-family: var(--code-font);}
+.citation::after { content: "]"; color: #e0e0e0; letter-spacing: -0.1em; font-family: var(--code-font);}
+
+
+/* task lists */
+li.task-list-item {
+	list-style-type: none;
+	left: -1em;
+}
+
+li.task-list-item input[type='checkbox'] {
+	position: relative;
+	left: -1em;
+}
 
 
 /* active when CTRL key pressed */
 .user-ctrl {
 	.wikilink       { cursor: pointer; }
 	a               { cursor: pointer; }
-	.wikilink:hover { text-decoration: underline; }
+	.tag            { cursor: pointer; }
+	.wikilink       { cursor: pointer; }
+	.citation       { cursor: pointer; }
 	a:hover         { text-decoration: underline; }
+	.tag:hover      { text-decoration: underline; }
+	.wikilink:hover { text-decoration: underline; }
+	.citation:hover { text-decoration: underline; }
 }
 
 /* == USER INTERFACE ==================================== */
