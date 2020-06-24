@@ -1,7 +1,7 @@
 import { ipcMain, dialog } from "electron";
 import { readFile, saveFile, IUntitledFile, IFileWithContents, IPossiblyUntitledFile, IDirEntry, IDirEntryMeta, IFileMeta } from "@common/fileio";
 import App from "./app"
-import { UserEvents, FsalEvents, FileEvents, MenuEvents } from "@common/events";
+import { UserEvents, FsalEvents, FileEvents, MenuEvents, EditorEvents } from "@common/events";
 
 export default class MainIPC {
 
@@ -23,14 +23,29 @@ export default class MainIPC {
 		});
 			
 		// DIALOG_FILE_SAVEAS
-		ipcMain.on(UserEvents.DIALOG_FILE_SAVEAS, (evt: Event, file: IPossiblyUntitledFile) => {
+		ipcMain.handle(UserEvents.DIALOG_FILE_SAVEAS, (evt: Event, file: IPossiblyUntitledFile) => {
 			this.handle_dialogFileSaveAs(file);
+			return file.path;
 		});
 		
 		// REQUEST_FILE_SAVE
-		ipcMain.on(UserEvents.REQUEST_FILE_SAVE, (evt:Event, file: IFileWithContents) => {
+		ipcMain.handle(UserEvents.REQUEST_FILE_SAVE, (evt:Event, file: IFileWithContents) => {
 			this.handle_requestFileSave(file);
+			return file.path;
 		});
+
+		ipcMain.handle(EditorEvents.ASK_SAVE_DISCARD_CHANGES, async (evt:Event, filePath:string) => {
+			if(!this._app.window) { return false; }
+			let response = await dialog.showMessageBox(this._app.window?.window, {
+				type : "warning",
+				title: "Warning: Unsaved Changes",
+				message : `File (${filePath}) contains unsaved changes.`,
+				buttons: ["Cancel", "Save"],
+				defaultId: 1,
+				cancelId: 0
+			})
+			return (response.response == 1);
+		})
 
 		// REQUEST_FILE_OPEN_PATH
 		ipcMain.on(UserEvents.REQUEST_FILE_OPEN_PATH, (evt: Event, filePath:string) => {
@@ -189,8 +204,8 @@ export default class MainIPC {
 		});
 	}
 
-	private handle_dialogFileSaveAs(file: IPossiblyUntitledFile) {
-		if (!this._app.window) { return; }
+	private handle_dialogFileSaveAs(file: IPossiblyUntitledFile):string|null {
+		if (!this._app.window) { return null; }
 		console.log("MainIPC :: DIALOG_SAVE_AS");
 
 		const newFilePath: string | undefined = dialog.showSaveDialogSync(
@@ -201,20 +216,22 @@ export default class MainIPC {
 				//filters: FILE_FILTERS
 			}
 		);
-		if (!newFilePath) return;
+		if (!newFilePath) return null;
 		saveFile(newFilePath, file.contents);
 
 		// send new file path to renderer
 		// TODO: handle this event in renderer!!
 		this._app.window.window.webContents.send(FileEvents.FILE_DID_SAVEAS, newFilePath);
+		return newFilePath;
 	}
 
-	private handle_requestFileSave(file: IFileWithContents) {
-		if (!this._app.window) { return; }
+	private handle_requestFileSave(file: IFileWithContents):boolean {
+		if (!this._app.window) { return false; }
 
 		console.log("MainIPC :: FILE_SAVE");
 		saveFile(file.path, file.contents);
-			// TODO: send success/fail back to renderer?
+		// TODO: send success/fail back to renderer?
+		return true;
 	}
 
 	private handle_fileTreeChanged(fileTree: IDirEntryMeta[]) {

@@ -144,7 +144,7 @@ export class IpynbEditor extends Editor<ProseEditorState> {
 
 	// == File Management =============================== //
 
-	saveCurrentFile(saveas: boolean = true) {
+	async saveCurrentFile(saveas: boolean = true) {
 		console.warn("editor-ipynb :: saving not implemented");
 	}
 }

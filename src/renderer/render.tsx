@@ -74,11 +74,11 @@ class Renderer {
 		this._explorer = new Explorer(this._sidebarElt, this._ipc);
 	}
 
-	setCurrentFile(file:IPossiblyUntitledFile):void {
+	async setCurrentFile(file:IPossiblyUntitledFile):Promise<void> {
 		// clean up current editor
 		/** @todo (6/9/20) improve performance by not completely
 		 * deleting old editor when new file has same type as old one */
-		if(this._editor){ this._editor.destroy(); }
+		if(this._editor){ await this._editor.closeAndDestroy(); }
 
 		console.log("render :: setCurrentFile", file);
 		this._currentFile = file;

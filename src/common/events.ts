@@ -16,6 +16,10 @@ export enum UserEvents {
 	REQUEST_TAG_OPEN = "request-tag-open",
 }
 
+export enum EditorEvents {
+	ASK_SAVE_DISCARD_CHANGES = "ask-save-discard-changes"
+}
+
 export enum MenuEvents {
 	MENU_FILE_SAVE = "menu-file-save",
 	MENU_FILE_SAVEAS = "menu-file-saveas"

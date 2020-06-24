@@ -2,6 +2,7 @@ import Renderer from './render';
 
 // other imports
 import { Titlebar, Color } from "custom-electron-titlebar";
+import path from "path";
 
 // css
 import "./main.less";
@@ -9,6 +10,9 @@ import "@root/node_modules/prosemirror-view/style/prosemirror.css";
 import "@root/node_modules/katex/dist/katex.min.css";
 import "@root/node_modules/prosemirror-gapcursor/style/gapcursor.css";
 import "@lib/prosemirror-math/style/math.css";
+
+// images
+import "@root/assets/icon/nwt_small.png";
 
 ////////////////////////////////////////////////////////////
 

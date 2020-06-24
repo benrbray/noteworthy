@@ -8,12 +8,12 @@ export abstract class Editor<TDocumentModel=any> {
 
 	// current file status
 	protected _currentFile:IPossiblyUntitledFile|null;
-	protected _changed:boolean;
+	protected _unsavedChanges:boolean;
 
 	constructor(file:IPossiblyUntitledFile|null, editorElt:HTMLElement, ipc: RendererIPC){
 		// create untitled file if needed
 		this._currentFile = file || new IUntitledFile();
-		this._changed = false;
+		this._unsavedChanges = false;
 
 		// save params
 		this._editorElt = editorElt;
@@ -60,6 +60,7 @@ export abstract class Editor<TDocumentModel=any> {
 		console.log("editor :: setCurrentFile");
 		this._currentFile = file;
 		this.setContents(this.parseContents(file.contents));
+		this.handleDocChanged();
 	}
 
 	// == File Management =============================== //
@@ -69,9 +70,10 @@ export abstract class Editor<TDocumentModel=any> {
 		if(!this._currentFile){ this._currentFile = this._createEmptyFile(); }
 		// set file path
 		this._currentFile.path = filePath;
+		this.handleDocChanged();
 	}
 
-	saveCurrentFile(saveas:boolean = true):void {
+	async saveCurrentFile(saveas:boolean = true):Promise<void> {
 		if(!this._currentFile){
 			console.error("editor :: saveCurrentFile :: no current file, cannot save!");
 			return;
@@ -79,11 +81,38 @@ export abstract class Editor<TDocumentModel=any> {
 
 		this._currentFile.contents = this.serializeContents();
 
+		// perform save
 		if (saveas || this._currentFile.path == null) {
-			this._ipc.openSaveAsDialog(this._currentFile);
+			await this._ipc.openSaveAsDialog(this._currentFile);
 		} else {
-			this._ipc.requestFileSave(this._currentFile);
+			await this._ipc.requestFileSave(this._currentFile);
 		}
+
+		/** @todo (6/22/20) is this the right place to call fileDidSave?
+		 * or wait for callback FILE_DID_SAVE event from main?
+		 * what if save takes a long time and the user has made some changes?
+		 */
+		this.handleFileDidSave();
+	}
+
+	async closeAndDestroy():Promise<void> {
+		// check for unsaved changes
+		if(this._currentFile && this._unsavedChanges){
+			let shouldSave:boolean = await this._ipc.askSaveDiscardChanges(this._currentFile.path || "<untitled>");
+			if(shouldSave){
+				await this.saveCurrentFile(false);
+			}
+		}
+
+		this.destroy();
+	}
+
+	handleDocChanged():void {
+		this._unsavedChanges = true;
+	}
+
+	handleFileDidSave():void {
+		this._unsavedChanges = false;
 	}
 }
 

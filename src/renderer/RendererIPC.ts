@@ -1,7 +1,7 @@
 import { shell, ipcRenderer } from "electron";
 import Renderer from "./render";
 import { IFileWithContents, IPossiblyUntitledFile, IDirEntry, IDirEntryMeta } from "@common/fileio";
-import { FileEvents, FsalEvents, UserEvents, MenuEvents } from "@common/events";
+import { FileEvents, FsalEvents, UserEvents, MenuEvents, EditorEvents } from "@common/events";
 
 export default class RendererIPC {
 	_app:Renderer;
@@ -20,11 +20,13 @@ export default class RendererIPC {
 
 		ipcRenderer.on(FileEvents.FILE_DID_SAVE, (event: Event, arg: Object) => {
 			console.log("RendererIPC :: FILE_SAVED", event, arg);
+			this._app._editor?.handleFileDidSave()
 		});
 
 		ipcRenderer.on(FileEvents.FILE_DID_SAVEAS, (event: Event, filePath: string) => {
 			console.log("RendererIPC :: FILE_SAVED_AS", event, filePath);
 			this._app.setCurrentFilePath(filePath);
+			this._app._editor?.handleFileDidSave()
 		});
 
 		ipcRenderer.on(FsalEvents.FILETREE_CHANGED, (event: Event, fileTree: IDirEntryMeta[]) => {
@@ -51,14 +53,20 @@ export default class RendererIPC {
 		ipcRenderer.send(UserEvents.DIALOG_FILE_OPEN);
 	}
 
-	openSaveAsDialog(fileInfo:IPossiblyUntitledFile) {
+	/**
+	 * @returns file path selected by the user
+	 */
+	openSaveAsDialog(fileInfo:IPossiblyUntitledFile):Promise<string> {
 		console.log("RendererIPC :: openSaveAsDialog()");
-		ipcRenderer.send(UserEvents.DIALOG_FILE_SAVEAS, fileInfo);
+		return ipcRenderer.invoke(UserEvents.DIALOG_FILE_SAVEAS, fileInfo);
 	}
 
-	requestFileSave(fileInfo:IFileWithContents){
+	/**
+	 * @returns TRUE if save successful, FALSE otherwise
+	 */
+	requestFileSave(fileInfo:IFileWithContents):Promise<boolean> {
 		console.log("RendererIPC :: requestFileSave()");
-		ipcRenderer.send(UserEvents.REQUEST_FILE_SAVE, fileInfo);
+		return ipcRenderer.invoke(UserEvents.REQUEST_FILE_SAVE, fileInfo);
 	}
 
 	requestFilePathOpen(filePath: string) {
@@ -79,6 +87,14 @@ export default class RendererIPC {
 	requestExternalLinkOpen(url: string){
 		console.log("RendererIPC :: requestExternalLinkOpen");
 		shell.openExternal(url, { activate: true });
+	}
+
+	/**
+	 * @returns TRUE if changes should be saved, FALSE otherwise.
+	 */
+	askSaveDiscardChanges(filePath:string):Promise<boolean> {
+		console.log("RendererIPC :: askSaveDiscardChanges");
+		return ipcRenderer.invoke(EditorEvents.ASK_SAVE_DISCARD_CHANGES, filePath);
 	}
 
 	////////////////////////////////////////////////////////
