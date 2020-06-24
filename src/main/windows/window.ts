@@ -63,7 +63,8 @@ class Window {
 			webPreferences: {
 				nodeIntegration: true,
 				webSecurity: true
-			}
+			},
+			icon: "assets/icon/nwt_large.png"
 		}, options);
 
 		const win = new BrowserWindow(options);

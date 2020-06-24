@@ -27,6 +27,11 @@
     "dev": "electron-webpack dev",
     "prod": "npm run compile && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dir && open releases/mac/*.app"
   },
+  "build": {
+    "files": [
+      "assets/*"
+    ]
+  },
   "electronWebpack": {
     "staticSourceDirectory": "src/renderer/template/dist",
     "main": {
