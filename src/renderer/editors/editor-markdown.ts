@@ -1,3 +1,5 @@
+// electron imports
+import { clipboard } from "electron";
 
 // prosemirror imports
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
@@ -166,6 +168,9 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				},
 			},
 			dispatchTransaction: (tr: Transaction): void => {
+				// unsaved changes?
+				if(tr.docChanged){ this.handleDocChanged(); }
+
 				let proseView:EditorView = (this._proseEditorView as EditorView);
 
 				// update 
@@ -198,6 +203,34 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 					}
 				}
 				return true;
+			},
+			handlePaste: (view:EditorView, event:ClipboardEvent, slice:Slice<any>) => {
+				let file:File|undefined;
+
+				/** @todo (6/22/20) make this work with the ClipboardEvent? */
+
+				// for some reason, event.clipboardData.getData("img/png") etc.
+				// do not return any data.  So we use the electron clipboard instead.
+				if(clipboard.availableFormats("clipboard").find(str => str.startsWith("image"))){
+					let dataUrl:string = clipboard.readImage("clipboard").toDataURL();
+					
+					let imgNode = markdownSchema.nodes.image.createAndFill({
+						src: dataUrl
+					});
+					
+					if(imgNode){
+						let { $from } = view.state.selection;
+						let tr = view.state.tr.deleteSelection().insert(
+							$from.pos,
+							imgNode
+						)
+						view.dispatch(tr);
+						return true;
+					}
+
+				}
+				
+				return false;
 			}
 		});
 		// initialized

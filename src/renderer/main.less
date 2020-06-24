@@ -6,6 +6,10 @@
 	--sans-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
+.window-title {
+	font-weight: bold;
+}
+
 body {
 	font-family: var(--sans-font);
 	height: 100vh;
@@ -29,6 +33,18 @@ ul {
 em.ul {
 	font-style: normal;
 	text-decoration: underline;
+}
+
+/* blockquote */
+blockquote {
+	border-left: 0.6em solid #eee;
+	color: #666;
+}
+
+img {
+	display: block;
+	max-width: 100%;
+	max-height: 70vh;
 }
 
 /* wikilinks */
@@ -60,7 +76,6 @@ li.task-list-item input[type='checkbox'] {
 
 /* active when CTRL key pressed */
 .user-ctrl {
-	.wikilink       { cursor: pointer; }
 	a               { cursor: pointer; }
 	.tag            { cursor: pointer; }
 	.wikilink       { cursor: pointer; }
@@ -76,7 +91,7 @@ li.task-list-item input[type='checkbox'] {
 #app {
 	display: grid;
 	grid-template-areas: "sidebar content" "sidebar content" "footer footer";
-	grid-template-rows: 2em 1fr 2em;
+	grid-template-rows: 2em 1fr 1.2em;
 	grid-template-columns: 200px 1fr;
 	
 	width: 100%;
@@ -87,14 +102,18 @@ li.task-list-item input[type='checkbox'] {
 	grid-area: footer;
 	background-color: #ccc;
 	vertical-align: middle;
+	overflow: hidden;
 }
 
 #title {
+	display: inline-block;
 	font-family: var(--code-font);
-	height: 100%;
-	vertical-align: middle;
-	padding-left: 1em;
+	padding-left: 0.5em;
+	user-select: none;
 	color: #606060;
+	text-overflow: ellipsis;
+	text-align: right;
+	overflow: hidden;
 }
 
 #header {
