@@ -14,6 +14,7 @@ import { buildInputRules_markdown, buildKeymap_markdown } from "@common/pm-schem
 // views
 import { ICursorPosObserver, MathView } from "@lib/prosemirror-math/src/math-nodeview";
 import { mathInputRules } from "@lib/prosemirror-math/src/plugins/math-inputrules";
+import { MainIpcEventHandlers } from "@main/MainIPC";
 
 ////////////////////////////////////////////////////////////
 
@@ -27,8 +28,8 @@ export class IpynbEditor extends Editor<ProseEditorState> {
 
 	// == Constructor =================================== //
 
-	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, ipc: RendererIPC) {
-		super(file, editorElt, ipc);
+	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, mainProxy: MainIpcEventHandlers) {
+		super(file, editorElt, mainProxy);
 
 		// no editor until initialized
 		this._initialized = false;

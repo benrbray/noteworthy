@@ -24,6 +24,7 @@ import { mathInputRules } from "@common/inputrules";
 import { openPrompt, TextField } from "@common/prompt/prompt";
 import { gapCursor } from "prosemirror-gapcursor";
 import mathSelectPlugin from "@root/lib/prosemirror-math/src/plugins/math-select";
+import { MainIpcEventHandlers } from "@main/MainIPC";
 
 ////////////////////////////////////////////////////////////
 
@@ -32,22 +33,20 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 
 	_proseEditorView: ProseEditorView | null;
 	_proseSchema: ProseSchema;
-	_ipc: RendererIPC;
 	_editorElt: HTMLElement;
 	_keymap: ProsePlugin;
 	_initialized:boolean;
 
 	// == Constructor =================================== //
 
-	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, ipc: RendererIPC) {
-		super(file, editorElt, ipc);
+	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, mainProxy: MainIpcEventHandlers) {
+		super(file, editorElt, mainProxy);
 
 		// no editor until initialized
 		this._initialized = false;
 		this._proseEditorView = null;
 		this._proseSchema = markdownSchema;
 		this._editorElt = editorElt;
-		this._ipc = ipc;
 
 		function markActive(state:EditorState, type:MarkType) {
 			let { from, $from, to, empty } = state.selection
@@ -194,12 +193,12 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 					// wikilinks, tags, citations
 					if (mark = node.marks.find((mark: Mark) => markTypes.includes(mark.type.name))){
 						let tag = node.text;
-						if(tag) { this._ipc.requestTagOpen({tag, create:true}); }
+						if (tag) { this._mainProxy.requestTagOpen({tag, create:true}); }
 					}
 					// links
 					else if(mark = markdownSchema.marks.link.isInSet(node.marks)){
 						let url:string = mark.attrs.href;
-						if(url) { this._ipc.requestExternalLinkOpen(url); }
+						if (url) { this._mainProxy.requestExternalLinkOpen(url); }
 					}
 				}
 				return true;

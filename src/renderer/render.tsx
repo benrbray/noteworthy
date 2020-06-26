@@ -9,11 +9,15 @@ import { MarkdownEditor } from "./editors/editor-markdown";
 import { IpynbEditor } from "./editors/editor-ipynb";
 import { Explorer } from "./explorer/explorer";
 import { JournalEditor } from "./editors/editor-journal";
+import { MainIpcEventHandlers } from "@main/MainIPC";
+import { ipcRenderer } from "electron";
+import { invokerFor } from "@common/ipc";
 
 class Renderer {
 
 	// renderer objects
 	_ipc:RendererIPC;
+	_mainProxy:MainIpcEventHandlers;
 
 	// ui elements
 	_titleElt: HTMLDivElement;
@@ -30,6 +34,7 @@ class Renderer {
 	constructor(){
 		// initialize objects
 		this._ipc = new RendererIPC(this);
+		this._mainProxy = invokerFor<MainIpcEventHandlers>(ipcRenderer, "command");
 		/** @todo (6/9/20) propery set modTime/creationTime */
 		this._currentFile = {
 			type: "file",
@@ -71,7 +76,7 @@ class Renderer {
 		let explorerElt = document.createElement("div");
 		explorerElt.className = "explorer";
 		this._sidebarElt.appendChild(explorerElt);
-		this._explorer = new Explorer(this._sidebarElt, this._ipc);
+		this._explorer = new Explorer(this._sidebarElt, this._mainProxy);
 	}
 
 	async setCurrentFile(file:IPossiblyUntitledFile):Promise<void> {
@@ -92,24 +97,24 @@ class Renderer {
 		switch (ext) {
 			case ".ipynb":
 				this._editor = new IpynbEditor(
-					this._currentFile, this._editorElt, this._ipc
+					this._currentFile, this._editorElt, this._mainProxy
 				);
 				break;
 			case ".json":
 				this._editor = new ProseMirrorEditor(
-					this._currentFile, this._editorElt, this._ipc
+					this._currentFile, this._editorElt, this._mainProxy
 				);
 				break;
 			case ".journal":
 				this._editor = new JournalEditor(
-					this._currentFile, this._editorElt, this._ipc
+					this._currentFile, this._editorElt, this._mainProxy
 				);
 				break;
 			case ".md":
 			case ".txt":
 			default:
 				this._editor = new MarkdownEditor(
-					this._currentFile, this._editorElt, this._ipc
+					this._currentFile, this._editorElt, this._mainProxy
 				);
 				break;
 		}

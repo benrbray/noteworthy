@@ -14,6 +14,7 @@ import RendererIPC from "@renderer/RendererIPC";
 import { journalSchema } from "@common/prosemirror/schema/journal-schema";
 import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
 import { Editor } from "./editor";
+import { MainIpcEventHandlers } from "@main/MainIPC";
 
 ////////////////////////////////////////////////////////////
 
@@ -26,8 +27,8 @@ export class JournalEditor extends Editor<ProseEditorState> {
 
 	// == Constructor =================================== //
 
-	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, ipc: RendererIPC) {
-		super(file, editorElt, ipc);
+	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, mainProxy:MainIpcEventHandlers) {
+		super(file, editorElt, mainProxy);
 
 		// no editor until initialized
 		this._initialized = false;

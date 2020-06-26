@@ -7,6 +7,7 @@ import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin } f
 import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
 import { Editor } from "./editor";
+import { MainIpcEventHandlers } from "@main/MainIPC";
 
 export class ProseMirrorEditor extends Editor<ProseEditorState> {
 
@@ -17,8 +18,8 @@ export class ProseMirrorEditor extends Editor<ProseEditorState> {
 
 	// == Constructor =================================== //
 
-	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, ipc: RendererIPC) {
-		super(file, editorElt, ipc);
+	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, mainProxy: MainIpcEventHandlers) {
+		super(file, editorElt, mainProxy);
 
 		// no editor until initialized
 		this._initialized = false;

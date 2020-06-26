@@ -31,49 +31,6 @@ export default class RendererIPC {
 	handle<T extends RendererIpcEvents>(name: T, data: Parameters<RendererIpcHandlers[T]>[0]){
 		return this._eventHandlers[name](data as any);
 	}
-
-	////////////////////////////////////////////////////////
-
-	openFileDialog(){
-		return ipcProxy.dialogFileOpen();
-	}
-
-	/**
-	 * @returns file path selected by the user
-	 */
-	openSaveAsDialog(fileInfo:IPossiblyUntitledFile):Promise<string|null> {
-		return ipcProxy.dialogFileSaveAs(fileInfo);
-	}
-
-	/**
-	 * @returns TRUE if save successful, FALSE otherwise
-	 */
-	requestFileSave(fileInfo:IFileWithContents):Promise<boolean> {
-		return ipcProxy.requestFileSave(fileInfo);
-	}
-
-	requestFilePathOpen(filePath: string) {
-		return ipcProxy.requestFileOpen({ path: filePath });
-	}
-
-	requestFileHashOpen(fileHash: string) {
-		return ipcProxy.requestFileOpen({hash : fileHash});
-	}
-
-	requestTagOpen(data:{tag: string, create:boolean}) {
-		return ipcProxy.requestTagOpen(data);
-	}
-
-	requestExternalLinkOpen(url: string){
-		return ipcProxy.requestExternalLinkOpen(url);
-	}
-
-	/**
-	 * @returns TRUE if changes should be saved, FALSE otherwise.
-	 */
-	askSaveDiscardChanges(filePath:string):Promise<boolean> {
-		return ipcProxy.askSaveDiscardChanges(filePath);
-	}
 }
 
 export class RendererIpcHandlers {

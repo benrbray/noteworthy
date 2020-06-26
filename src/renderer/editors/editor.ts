@@ -1,23 +1,24 @@
 import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
 import RendererIPC from "@renderer/RendererIPC";
+import { MainIpcEventHandlers } from "@main/MainIPC";
 
 export abstract class Editor<TDocumentModel=any> {
 	// editor
 	protected _editorElt:HTMLElement;
-	protected _ipc: RendererIPC;
+	protected _mainProxy: MainIpcEventHandlers;
 
 	// current file status
 	protected _currentFile:IPossiblyUntitledFile|null;
 	protected _unsavedChanges:boolean;
 
-	constructor(file:IPossiblyUntitledFile|null, editorElt:HTMLElement, ipc: RendererIPC){
+	constructor(file:IPossiblyUntitledFile|null, editorElt:HTMLElement, mainProxy: MainIpcEventHandlers){
 		// create untitled file if needed
 		this._currentFile = file || new IUntitledFile();
 		this._unsavedChanges = false;
 
 		// save params
 		this._editorElt = editorElt;
-		this._ipc = ipc;
+		this._mainProxy = mainProxy;
 	}
 
 	private _createEmptyFile():IUntitledFile {
@@ -83,9 +84,9 @@ export abstract class Editor<TDocumentModel=any> {
 
 		// perform save
 		if (saveas || this._currentFile.path == null) {
-			await this._ipc.openSaveAsDialog(this._currentFile);
+			await this._mainProxy.dialogFileSaveAs(this._currentFile);
 		} else {
-			await this._ipc.requestFileSave(this._currentFile);
+			await this._mainProxy.requestFileSave(this._currentFile);
 		}
 
 		/** @todo (6/22/20) is this the right place to call fileDidSave?
@@ -98,7 +99,7 @@ export abstract class Editor<TDocumentModel=any> {
 	async closeAndDestroy():Promise<void> {
 		// check for unsaved changes
 		if(this._currentFile && this._unsavedChanges){
-			let shouldSave:boolean = await this._ipc.askSaveDiscardChanges(this._currentFile.path || "<untitled>");
+			let shouldSave: boolean = await this._mainProxy.askSaveDiscardChanges(this._currentFile.path || "<untitled>");
 			if(shouldSave){
 				await this.saveCurrentFile(false);
 			}
@@ -121,8 +122,8 @@ export class DefaultEditor extends Editor<string> {
 	_inputElt: HTMLTextAreaElement|null;
 	_initialized:boolean;
 
-	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, ipc: RendererIPC) {
-		super(file, editorElt, ipc);
+	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, mainProxy: MainIpcEventHandlers) {
+		super(file, editorElt, mainProxy);
 		this._inputElt = null;
 		this._initialized = false;
 	}

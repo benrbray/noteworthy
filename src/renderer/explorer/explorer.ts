@@ -1,16 +1,17 @@
 import { IDirEntry, IDirEntryMeta } from "@common/fileio";
 import RendererIPC from "@renderer/RendererIPC";
+import { MainIpcEventHandlers } from "@main/MainIPC";
 
 export class Explorer {
 	_fileTree:IDirEntryMeta[];
 
 	private _elt:HTMLElement;
-	private _ipc:RendererIPC;
+	private _mainProxy:MainIpcEventHandlers;
 	
-	constructor(elt:HTMLElement, ipc:RendererIPC){
+	constructor(elt:HTMLElement, mainProxy:MainIpcEventHandlers){
 		this._elt = elt;
 		this._fileTree = [];
-		this._ipc = ipc;
+		this._mainProxy = mainProxy;
 		this.render();
 	}
 
@@ -25,7 +26,7 @@ export class Explorer {
 		if(fileHash === null){ return false; }
 		
 		console.log("explorer :: clicked", fileHash);
-		this._ipc.requestFileHashOpen(fileHash);
+		this._mainProxy.requestFileOpen({ hash: fileHash });
 	}
 
 	private render(){
