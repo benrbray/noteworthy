@@ -2,6 +2,9 @@ import { ipcMain, dialog, IpcMainInvokeEvent, IpcMainEvent, shell } from "electr
 import { readFile, saveFile, IUntitledFile, IFileWithContents, IPossiblyUntitledFile, IDirEntry, IDirEntryMeta, IFileMeta } from "@common/fileio";
 import App from "./app"
 import { UserEvents, FsalEvents, FileEvents, MenuEvents, EditorEvents } from "@common/events";
+import { RendererIpcHandlers } from "@renderer/RendererIPC";
+import { senderFor } from "@common/ipc";
+import hash from "@common/util/hash";
 
 ////////////////////////////////////////////////////////////
 
@@ -49,22 +52,6 @@ export default class MainIPC {
 		 */
 		return this._eventHandlers[name](data as any);
 	}
-
-	send(cmd: string, arg: any): void {
-		console.log("MainIPC :: send ::", cmd, arg);
-
-		switch (cmd) {
-			// -- Menu Events --------------------------- //
-			case MenuEvents.MENU_FILE_SAVE:
-				this._app.window?.window.webContents.send(MenuEvents.MENU_FILE_SAVE);
-				break;
-			case MenuEvents.MENU_FILE_SAVEAS:
-				this._app.window?.window.webContents.send(MenuEvents.MENU_FILE_SAVEAS);
-				break;
-			default:
-				break;
-		}
-	}
 }
 
 ////////////////////////////////////////////////////////////
@@ -96,8 +83,7 @@ export class MainIpcEventHandlers {
 		saveFile(newFilePath, file.contents);
 
 		// send new file path to renderer
-		// TODO: handle this event in renderer!!
-		app.window.window.webContents.send(FileEvents.FILE_DID_SAVEAS, newFilePath);
+		app._renderProxy?.fileDidSave({ saveas: true, path: newFilePath});
 		return newFilePath;
 	}
 
@@ -111,6 +97,7 @@ export class MainIpcEventHandlers {
 
 		saveFile(file.path, file.contents);
 		// TODO: send success/fail back to renderer?
+		app._renderProxy?.fileDidSave({saveas: false, path: file.path });
 		return true;
 	}
 
@@ -152,31 +139,34 @@ export class MainIpcEventHandlers {
 		}
 
 		// load from hash
-		let file: IFileMeta | null;
-		if (hash === undefined || !(file = app._fsal.getFileByHash(hash))) {
+		let fileMeta: IFileMeta | null;
+		if (hash === undefined || !(fileMeta = app._fsal.getFileByHash(hash))) {
 			/** @todo (6/20/20) load from arbitrary path */
 			throw new Error("file loading from arbitrary path not implemented");
 		}
 
 		// read file contents
-		const fileContents: string | null = readFile(file.path);
+		const fileContents: string | null = readFile(fileMeta.path);
 		if (fileContents === null) { throw new Error("MainIPC :: failed to read file"); }
 
-		app.window.window.webContents.send(FileEvents.FILE_DID_OPEN, {
-			path: file.path,
-			contents: fileContents
-		});
+		let file: IFileWithContents = {
+			parent: null,
+			contents: fileContents,
+			...fileMeta
+		}
+
+		app._renderProxy?.fileDidOpen(file);
 	}
 
 	// -- Request Tag Open ------------------------- //
 
-	requestTagOpen(tag: string) {
+	requestTagOpen(data:{tag: string, create:boolean}) {
 		// `this` will always be bound to a MainIPC instance
 		const app = this._app;
 		if (!app.window) { return; }
 
 		// get files which define this tag
-		let defs: string[] = app.getDefsForTag(tag);
+		let defs: string[] = app.getDefsForTag(data.tag);
 
 		if (defs.length == 0) {
 			/** @todo (6/20/20) create file for this tag when none exists */
@@ -187,55 +177,7 @@ export class MainIpcEventHandlers {
 		}
 
 		// load file from hash
-		let file: IFileMeta | null = app._fsal.getFileByHash(defs[0]);
-		if (!file) { throw new Error("Error reading file!"); /** @todo implement */ }
-
-		// read file contents
-		/** @todo (6/20/20) this code is repeated several times
-		 * in his file, so de-duplicate it
-		 */
-		const fileContents: string | null = readFile(file.path);
-		if (fileContents === null) { throw new Error("MainIPC :: failed to read file"); }
-
-		app.window.window.webContents.send(FileEvents.FILE_DID_OPEN, {
-			path: file.path,
-			contents: fileContents
-		});
-	}
-
-	// -- Request Tag Open Or Create -------------------- //
-
-	requestTagOpenOrCreate(tag: string) {
-		// `this` will always be bound to a MainIPC instance
-		const app = this._app;
-		if (!app.window) { return; }
-
-		// get files which define this tag
-		let defs: string[] = app.getDefsForTag(tag);
-
-		if (defs.length == 0) {
-			/** @todo (6/20/20) create file for this tag when none exists */
-			return;
-		} else if (defs.length > 1) {
-			/** @todo (6/20/20) handle more than one defining file for tag */
-			return
-		}
-
-		// load file from hash
-		let file: IFileMeta | null = app._fsal.getFileByHash(defs[0]);
-		if (!file) { throw new Error("Error reading file!"); /** @todo implement */ }
-
-		// read file contents
-		/** @todo (6/20/20) this code is repeated several times
-		 * in his file, so de-duplicate it
-		 */
-		const fileContents: string | null = readFile(file.path);
-		if (fileContents === null) { throw new Error("MainIPC :: failed to read file"); }
-
-		app.window.window.webContents.send(FileEvents.FILE_DID_OPEN, {
-			path: file.path,
-			contents: fileContents
-		});
+		this.requestFileOpen({ hash: defs[0] });
 	}
 	
 	// -- Request Folder Open --------------------------- //
@@ -273,18 +215,11 @@ export class MainIpcEventHandlers {
 				//filters: FILE_FILTERS
 			}
 		);
+		// if no path selected, do nothing
 		if (!filePaths || !filePaths.length) return;
 
-		const fileContents: string | null = readFile(filePaths[0]);
-		if (fileContents === null) {
-			throw new Error("MainIPC :: failed to read file");
-		}
-
-		console.log(filePaths[0]);
-		app.window.window.webContents.send(FileEvents.FILE_DID_OPEN, {
-			path: filePaths[0],
-			contents: fileContents
-		});
+		// load file from path
+		this.requestFileOpen({ path: filePaths[0] })
 	}
 
 	// -- File Tree Changed ----------------------------- //
@@ -294,7 +229,7 @@ export class MainIpcEventHandlers {
 		const app = this._app;
 		if (!app.window) { return; }
 
-		app.window.window.webContents.send(FsalEvents.FILETREE_CHANGED, fileTree);
+		app._renderProxy?.filetreeChanged(fileTree);
 	}
 
 	// -- Show Notification ----------------------------- //

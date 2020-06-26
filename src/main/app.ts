@@ -12,11 +12,14 @@ import * as FSALDir from "./fsal/fsal-dir";
 import { CrossRefProvider } from "./providers/crossref-provider";
 import { IDirectory } from "@common/fileio";
 import { FsalEvents, IpcEvents, AppEvents } from "@common/events";
+import { RendererIpcEvents, RendererIpcHandlers } from "@renderer/RendererIPC";
+import { senderFor } from "@common/ipc";
 
 export default class App extends EventEmitter {
 	window: Window | undefined;
 	
 	private _ipc:MainIPC;
+	_renderProxy:null|RendererIpcHandlers;
 	_fsal:FSAL;
 
 	// providers
@@ -25,6 +28,7 @@ export default class App extends EventEmitter {
 	constructor(){
 		super();
 
+		this._renderProxy = null;
 		this._ipc = new MainIPC(this);
 		this._fsal = new FSAL("C:/Users/Ben/Documents/notabledata/notes");
 
@@ -50,19 +54,23 @@ export default class App extends EventEmitter {
 
 		global.ipc = {
 			/**
-			 * Sends an arbitrary message to the renderer.
-			 * @param  {String} cmd The command to be sent
-			 * @param  {Object} arg An optional object with data.
-			 * @return {void}     Does not return.
+			 * Executes a command in the main process.
+			 * @param cmd The command to be sent
+			 * @param arg An optional object with data.
 			 */
-			handle: (cmd: MainIpcEvents, arg?: Object): void => { this._ipc.handle(cmd, arg); },
+			handle: (cmd: MainIpcEvents, arg?: any): void => { this._ipc.handle(cmd, arg); },
 			/**
-			 * Sends an arbitrary message to the renderer.
-			 * @param  {String} cmd The command to be sent
-			 * @param  {Object} arg An optional object with data.
-			 * @return {void}     Does not return.
+			 * Sends an arbitrary command to the renderer.
+			 * @param cmd The command to be sent
+			 * @param arg An optional object with data.
 			 */
-			send: (cmd: string, arg?: Object): void => { this._ipc.send(cmd, arg); },
+			send: (cmd: RendererIpcEvents, arg?: any): void => { 
+				if(this._renderProxy !== null){
+					this._renderProxy[cmd](arg);
+				} else {
+					throw new Error("app :: no renderer to send events to!")
+				}
+			},
 			/**
 			 * Sends a message to the renderer and displays it as a notification.
 			 * @param  {String} msg The message to be sent.
@@ -134,6 +142,7 @@ export default class App extends EventEmitter {
 		console.log("app :: load")
 		this.window = new Main();
 		this.window.init();
+		this._renderProxy = senderFor<RendererIpcHandlers>(this.window.window.webContents, "mainCommand");
 	}
 
 	// == Workspaces ==================================== //

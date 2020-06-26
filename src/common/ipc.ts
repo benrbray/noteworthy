@@ -18,13 +18,13 @@ export function invokerFor<T extends object>(ipc: IpcRenderer, channel:string="c
 type Listener<E> = (event:E, ...args:any[]) => void;
 type OnFunc<E,R=void> = (channel:string, listener:Listener<E>) => R;
 type SendFunc = (channel:string, ...args:any[]) => void;
-type EE<E extends Electron.Event> = { 
-	on: OnFunc<E>, send:SendFunc
+type Sender<E extends Electron.Event> = { 
+	send:SendFunc
 };
 
 // here is an attempt at type-safe ipc with the main process
 // it's not bullet-proof, but it's better than shuffling strings
-export function senderFor<T extends object, E extends Electron.Event = Electron.Event>(ee: EE<E>, channel:string="command"): T {
+export function senderFor<T extends object, E extends Electron.Event = Electron.Event>(ee: Sender<E>, channel:string="command"): T {
 	return new Proxy({ee}, {
 		get(target, prop: FunctionPropertyNames<T>, receiver: any) {
 			return async (data: any) => {

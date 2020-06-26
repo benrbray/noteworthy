@@ -194,7 +194,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 					// wikilinks, tags, citations
 					if (mark = node.marks.find((mark: Mark) => markTypes.includes(mark.type.name))){
 						let tag = node.text;
-						if(tag) { this._ipc.requestTagOpenOrCreate(tag); }
+						if(tag) { this._ipc.requestTagOpen({tag, create:true}); }
 					}
 					// links
 					else if(mark = markdownSchema.marks.link.isInSet(node.marks)){

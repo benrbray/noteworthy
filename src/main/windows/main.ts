@@ -42,11 +42,11 @@ export default class Main extends Route {
 					},
 					{
 						label: "Save",
-						click: () => { global.ipc.send(MenuEvents.MENU_FILE_SAVE); }
+						click: () => { global.ipc.send("menuFileSave") }
 					},
 					{
 						label: "Save As...",
-						click: () => { global.ipc.send(MenuEvents.MENU_FILE_SAVEAS); }
+						click: () => { global.ipc.send("menuFileSaveAs"); }
 					},
 					{
 						type: "separator"
