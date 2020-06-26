@@ -1,4 +1,4 @@
-import { ipcMain, dialog, IpcMainInvokeEvent, IpcMainEvent } from "electron";
+import { ipcMain, dialog, IpcMainInvokeEvent, IpcMainEvent, shell } from "electron";
 import { readFile, saveFile, IUntitledFile, IFileWithContents, IPossiblyUntitledFile, IDirEntry, IDirEntryMeta, IFileMeta } from "@common/fileio";
 import App from "./app"
 import { UserEvents, FsalEvents, FileEvents, MenuEvents, EditorEvents } from "@common/events";
@@ -22,26 +22,19 @@ export default class MainIPC {
 	_initialized:boolean;
 
 	_eventHandlers:MainIpcEventHandlers;
-	_invokeHandlers:MainIpcInvokeHandlers;
 
 	constructor(app:App){
 		this._app = app;
 		this._initialized = false;
 
 		this._eventHandlers = new MainIpcEventHandlers(this._app);
-		this._invokeHandlers = new MainIpcInvokeHandlers(this._app);
 	}
 
 	init(){
 		if(this._initialized){ return; }
 		console.log("MainIPC :: init()");
 
-		ipcMain.on("command", (evt: IpcMainEvent, key: MainIpcEvents, data: any) => {
-			console.log(`MainIPC :: handling event :: ${key}`);
-			return this.dispatch(key, data);
-		});
-
-		ipcMain.handle("invokeCommand", (evt: IpcMainInvokeEvent, key: MainIpcInvokeEvents, data: any) => {
+		ipcMain.handle("command", (evt: IpcMainInvokeEvent, key: MainIpcEvents, data: any) => {
 			console.log(`MainIPC :: handling event :: ${key}`);
 			return this.handle(key, data);
 		});
@@ -49,20 +42,12 @@ export default class MainIPC {
 		this._initialized = true;
 	}
 
-	dispatch<T extends MainIpcEvents>(name: T, data: Parameters<MainIpcEventHandlers[T]>[0]) {
+	handle<T extends MainIpcEvents>(name: T, data: Parameters<MainIpcEventHandlers[T]>[0]) {
 		/** @remark (6/25/20) cannot properly type-check this call
 		 *  without support for "correlated record types", see e.g.
 		 *  (https://github.com/Microsoft/TypeScript/issues/30581)
 		 */
 		return this._eventHandlers[name](data as any);
-	}
-
-	handle<T extends MainIpcInvokeEvents>(name: MainIpcInvokeEvents, data: Parameters<MainIpcInvokeHandlers[T]> [0]){
-		/** @remark (6/25/20) cannot properly type-check this call
-		 *  without support for "correlated record types", see e.g.
-		 *  (https://github.com/Microsoft/TypeScript/issues/30581)
-		 */
-		return this._invokeHandlers[name](data as any);
 	}
 
 	send(cmd: string, arg: any): void {
@@ -76,10 +61,10 @@ export default class MainIPC {
 				this._eventHandlers.dialogFolderOpen();
 				break;
 			case UserEvents.DIALOG_FILE_SAVEAS:
-				this._invokeHandlers.dialogFileSaveAs(arg as IPossiblyUntitledFile);
+				this._eventHandlers.dialogFileSaveAs(arg as IPossiblyUntitledFile);
 				break;
 			case UserEvents.REQUEST_FILE_SAVE:
-				this._invokeHandlers.requestFileSave.call(this, arg as IFileWithContents);
+				this._eventHandlers.requestFileSave.call(this, arg as IFileWithContents);
 				break;
 			case FsalEvents.FILETREE_CHANGED:
 				this._eventHandlers.fileTreeChanged.call(this, arg as IDirEntryMeta[]);
@@ -99,14 +84,14 @@ export default class MainIPC {
 
 ////////////////////////////////////////////////////////////
 
-// == Event Handlers =================================== //
+export class MainIpcEventHandlers {
+	private _app: App;
 
-export class MainIpcInvokeHandlers {
-	private _app:App;
-
-	constructor(app:App){
+	constructor(app: App) {
 		this._app = app;
 	}
+
+	// -- Dialog File Save As --------------------------- //
 
 	async dialogFileSaveAs(file: IPossiblyUntitledFile): Promise<string | null> {
 		// `this` will always be bound to a MainIPC instance
@@ -131,6 +116,8 @@ export class MainIpcInvokeHandlers {
 		return newFilePath;
 	}
 
+	// -- Request File Save ----------------------------- //
+
 	async requestFileSave(file: IFileWithContents): Promise<boolean> {
 		// `this` will always be bound to a MainIPC instance
 		const app = this._app;
@@ -142,7 +129,9 @@ export class MainIpcInvokeHandlers {
 		return true;
 	}
 
-	async askSaveDiscardChanges(filePath: string):Promise<boolean> {
+	// -- Ask Save/Discard Changes ---------------------- //
+
+	async askSaveDiscardChanges(filePath: string): Promise<boolean> {
 		// `this` will always be bound to a MainIPC instance
 		const app = this._app;
 
@@ -157,15 +146,11 @@ export class MainIpcInvokeHandlers {
 		})
 		return (response.response == 1);
 	}
-}
 
-////////////////////////////////////////////////////////////
+	// -- Request External Link Open ----------------- //
 
-export class MainIpcEventHandlers {
-	private _app: App;
-
-	constructor(app: App) {
-		this._app = app;
+	async requestExternalLinkOpen(url: string) {
+		shell.openExternal(url, { activate: true });
 	}
 
 	// -- Request File Open ------------------------- //
@@ -329,4 +314,3 @@ export class MainIpcEventHandlers {
 }
 
 export type MainIpcEvents = keyof MainIpcEventHandlers;
-export type MainIpcInvokeEvents = keyof MainIpcInvokeHandlers;

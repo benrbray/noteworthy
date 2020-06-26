@@ -2,7 +2,7 @@ import { shell, ipcRenderer, IpcRenderer } from "electron";
 import Renderer from "./render";
 import { IFileWithContents, IPossiblyUntitledFile, IDirEntry, IDirEntryMeta } from "@common/fileio";
 import { FileEvents, FsalEvents, UserEvents, MenuEvents, EditorEvents } from "@common/events";
-import MainIPC, { MainIpcEventHandlers, MainIpcInvokeHandlers } from "@main/MainIPC";
+import MainIPC, { MainIpcEventHandlers } from "@main/MainIPC";
 
 ////////////////////////////////////////////////////////////
 
@@ -14,22 +14,15 @@ function senderFor<T extends object>(ipc: IpcRenderer): T {
 	let result = { ipc };
 	return new Proxy(result, {
 		get(target, prop: FunctionPropertyNames<T>, receiver: any) {
-			return (data: any) => target.ipc.send("command", prop, data);
-		}
-	});
-}
-
-function invokerFor<T extends object>(ipc: IpcRenderer): T {
-	let result = { ipc };
-	return new Proxy(result, {
-		get(target, prop: FunctionPropertyNames<T>, receiver: any) {
-			return (data: any) => target.ipc.invoke("invokeCommand", prop, data);
+			return async (data: any) => {
+				console.log(`RenderIPC :: send event :: ${prop}`)
+				return target.ipc.invoke("command", prop, data);
+			}
 		}
 	});
 }
 
 const ipcProxy = senderFor<MainIpcEventHandlers>(ipcRenderer);
-const ipcInvokeProxy = invokerFor<MainIpcInvokeHandlers>(ipcRenderer);
 
 ////////////////////////////////////////////////////////////
 
@@ -79,56 +72,47 @@ export default class RendererIPC {
 	////////////////////////////////////////////////////////
 
 	openFileDialog(){
-		console.log("RendererIPC :: openFileDialog()");
-		ipcProxy.dialogFileOpen();
+		return ipcProxy.dialogFileOpen();
 	}
 
 	/**
 	 * @returns file path selected by the user
 	 */
 	openSaveAsDialog(fileInfo:IPossiblyUntitledFile):Promise<string|null> {
-		console.log("RendererIPC :: openSaveAsDialog()");
-		return ipcInvokeProxy.dialogFileSaveAs(fileInfo);
+		return ipcProxy.dialogFileSaveAs(fileInfo);
 	}
 
 	/**
 	 * @returns TRUE if save successful, FALSE otherwise
 	 */
 	requestFileSave(fileInfo:IFileWithContents):Promise<boolean> {
-		console.log("RendererIPC :: requestFileSave()");
-		return ipcInvokeProxy.requestFileSave(fileInfo);
+		return ipcProxy.requestFileSave(fileInfo);
 	}
 
 	requestFilePathOpen(filePath: string) {
-		console.log("RendererIPC :: requestFilePathOpen()");
-		ipcProxy.requestFileOpen({ path: filePath });
+		return ipcProxy.requestFileOpen({ path: filePath });
 	}
 
 	requestFileHashOpen(fileHash: string) {
-		console.log("RendererIPC :: requestFileHashOpen()");
-		ipcProxy.requestFileOpen({hash : fileHash});
+		return ipcProxy.requestFileOpen({hash : fileHash});
 	}
 
 	requestTagOpen(tag: string) {
-		console.log("RendererIPC :: requestTagOpen()");
-		ipcProxy.requestTagOpen(tag);
+		return ipcProxy.requestTagOpen(tag);
 	}
 
 	requestTagOpenOrCreate(tag: string) {
-		console.log("RendererIPC :: requestTagOpenOrCreate()");
-		ipcRenderer.send(UserEvents.REQUEST_TAG_OPEN_OR_CREATE, tag);
+		return ipcProxy.requestTagOpenOrCreate(tag);
 	}
 
 	requestExternalLinkOpen(url: string){
-		console.log("RendererIPC :: requestExternalLinkOpen");
-		shell.openExternal(url, { activate: true });
+		return ipcProxy.requestExternalLinkOpen(url);
 	}
 
 	/**
 	 * @returns TRUE if changes should be saved, FALSE otherwise.
 	 */
 	askSaveDiscardChanges(filePath:string):Promise<boolean> {
-		console.log("RendererIPC :: askSaveDiscardChanges");
-		return ipcInvokeProxy.askSaveDiscardChanges(filePath);
+		return ipcProxy.askSaveDiscardChanges(filePath);
 	}
 }
