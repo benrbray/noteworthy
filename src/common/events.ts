@@ -14,6 +14,7 @@ export enum UserEvents {
 	REQUEST_FILE_OPEN_HASH = "request-file-open-hash",
 	REQUEST_FILE_OPEN_PATH = "request-file-open-path",
 	REQUEST_TAG_OPEN = "request-tag-open",
+	REQUEST_TAG_OPEN_OR_CREATE = "request-tag-open-or-create"
 }
 
 export enum EditorEvents {
