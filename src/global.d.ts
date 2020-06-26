@@ -34,7 +34,13 @@ interface IIPCManager {
 	 * @param cmd The command to be sent
 	 * @param arg An optional object with data.
 	 */
-	send: (cmd:string, arg?:Object) => void,
+	send: (cmd: string, arg?: Object) => void,
+	/**
+	 * Sends an arbitrary message to the renderer.
+	 * @param cmd The command to be sent
+	 * @param arg An optional object with data.
+	 */
+	handle: (cmd: import("src/main/MainIPC").MainIpcEvents, arg?: Object) => void,
 	/**
 	 * Sends a message to the renderer and displays it as a notification.
 	 * @param msg The message to be sent.

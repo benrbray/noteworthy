@@ -27,11 +27,11 @@ export default class Main extends Route {
 				submenu: [
 					{
 						label: "Open Folder...",
-						click: () => { global.ipc.send(UserEvents.DIALOG_WORKSPACE_OPEN); }
+						click: () => { global.ipc.handle("dialogFolderOpen"); }
 					},
 					{
 						label: "Open File...",
-						click: () => { global.ipc.send(UserEvents.DIALOG_FILE_OPEN); }
+						click: () => { global.ipc.handle("dialogFileOpen"); }
 					},
 					{
 						label: "Close All",

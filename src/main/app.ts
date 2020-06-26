@@ -5,7 +5,7 @@ import * as fs from "fs";
 import path from "path";
 import Main from "./windows/main";
 import Window from "./windows/window";
-import MainIPC from "./MainIPC";
+import MainIPC, { MainIpcEvents } from "./MainIPC";
 import FSAL from "./fsal/fsal";
 
 import * as FSALDir from "./fsal/fsal-dir";
@@ -55,13 +55,20 @@ export default class App extends EventEmitter {
 			 * @param  {Object} arg An optional object with data.
 			 * @return {void}     Does not return.
 			 */
-			send: (cmd:string, arg?:Object):void => { this._ipc.send(cmd, arg); },
+			handle: (cmd: MainIpcEvents, arg?: Object): void => { this._ipc.handle(cmd, arg); },
+			/**
+			 * Sends an arbitrary message to the renderer.
+			 * @param  {String} cmd The command to be sent
+			 * @param  {Object} arg An optional object with data.
+			 * @return {void}     Does not return.
+			 */
+			send: (cmd: string, arg?: Object): void => { this._ipc.send(cmd, arg); },
 			/**
 			 * Sends a message to the renderer and displays it as a notification.
 			 * @param  {String} msg The message to be sent.
 			 * @return {void}       Does not return.
 			 */
-			notify: (msg:string):void => { this._ipc.send(IpcEvents.NOTIFY, msg); },
+			notify: (msg:string):void => { this._ipc.handle("showNotification", msg); },
 			/**
 			 * Sends an error to the renderer process that should be displayed using
 			 * a dedicated dialog window (is used, e.g., during export when Pandoc
@@ -70,7 +77,7 @@ export default class App extends EventEmitter {
 			 * @param  {Object} msg        The error object
 			 * @return {void}            Does not return.
 			 */
-			notifyError: (msg:any): void => { this._ipc.send(IpcEvents.NOTIFY_ERROR, msg); }
+			notifyError: (msg:any): void => { this._ipc.handle("showError", msg); }
 		}
 	}
 
@@ -95,7 +102,7 @@ export default class App extends EventEmitter {
 			console.log("app :: fsal-state-changed ::", objPath, ...args);
 			switch(objPath){
 				case "filetree":
-					this._ipc.send(FsalEvents.FILETREE_CHANGED, this._fsal.getFileTree());
+					this._ipc.handle("fileTreeChanged", this._fsal.getFileTree())
 					break;
 				case "workspace":
 					this.emit(FsalEvents.WORKSPACE_CHANGED, ...args);

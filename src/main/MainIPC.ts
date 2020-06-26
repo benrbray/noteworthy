@@ -54,21 +54,6 @@ export default class MainIPC {
 		console.log("MainIPC :: send ::", cmd, arg);
 
 		switch (cmd) {
-			case UserEvents.DIALOG_FILE_OPEN:
-				this._eventHandlers.dialogFileOpen.call(this);
-				break;
-			case UserEvents.DIALOG_WORKSPACE_OPEN:
-				this._eventHandlers.dialogFolderOpen();
-				break;
-			case UserEvents.DIALOG_FILE_SAVEAS:
-				this._eventHandlers.dialogFileSaveAs(arg as IPossiblyUntitledFile);
-				break;
-			case UserEvents.REQUEST_FILE_SAVE:
-				this._eventHandlers.requestFileSave.call(this, arg as IFileWithContents);
-				break;
-			case FsalEvents.FILETREE_CHANGED:
-				this._eventHandlers.fileTreeChanged.call(this, arg as IDirEntryMeta[]);
-				break;
 			// -- Menu Events --------------------------- //
 			case MenuEvents.MENU_FILE_SAVE:
 				this._app.window?.window.webContents.send(MenuEvents.MENU_FILE_SAVE);
@@ -310,6 +295,16 @@ export class MainIpcEventHandlers {
 		if (!app.window) { return; }
 
 		app.window.window.webContents.send(FsalEvents.FILETREE_CHANGED, fileTree);
+	}
+
+	// -- Show Notification ----------------------------- //
+
+	showNotification(msg: string) {
+		/** @todo (6/26/20) implement notifications */
+	}
+
+	showError(msg: string) {
+		/** @todo (6/26/20) implement error notifications */
 	}
 }
 
