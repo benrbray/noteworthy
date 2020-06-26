@@ -1,58 +1,11 @@
-import { ipcMain, dialog, IpcMainInvokeEvent, IpcMainEvent, shell } from "electron";
-import { readFile, saveFile, IUntitledFile, IFileWithContents, IPossiblyUntitledFile, IDirEntry, IDirEntryMeta, IFileMeta } from "@common/fileio";
+import { dialog, shell } from "electron";
+import { readFile, saveFile, IFileWithContents, IPossiblyUntitledFile, IDirEntryMeta, IFileMeta } from "@common/fileio";
 import App from "./app"
-import { UserEvents, FsalEvents, FileEvents, MenuEvents, EditorEvents } from "@common/events";
-import { RendererIpcHandlers } from "@renderer/RendererIPC";
-import { senderFor } from "@common/ipc";
-import hash from "@common/util/hash";
 
 ////////////////////////////////////////////////////////////
-
-export class MainReceiver {
-	dialogFileOpen(path:string, num:number) {
-
-	}
-}
 
 type FunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? K : never }[keyof T];
 type FunctionProperties<T> = Pick<T, FunctionPropertyNames<T>>;
-
-////////////////////////////////////////////////////////////
-
-export default class MainIPC {
-
-	_app:App;
-	_initialized:boolean;
-
-	_eventHandlers:MainIpcHandlers;
-
-	constructor(app:App){
-		this._app = app;
-		this._initialized = false;
-
-		this._eventHandlers = new MainIpcHandlers(this._app);
-	}
-
-	init(){
-		if(this._initialized){ return; }
-		console.log("MainIPC :: init()");
-
-		ipcMain.handle("command", (evt: IpcMainInvokeEvent, key: MainIpcEvents, data: any) => {
-			console.log(`MainIPC :: handling event :: ${key}`);
-			return this.handle(key, data);
-		});
-		
-		this._initialized = true;
-	}
-
-	handle<T extends MainIpcEvents>(name: T, data: Parameters<MainIpcHandlers[T]>[0]) {
-		/** @remark (6/25/20) cannot properly type-check this call
-		 *  without support for "correlated record types", see e.g.
-		 *  (https://github.com/Microsoft/TypeScript/issues/30581)
-		 */
-		return this._eventHandlers[name](data as any);
-	}
-}
 
 ////////////////////////////////////////////////////////////
 

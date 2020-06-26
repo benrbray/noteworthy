@@ -1,25 +1,23 @@
-import { app, ipcMain as ipc, Event, Menu, shell } from "electron";
+import { app, ipcMain as ipc, Event, IpcMainInvokeEvent, ipcMain } from "electron";
 import { enforceMacOSAppLocation, is } from 'electron-util';
 import { EventEmitter } from "events";
-import * as fs from "fs";
-import path from "path";
 import Main from "./windows/main";
 import Window from "./windows/window";
-import MainIPC, { MainIpcEvents } from "./MainIPC";
+import { MainIpcEvents, MainIpcHandlers } from "./MainIPC";
 import FSAL from "./fsal/fsal";
 
 import * as FSALDir from "./fsal/fsal-dir";
 import { CrossRefProvider } from "./providers/crossref-provider";
 import { IDirectory } from "@common/fileio";
-import { FsalEvents, IpcEvents, AppEvents } from "@common/events";
+import { FsalEvents, AppEvents } from "@common/events";
 import { RendererIpcEvents, RendererIpcHandlers } from "@renderer/RendererIPC";
 import { senderFor } from "@common/ipc";
 
 export default class App extends EventEmitter {
 	window: Window | undefined;
 	
-	private _ipc:MainIPC;
 	_renderProxy:null|RendererIpcHandlers;
+	_eventHandlers:MainIpcHandlers;
 	_fsal:FSAL;
 
 	// providers
@@ -29,7 +27,7 @@ export default class App extends EventEmitter {
 		super();
 
 		this._renderProxy = null;
-		this._ipc = new MainIPC(this);
+		this._eventHandlers = new MainIpcHandlers(this);
 		this._fsal = new FSAL("C:/Users/Ben/Documents/notabledata/notes");
 
 		this.init();
@@ -50,7 +48,10 @@ export default class App extends EventEmitter {
 	}
 
 	initIPC(){
-		this._ipc.init();
+		ipcMain.handle("command", (evt: IpcMainInvokeEvent, key: MainIpcEvents, data: any) => {
+			console.log(`MainIPC :: handling event :: ${key}`);
+			return this.handle(key, data);
+		});
 
 		global.ipc = {
 			/**
@@ -58,7 +59,7 @@ export default class App extends EventEmitter {
 			 * @param cmd The command to be sent
 			 * @param arg An optional object with data.
 			 */
-			handle: (cmd: MainIpcEvents, arg?: any): void => { this._ipc.handle(cmd, arg); },
+			handle: (cmd: MainIpcEvents, arg?: any): void => { this.handle(cmd, arg); },
 			/**
 			 * Sends an arbitrary command to the renderer.
 			 * @param cmd The command to be sent
@@ -76,7 +77,7 @@ export default class App extends EventEmitter {
 			 * @param  {String} msg The message to be sent.
 			 * @return {void}       Does not return.
 			 */
-			notify: (msg:string):void => { this._ipc.handle("showNotification", msg); },
+			notify: (msg:string):void => { this.handle("showNotification", msg); },
 			/**
 			 * Sends an error to the renderer process that should be displayed using
 			 * a dedicated dialog window (is used, e.g., during export when Pandoc
@@ -85,7 +86,7 @@ export default class App extends EventEmitter {
 			 * @param  {Object} msg        The error object
 			 * @return {void}            Does not return.
 			 */
-			notifyError: (msg:any): void => { this._ipc.handle("showError", msg); }
+			notifyError: (msg:any): void => { this.handle("showError", msg); }
 		}
 	}
 
@@ -110,7 +111,7 @@ export default class App extends EventEmitter {
 			console.log("app :: fsal-state-changed ::", objPath, ...args);
 			switch(objPath){
 				case "filetree":
-					this._ipc.handle("fileTreeChanged", this._fsal.getFileTree())
+					this.handle("fileTreeChanged", this._fsal.getFileTree())
 					break;
 				case "workspace":
 					this.emit(FsalEvents.WORKSPACE_CHANGED, ...args);
@@ -160,6 +161,14 @@ export default class App extends EventEmitter {
 	}
 
 	// EVENTS //////////////////////////////////////////////
+
+	handle<T extends MainIpcEvents>(name: T, data: Parameters<MainIpcHandlers[T]>[0]) {
+		/** @remark (6/25/20) cannot properly type-check this call
+		 *  without support for "correlated record types", see e.g.
+		 *  (https://github.com/Microsoft/TypeScript/issues/30581)
+		 */
+		return this._eventHandlers[name](data as any);
+	}
 
 	events() {
 		this.attach__windowAllClosed();
