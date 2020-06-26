@@ -1,17 +1,16 @@
 import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
-import RendererIPC from "@renderer/RendererIPC";
-import { MainIpcEventHandlers } from "@main/MainIPC";
+import { MainIpcHandlers } from "@main/MainIPC";
 
 export abstract class Editor<TDocumentModel=any> {
 	// editor
 	protected _editorElt:HTMLElement;
-	protected _mainProxy: MainIpcEventHandlers;
+	protected _mainProxy: MainIpcHandlers;
 
 	// current file status
 	protected _currentFile:IPossiblyUntitledFile|null;
 	protected _unsavedChanges:boolean;
 
-	constructor(file:IPossiblyUntitledFile|null, editorElt:HTMLElement, mainProxy: MainIpcEventHandlers){
+	constructor(file:IPossiblyUntitledFile|null, editorElt:HTMLElement, mainProxy: MainIpcHandlers){
 		// create untitled file if needed
 		this._currentFile = file || new IUntitledFile();
 		this._unsavedChanges = false;
@@ -122,7 +121,7 @@ export class DefaultEditor extends Editor<string> {
 	_inputElt: HTMLTextAreaElement|null;
 	_initialized:boolean;
 
-	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, mainProxy: MainIpcEventHandlers) {
+	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, mainProxy: MainIpcHandlers) {
 		super(file, editorElt, mainProxy);
 		this._inputElt = null;
 		this._initialized = false;

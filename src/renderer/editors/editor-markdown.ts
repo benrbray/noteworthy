@@ -10,7 +10,6 @@ import { history } from "prosemirror-history";
 import { keymap } from "prosemirror-keymap";
 
 // project imports
-import RendererIPC from "@renderer/RendererIPC";
 import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
 import { Editor } from "./editor";
 
@@ -24,7 +23,7 @@ import { mathInputRules } from "@common/inputrules";
 import { openPrompt, TextField } from "@common/prompt/prompt";
 import { gapCursor } from "prosemirror-gapcursor";
 import mathSelectPlugin from "@root/lib/prosemirror-math/src/plugins/math-select";
-import { MainIpcEventHandlers } from "@main/MainIPC";
+import { MainIpcHandlers } from "@main/MainIPC";
 
 ////////////////////////////////////////////////////////////
 
@@ -39,7 +38,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 
 	// == Constructor =================================== //
 
-	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, mainProxy: MainIpcEventHandlers) {
+	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, mainProxy: MainIpcHandlers) {
 		super(file, editorElt, mainProxy);
 
 		// no editor until initialized

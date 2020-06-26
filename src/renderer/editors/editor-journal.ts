@@ -10,11 +10,10 @@ import { baseKeymap, toggleMark, wrapIn, chainCommands,
 import { keymap } from "prosemirror-keymap";
 
 // project imports
-import RendererIPC from "@renderer/RendererIPC";
 import { journalSchema } from "@common/prosemirror/schema/journal-schema";
 import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
 import { Editor } from "./editor";
-import { MainIpcEventHandlers } from "@main/MainIPC";
+import { MainIpcHandlers } from "@main/MainIPC";
 
 ////////////////////////////////////////////////////////////
 
@@ -27,7 +26,7 @@ export class JournalEditor extends Editor<ProseEditorState> {
 
 	// == Constructor =================================== //
 
-	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, mainProxy:MainIpcEventHandlers) {
+	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, mainProxy:MainIpcHandlers) {
 		super(file, editorElt, mainProxy);
 
 		// no editor until initialized

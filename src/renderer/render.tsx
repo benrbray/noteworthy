@@ -2,22 +2,22 @@
 import * as pathlib from "path";
 
 // project imports
-import RendererIPC from "./RendererIPC";
+import { RendererIpcEvents, RendererIpcHandlers } from "./RendererIPC";
 import { IPossiblyUntitledFile } from "@common/fileio";
 import { ProseMirrorEditor } from "./editors/editor-prosemirror";
 import { MarkdownEditor } from "./editors/editor-markdown";
 import { IpynbEditor } from "./editors/editor-ipynb";
 import { Explorer } from "./explorer/explorer";
 import { JournalEditor } from "./editors/editor-journal";
-import { MainIpcEventHandlers } from "@main/MainIPC";
-import { ipcRenderer } from "electron";
+import { MainIpcHandlers } from "@main/MainIPC";
+import { ipcRenderer, IpcRendererEvent } from "electron";
 import { invokerFor } from "@common/ipc";
 
 class Renderer {
 
 	// renderer objects
-	_ipc:RendererIPC;
-	_mainProxy:MainIpcEventHandlers;
+	_mainProxy: MainIpcHandlers;
+	_eventHandlers: RendererIpcHandlers;
 
 	// ui elements
 	_titleElt: HTMLDivElement;
@@ -33,8 +33,9 @@ class Renderer {
 
 	constructor(){
 		// initialize objects
-		this._ipc = new RendererIPC(this);
-		this._mainProxy = invokerFor<MainIpcEventHandlers>(ipcRenderer, "command");
+		this._mainProxy = invokerFor<MainIpcHandlers>(ipcRenderer, "command");
+		this._eventHandlers = new RendererIpcHandlers(this);
+
 		/** @todo (6/9/20) propery set modTime/creationTime */
 		this._currentFile = {
 			type: "file",
@@ -53,9 +54,16 @@ class Renderer {
 
 	init(){
 		console.log("render :: init()");
-		this._ipc.init();
+
+		// handle events from main
+		ipcRenderer.on("mainCommand", (evt: IpcRendererEvent, key: RendererIpcEvents, data: any) => {
+			this.handle(key, data);
+		});
+
+		// file explorer
 		this.initExplorer();
 
+		// set current file
 		if(this._currentFile){
 			this.setCurrentFile(this._currentFile);
 		}
@@ -77,6 +85,10 @@ class Renderer {
 		explorerElt.className = "explorer";
 		this._sidebarElt.appendChild(explorerElt);
 		this._explorer = new Explorer(this._sidebarElt, this._mainProxy);
+	}
+
+	handle<T extends RendererIpcEvents>(name: T, data: Parameters<RendererIpcHandlers[T]>[0]) {
+		return this._eventHandlers[name](data as any);
 	}
 
 	async setCurrentFile(file:IPossiblyUntitledFile):Promise<void> {

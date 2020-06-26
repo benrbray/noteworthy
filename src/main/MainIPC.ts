@@ -24,13 +24,13 @@ export default class MainIPC {
 	_app:App;
 	_initialized:boolean;
 
-	_eventHandlers:MainIpcEventHandlers;
+	_eventHandlers:MainIpcHandlers;
 
 	constructor(app:App){
 		this._app = app;
 		this._initialized = false;
 
-		this._eventHandlers = new MainIpcEventHandlers(this._app);
+		this._eventHandlers = new MainIpcHandlers(this._app);
 	}
 
 	init(){
@@ -45,7 +45,7 @@ export default class MainIPC {
 		this._initialized = true;
 	}
 
-	handle<T extends MainIpcEvents>(name: T, data: Parameters<MainIpcEventHandlers[T]>[0]) {
+	handle<T extends MainIpcEvents>(name: T, data: Parameters<MainIpcHandlers[T]>[0]) {
 		/** @remark (6/25/20) cannot properly type-check this call
 		 *  without support for "correlated record types", see e.g.
 		 *  (https://github.com/Microsoft/TypeScript/issues/30581)
@@ -56,7 +56,7 @@ export default class MainIPC {
 
 ////////////////////////////////////////////////////////////
 
-export class MainIpcEventHandlers {
+export class MainIpcHandlers {
 	private _app: App;
 
 	constructor(app: App) {
@@ -243,4 +243,4 @@ export class MainIpcEventHandlers {
 	}
 }
 
-export type MainIpcEvents = keyof MainIpcEventHandlers;
+export type MainIpcEvents = keyof MainIpcHandlers;

@@ -1,14 +1,13 @@
 import { IDirEntry, IDirEntryMeta } from "@common/fileio";
-import RendererIPC from "@renderer/RendererIPC";
-import { MainIpcEventHandlers } from "@main/MainIPC";
+import { MainIpcHandlers } from "@main/MainIPC";
 
 export class Explorer {
 	_fileTree:IDirEntryMeta[];
 
 	private _elt:HTMLElement;
-	private _mainProxy:MainIpcEventHandlers;
+	private _mainProxy:MainIpcHandlers;
 	
-	constructor(elt:HTMLElement, mainProxy:MainIpcEventHandlers){
+	constructor(elt:HTMLElement, mainProxy:MainIpcHandlers){
 		this._elt = elt;
 		this._fileTree = [];
 		this._mainProxy = mainProxy;

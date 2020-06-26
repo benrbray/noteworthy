@@ -1,13 +1,12 @@
 import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
 import { EditorView as ProseEditorView } from "prosemirror-view";
 import { Schema as ProseSchema, DOMParser as ProseDOMParser } from "prosemirror-model";
-import RendererIPC from "@renderer/RendererIPC";
 import { PlainSchema } from "@common/pm-schema";
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
 import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
 import { Editor } from "./editor";
-import { MainIpcEventHandlers } from "@main/MainIPC";
+import { MainIpcHandlers } from "@main/MainIPC";
 
 export class ProseMirrorEditor extends Editor<ProseEditorState> {
 
@@ -18,7 +17,7 @@ export class ProseMirrorEditor extends Editor<ProseEditorState> {
 
 	// == Constructor =================================== //
 
-	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, mainProxy: MainIpcEventHandlers) {
+	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, mainProxy: MainIpcHandlers) {
 		super(file, editorElt, mainProxy);
 
 		// no editor until initialized
