@@ -12,6 +12,14 @@
  */
 
 import { FileHash } from "@common/fileio"
+import * as pathlib from "path";
+
+/** @todo (6/27/20) 
+ *  What about multiple strings referring to the same path?
+ *      docs/file.txt vs docs/../docs/file.txt
+ *      docs/file.txt vs docs\file.txt
+ *  Will using path.normalize() fix most of these issues?
+ */
 
 /**
 * Basic hashing function (thanks to https://stackoverflow.com/a/7616484)
@@ -19,6 +27,7 @@ import { FileHash } from "@common/fileio"
 * @return hash of the given string
 */
 export default function hash(str:string):FileHash {
+	str = pathlib.normalize(str);
 	let hash = 0
 	let i, chr
 
