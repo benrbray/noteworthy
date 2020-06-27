@@ -31,13 +31,11 @@ export class MainIpcHandlers {
 	// -- Request Folder Open --------------------------- //
 
 	dialogFolderOpen() {
-		// `this` will always be bound to a MainIPC instance
-		const app = this._app;
-		if (!app.window) { return; }
+		if (!this._app.window) { return; }
 
 		// open file dialog
 		const dirPaths: string[] | undefined = dialog.showOpenDialogSync(
-			app.window.window,
+			this._app.window.window,
 			{
 				properties: ['openDirectory', 'createDirectory'],
 				//filters: FILE_FILTERS
@@ -45,19 +43,17 @@ export class MainIpcHandlers {
 		);
 		if (!dirPaths || !dirPaths.length) return;
 
-		app.setWorkspaceDir(dirPaths[0]);
+		this._app.setWorkspaceDir(dirPaths[0]);
 	}
 
 	// -- Request File Open ----------------------------- //
 
 	dialogFileOpen() {
-		// `this` will always be bound to a MainIPC instance
-		const app = this._app;
-		if (!app.window) { return; }
+		if (!this._app.window) { return; }
 
 		// open file dialog
 		const filePaths: string[] | undefined = dialog.showOpenDialogSync(
-			app.window.window,
+			this._app.window.window,
 			{
 				properties: ['openFile'],
 				//filters: FILE_FILTERS
@@ -73,14 +69,11 @@ export class MainIpcHandlers {
 	// -- Dialog File Save As --------------------------- //
 
 	async dialogFileSaveAs(file: IPossiblyUntitledFile): Promise<string | null> {
-		// `this` will always be bound to a MainIPC instance
-		const app = this._app;
-
-		if (!app.window) { return null; }
+		if (!this._app.window) { return null; }
 
 		const newFilePath: string | undefined = dialog.showSaveDialogSync(
 			//TODO: better default "save as" path?
-			app.window.window,
+			this._app.window.window,
 			{
 				defaultPath: file.path || "",
 				//filters: FILE_FILTERS
@@ -90,18 +83,15 @@ export class MainIpcHandlers {
 		saveFile(newFilePath, file.contents);
 
 		// send new file path to renderer
-		app._renderProxy?.fileDidSave({ saveas: true, path: newFilePath});
+		this._app._renderProxy?.fileDidSave({ saveas: true, path: newFilePath});
 		return newFilePath;
 	}
 
 	// -- Ask Save/Discard Changes ---------------------- //
 
 	async askSaveDiscardChanges(filePath: string): Promise<boolean> {
-		// `this` will always be bound to a MainIPC instance
-		const app = this._app;
-
-		if (!app.window) { return false; }
-		let response = await dialog.showMessageBox(app.window?.window, {
+		if (!this._app.window) { return false; }
+		let response = await dialog.showMessageBox(this._app.window?.window, {
 			type: "warning",
 			title: "Warning: Unsaved Changes",
 			message: `File (${filePath}) contains unsaved changes.`,
@@ -117,23 +107,18 @@ export class MainIpcHandlers {
 	// -- Request File Save ----------------------------- //
 
 	async requestFileSave(file: IFileWithContents): Promise<boolean> {
-		// `this` will always be bound to a MainIPC instance
-		const app = this._app;
-
-		if (!app.window) { return false; }
+		if (!this._app.window) { return false; }
 
 		saveFile(file.path, file.contents);
 		// TODO: send success/fail back to renderer?
-		app._renderProxy?.fileDidSave({saveas: false, path: file.path });
+		this._app._renderProxy?.fileDidSave({saveas: false, path: file.path });
 		return true;
 	}
 
 	// -- Request File Open ----------------------------- //
 
 	requestFileOpen(fileInfo: { hash?: string, path?: string }) {
-		// `this` will always be bound to a MainIPC instance
-		const app = this._app;
-		if (!app.window) { return; }
+		if (!this._app.window) { return; }
 
 		let { hash, path } = fileInfo;
 		// validate input
@@ -143,7 +128,7 @@ export class MainIpcHandlers {
 
 		// load from hash
 		let fileMeta: IFileMeta | null;
-		if (hash === undefined || !(fileMeta = app._fsal.getFileByHash(hash))) {
+		if (hash === undefined || !(fileMeta = this._app._fsal.getFileByHash(hash))) {
 			/** @todo (6/20/20) load from arbitrary path */
 			throw new Error("file loading from arbitrary path not implemented");
 		}
@@ -158,7 +143,7 @@ export class MainIpcHandlers {
 			...fileMeta
 		}
 
-		app._renderProxy?.fileDidOpen(file);
+		this._app._renderProxy?.fileDidOpen(file);
 	}
 	
 	//// FILETREE //////////////////////////////////////////
@@ -166,11 +151,9 @@ export class MainIpcHandlers {
 	// -- File Tree Changed ----------------------------- //
 
 	fileTreeChanged(fileTree: IDirEntryMeta[]) {
-		// `this` will always be bound to a MainIPC instance
-		const app = this._app;
-		if (!app.window) { return; }
+		if (!this._app.window) { return; }
 
-		app._renderProxy?.filetreeChanged(fileTree);
+		this._app._renderProxy?.filetreeChanged(fileTree);
 	}
 
 	//// TAGS //////////////////////////////////////////////
@@ -184,12 +167,10 @@ export class MainIpcHandlers {
 	// -- Request Tag Open ------------------------------ //
 
 	requestTagOpen(data:{tag: string, create:boolean}) {
-		// `this` will always be bound to a MainIPC instance
-		const app = this._app;
-		if (!app.window) { return; }
+		if (!this._app.window) { return; }
 
 		// get files which define this tag
-		let defs: string[] = app.getDefsForTag(data.tag);
+		let defs: string[] = this._app.getDefsForTag(data.tag);
 
 		if (defs.length == 0) {
 			/** @todo (6/20/20) create file for this tag when none exists */
