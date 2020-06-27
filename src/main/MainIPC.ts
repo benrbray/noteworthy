@@ -104,6 +104,13 @@ export class MainIpcHandlers {
 
 	//// FILES /////////////////////////////////////////////
 
+	// -- Request File Create --------------------------- //
+
+	async requestFileCreate(path:string, contents:string=""):Promise<IFileMeta|null> {
+		/** @todo (6/26/20) check if path in workspace? */
+		return this._app._fsal.createFile(path, contents);
+	}
+
 	// -- Request File Save ----------------------------- //
 
 	async requestFileSave(file: IFileWithContents): Promise<boolean> {
@@ -166,22 +173,50 @@ export class MainIpcHandlers {
 
 	// -- Request Tag Open ------------------------------ //
 
-	requestTagOpen(data:{tag: string, create:boolean}) {
+	async requestTagOpen(data:{tag: string, create:boolean}) {
 		if (!this._app.window) { return; }
 
 		// get files which define this tag
 		let defs: string[] = this._app.getDefsForTag(data.tag);
+		let fileHash:string;
 
 		if (defs.length == 0) {
-			/** @todo (6/20/20) create file for this tag when none exists */
-			return;
-		} else if (defs.length > 1) {
+			// create a file for this tag when none exists?
+			if(!data.create){ return; }
+			console.log(`MainIPC :: creating file for tag '${data.tag}'`);
+
+			/** @todo (6/27/20)
+			 * what if data.tag is not a valid file name?
+			 * what if it contains slashes?  what if it uses \ instead of /?
+			 */
+
+			// create file for this tag when none exists
+			let fileName:string = data.tag + ".md";
+			let filePath:string|null = this._app._fsal.resolveWorkspaceRelativePath(fileName);
+			if(!filePath){
+				console.error("MainIPC :: could not create file for tag, no active workspace");
+				return;
+			}
+
+			// create file
+			let fileContents:string = this._app.getDefaultFileContents(".md", fileName)
+			let file:IFileMeta|null = await this.requestFileCreate(filePath, fileContents);
+			if(!file){
+				console.error("MainIPC :: unknown error creating file for tag");
+				return;
+			}
+
+			// set hah
+			fileHash = file.hash;
+		} else if(defs.length == 1){
+			fileHash = defs[0];
+		} else {
 			/** @todo (6/20/20) handle more than one defining file for tag */
-			return
+			return;
 		}
 
 		// load file from hash
-		this.requestFileOpen({ hash: defs[0] });
+		this.requestFileOpen({ hash: fileHash });
 	}
 }
 

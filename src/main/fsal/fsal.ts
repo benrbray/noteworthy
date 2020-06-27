@@ -353,6 +353,22 @@ export default class FSAL extends EventEmitter {
 		return this._workspace && this._workspace.dir;
 	}
 
+	/**
+	 * Convert a workspace-relative path to an absolute path.
+	 * @returns An absolute path, or NULL if no workspace exists.
+	 */
+	resolveWorkspaceRelativePath(relPath: string): string | null {
+		let workspacePath = this.getWorkspaceDir()?.path;
+		if (!workspacePath) { return null; }
+
+		/** @todo (6/27/20) error if the resulting abs path
+		 * is not inside the workspace (e.g. if relPath="../../..")
+		 */
+		relPath = pathlib.normalize(relPath);
+		return pathlib.join(workspacePath, relPath);
+	}
+
+
 	registerWorkspacePlugin(plugin:WorkspaceProvider){
 		this._workspacePlugins.push(plugin);
 	}
@@ -365,6 +381,25 @@ export default class FSAL extends EventEmitter {
 	}
 
 	// == OPEN/CLOSE FILES ============================== //
+
+	async createFile(path: string, contents: string = ""): Promise<IFileMeta | null> {
+		// normalize path (in an attempt to prevent different hashes for the same path)
+		path = pathlib.normalize(path);
+		// write file if doesn't exist
+		return fs.promises.writeFile(path, contents, {flag : "wx" })
+			.then(
+				/** @todo (6/27/20) should we really call updatePath() here?
+				 * the workspace watcher will already be calling it after it
+				 * detects that the file as changed.  Is there any risk of 
+				 * race conditions?  multiple file objs being created?
+				 */ 
+				()=>this._workspace && this._workspace.metadata.updatePath(path),
+				(reason)=>{ 
+					console.error(`fsal :: failed to create file ${path}`, reason); 
+					return null;
+				}
+			)
+	}
 
 	/** 
 	 * Add a file to the list of currently open files.

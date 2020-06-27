@@ -36,6 +36,8 @@ class Renderer {
 		this._mainProxy = invokerFor<MainIpcHandlers>(ipcRenderer, "command");
 		this._eventHandlers = new RendererIpcHandlers(this);
 
+		(window as any).renderer = this;
+
 		/** @todo (6/9/20) propery set modTime/creationTime */
 		this._currentFile = {
 			type: "file",

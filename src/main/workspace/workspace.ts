@@ -33,9 +33,8 @@ export class WorkspaceMeta {
 		if(file === null) { return null; }
 
 		// store file info in workspace
-		let fileHash:string = hash(filePath);
 		let fileMeta:IFileMeta = FSALFile.getFileMetadata(file);
-		this.files[fileHash] = fileMeta;
+		this.files[file.hash] = fileMeta;
 		return fileMeta;
 	}
 

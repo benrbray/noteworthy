@@ -5,10 +5,11 @@ import Main from "./windows/main";
 import Window from "./windows/window";
 import { MainIpcEvents, MainIpcHandlers } from "./MainIPC";
 import FSAL from "./fsal/fsal";
+import * as pathlib from "path";
 
 import * as FSALDir from "./fsal/fsal-dir";
 import { CrossRefProvider } from "./providers/crossref-provider";
-import { IDirectory } from "@common/fileio";
+import { IDirectory, IFileMeta } from "@common/fileio";
 import { FsalEvents, AppEvents } from "@common/events";
 import { RendererIpcEvents, RendererIpcHandlers } from "@renderer/RendererIPC";
 import { senderFor } from "@common/ipc";
@@ -151,6 +152,27 @@ export default class App extends EventEmitter {
 	async setWorkspaceDir(dirPath:string){
 		let dir:IDirectory = await FSALDir.parseDir(dirPath);
 		this._fsal.setWorkspaceDir(dir);
+	}
+
+	// == File Types ==================================== //
+
+	/**
+	 * @returns a string representing the default contents
+	 *     of a file with the given extension and name.
+	 * @param fileExt A string like ".md", ".txt", etc.
+	 * @param fileName `fileExt` will be stripped from name, if present.
+	 */
+	getDefaultFileContents(fileExt:string, fileName:string):string {
+		/** @todo (6/27/20) don't use file ext to determine file type
+		 * (user should be able to e.g. specify a different editor type
+		 * than the default for .md files)
+		 */
+		if(fileExt == ".md" || fileExt == ".txt"){
+			let name = pathlib.basename(fileName, fileExt);
+			return `# ${name}`;
+		} else {
+			return "";
+		}
 	}
 
 	// == Tags ========================================== //
