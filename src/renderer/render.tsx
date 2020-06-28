@@ -33,7 +33,7 @@ class Renderer {
 
 	constructor(){
 		// initialize objects
-		this._mainProxy = invokerFor<MainIpcHandlers>(ipcRenderer, "command");
+		this._mainProxy = invokerFor<MainIpcHandlers>(ipcRenderer, "command", "render->main");
 		this._eventHandlers = new RendererIpcHandlers(this);
 
 		(window as any).renderer = this;

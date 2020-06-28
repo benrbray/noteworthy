@@ -1,6 +1,6 @@
 import { dialog, shell } from "electron";
 import { readFile, saveFile, IFileWithContents, IPossiblyUntitledFile, IDirEntryMeta, IFileMeta } from "@common/fileio";
-import App from "./app"
+import NoteworthyApp from "./app"
 
 ////////////////////////////////////////////////////////////
 
@@ -10,9 +10,9 @@ type FunctionProperties<T> = Pick<T, FunctionPropertyNames<T>>;
 ////////////////////////////////////////////////////////////
 
 export class MainIpcHandlers {
-	private _app: App;
+	private _app: NoteworthyApp;
 
-	constructor(app: App) {
+	constructor(app: NoteworthyApp) {
 		this._app = app;
 	}
 
@@ -108,7 +108,11 @@ export class MainIpcHandlers {
 
 	async requestFileCreate(path:string, contents:string=""):Promise<IFileMeta|null> {
 		/** @todo (6/26/20) check if path in workspace? */
-		return this._app._fsal.createFile(path, contents);
+		return this._app._fsal.createFile(path, contents)
+			.then(
+				() => { return this._app.workspace?.updatePath(path)||null; },
+				(reason) => { console.error("error creating file", reason); return null; }
+			)
 	}
 
 	// -- Request File Save ----------------------------- //
@@ -135,7 +139,7 @@ export class MainIpcHandlers {
 
 		// load from hash
 		let fileMeta: IFileMeta | null;
-		if (hash === undefined || !(fileMeta = this._app._fsal.getFileByHash(hash))) {
+		if (hash === undefined || !(fileMeta = this._app.getFileByHash(hash))) {
 			/** @todo (6/20/20) load from arbitrary path */
 			throw new Error("file loading from arbitrary path not implemented");
 		}
@@ -152,16 +156,6 @@ export class MainIpcHandlers {
 
 		this._app._renderProxy?.fileDidOpen(file);
 	}
-	
-	//// FILETREE //////////////////////////////////////////
-
-	// -- File Tree Changed ----------------------------- //
-
-	fileTreeChanged(fileTree: IDirEntryMeta[]) {
-		if (!this._app.window) { return; }
-
-		this._app._renderProxy?.filetreeChanged(fileTree);
-	}
 
 	//// TAGS //////////////////////////////////////////////
 
@@ -173,14 +167,17 @@ export class MainIpcHandlers {
 
 	// -- Request Tag Open ------------------------------ //
 
-	async requestTagOpen(data:{tag: string, create:boolean}) {
+	async requestTagOpen(data:{tag: string, create:boolean}):Promise<void> {
 		if (!this._app.window) { return; }
 
 		// get files which define this tag
-		let defs: string[] = this._app.getDefsForTag(data.tag);
+		let defs: string[]|null = this._app.getDefsForTag(data.tag);
 		let fileHash:string;
 
-		if (defs.length == 0) {
+		if (defs == null){
+			// expect NULL when no crossref plugin active
+			return;
+		} else if (defs.length == 0) {
 			// create a file for this tag when none exists?
 			if(!data.create){ return; }
 			console.log(`MainIPC :: creating file for tag '${data.tag}'`);
@@ -192,7 +189,7 @@ export class MainIpcHandlers {
 
 			// create file for this tag when none exists
 			let fileName:string = data.tag + ".md";
-			let filePath:string|null = this._app._fsal.resolveWorkspaceRelativePath(fileName);
+			let filePath:string|null = this._app.resolveWorkspaceRelativePath(fileName);
 			if(!filePath){
 				console.error("MainIPC :: could not create file for tag, no active workspace");
 				return;

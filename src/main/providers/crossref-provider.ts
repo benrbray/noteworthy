@@ -1,4 +1,4 @@
-import App from "@main/app";
+import NoteworthyApp from "@main/app";
 import { IWorkspaceDir, IFileMeta } from "@common/fileio";
 import path from "path";
 import { WorkspaceProvider } from "./provider";
@@ -51,14 +51,14 @@ export class CrossRefProvider implements WorkspaceProvider {
 
 	provider_name:string = "crossref_plugin";
 	
-	_app:App;
+	_app:NoteworthyApp;
 
 	// provider data
 	_doc2tags: DefaultMap<string, Set<string>>;
 	_tag2docs: DefaultMap<string, Set<string>>;
 	_tag2defs: DefaultMap<string, Set<string>>;
 
-	constructor(main:App){
+	constructor(main:NoteworthyApp){
 		console.log(`xref-provider :: constructor()`);
 		this._app = main;
 

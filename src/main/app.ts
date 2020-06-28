@@ -1,4 +1,4 @@
-import { app, ipcMain as ipc, Event, IpcMainInvokeEvent, ipcMain } from "electron";
+import { app, ipcMain, Event, IpcMainInvokeEvent } from "electron";
 import { enforceMacOSAppLocation, is } from 'electron-util';
 import { EventEmitter } from "events";
 import Main from "./windows/main";
@@ -9,30 +9,39 @@ import * as pathlib from "path";
 
 import * as FSALDir from "./fsal/fsal-dir";
 import { CrossRefProvider } from "./providers/crossref-provider";
-import { IDirectory, IFileMeta } from "@common/fileio";
-import { FsalEvents, AppEvents } from "@common/events";
+import { IDirectory, IFileMeta, IDirEntryMeta } from "@common/fileio";
+import { FsalEvents, AppEvents, ChokidarEvents } from "@common/events";
 import { RendererIpcEvents, RendererIpcHandlers } from "@renderer/RendererIPC";
 import { senderFor } from "@common/ipc";
+import { Workspace } from "./workspace/workspace";
+import { WorkspaceProvider } from "./providers/provider";
+import hash from "@common/util/hash";
 
-export default class App extends EventEmitter {
+export default class NoteworthyApp extends EventEmitter {
 	window: Window | undefined;
 	
+	/** proxy for SENDING events to the render process */
 	_renderProxy:null|RendererIpcHandlers;
+	/** handlers for events RECEIVED from the render process */
 	_eventHandlers:MainIpcHandlers;
+	/** file system abstraction layer */
 	_fsal:FSAL;
-
-	// providers
-	private _crossRefProvider:CrossRefProvider|undefined;
+	/** supports working from a single root directory */
+	private _workspace: null | Workspace;
 
 	constructor(){
 		super();
 
 		this._renderProxy = null;
 		this._eventHandlers = new MainIpcHandlers(this);
-		this._fsal = new FSAL("C:/Users/Ben/Documents/notabledata/notes");
+		this._fsal = new FSAL();
+		this._workspace = null;
+
+		// bind event handlers
+		this.handleChokidarEvent = this.handleChokidarEvent.bind(this);
 
 		this.init();
-		this.events();
+		this.attachEvents();
 	}
 
 	// INITIALIZATION //////////////////////////////////////
@@ -40,7 +49,6 @@ export default class App extends EventEmitter {
 	init(){
 		// services
 		this.initIPC();
-		this.initProviders();
 		this.initFSAL();
 
 		// menus
@@ -60,7 +68,7 @@ export default class App extends EventEmitter {
 			 * @param cmd The command to be sent
 			 * @param arg An optional object with data.
 			 */
-			handle: (cmd: MainIpcEvents, arg?: any): void => { this.handle(cmd, arg); },
+			handle: async (cmd: MainIpcEvents, arg?: any) => { return this.handle(cmd, arg); },
 			/**
 			 * Sends an arbitrary command to the renderer.
 			 * @param cmd The command to be sent
@@ -91,36 +99,8 @@ export default class App extends EventEmitter {
 		}
 	}
 
-	initProviders(){
-		// cross-references
-		this._crossRefProvider = new CrossRefProvider(this);
-		this._crossRefProvider.init();
-		this._fsal.registerWorkspacePlugin(this._crossRefProvider);
-	}
-
-	destroyProviders(){
-		// cross-references
-		if(this._crossRefProvider){
-			this._fsal.unregisterWorkspacePlugin(this._crossRefProvider);
-			this._crossRefProvider.destroy();
-		}
-	}
-
 	initFSAL(){
 		this._fsal.init();
-		this._fsal.on(FsalEvents.STATE_CHANGED, (objPath, ...args) => {
-			console.log("app :: fsal-state-changed ::", objPath, ...args);
-			switch(objPath){
-				case "filetree":
-					this.handle("fileTreeChanged", this._fsal.getFileTree())
-					break;
-				case "workspace":
-					this.emit(FsalEvents.WORKSPACE_CHANGED, ...args);
-					break;
-				default:
-					break;
-			}
-		})
 	}
 
 	initContextMenu(){}
@@ -133,6 +113,7 @@ export default class App extends EventEmitter {
 		console.log("app :: quit");
 		global.isQuitting = true;
 		this.detach__beforeQuit();
+		this.closeWorkspace()
 		this._fsal.destroy();
 		app.quit();
 	}
@@ -144,14 +125,87 @@ export default class App extends EventEmitter {
 		console.log("app :: load")
 		this.window = new Main();
 		this.window.init();
-		this._renderProxy = senderFor<RendererIpcHandlers>(this.window.window.webContents, "mainCommand");
+		this._renderProxy = senderFor<RendererIpcHandlers>(this.window.window.webContents, "mainCommand", "main->render");
 	}
 
 	// == Workspaces ==================================== //
 
-	async setWorkspaceDir(dirPath:string){
+	getWorkspaceDir(): (IDirectory | null) {
+		return this._workspace && this._workspace.dir;
+	}
+
+	async setWorkspaceDir(dirPath:string):Promise<boolean>{
+		console.log("app :: setWorkspaceDir() ::", dirPath);
+		// close active workspace
+		this.closeWorkspace();
+
+		// get directory info
 		let dir:IDirectory = await FSALDir.parseDir(dirPath);
-		this._fsal.setWorkspaceDir(dir);
+		
+		// define plugins
+		let plugins: WorkspaceProvider[] = [
+			new CrossRefProvider(this)
+		];
+
+		// load (possibly stale) workspace metadata from file
+		this._workspace = await Workspace.fromDir(dir, plugins, true);
+		if (!this._workspace) {
+			console.error("fsal :: unknown error opening workspace")
+			return false;
+		}
+
+		// watch workspace directory
+		this._fsal.watch(dir.path);
+
+		// check for changes between current file list and saved metadata,
+		// and process added/changed/deleted files if needed
+		let result = await this._workspace?.update();
+
+		// emit change event
+		this._renderProxy?.fileTreeChanged(this.getFileTree());
+		
+		return true === result;
+	}
+
+	get workspace():Workspace|null {
+		return this._workspace;
+	}
+
+	async closeWorkspace(persist:boolean = true): Promise<boolean> {
+		if(!this._workspace){ return true; }
+		this._fsal.unwatch(this._workspace.dir.path);
+		this._fsal.unloadAll();
+		this._workspace.close(persist);
+		this._workspace = null;
+		return true;
+	}
+
+	/**
+	 * Convert a workspace-relative path to an absolute path.
+	 * @returns An absolute path, or NULL if no workspace exists.
+	 */
+	resolveWorkspaceRelativePath(relPath: string): string | null {
+		let workspacePath = this.getWorkspaceDir()?.path;
+		if (!workspacePath) { return null; }
+
+		/** @todo (6/27/20) error if the resulting abs path
+		 * is not inside the workspace (e.g. if relPath="../../..")
+		 */
+		relPath = pathlib.normalize(relPath);
+		return pathlib.join(workspacePath, relPath);
+	}
+
+	// == Files ========================================= //
+
+	getFileByHash(hash: string): (IFileMeta | null) {
+		if (!this._workspace) { return null; }
+		return this._workspace.getFileByHash(hash);
+	}
+
+	getFileTree(): IDirEntryMeta[] {
+		// handle empty workspace
+		if (!this._workspace) { return []; }
+		return this._workspace.getFileTree();
 	}
 
 	// == File Types ==================================== //
@@ -177,14 +231,20 @@ export default class App extends EventEmitter {
 
 	// == Tags ========================================== //
 
-	getDefsForTag(tag:string):string[] {
-		if(!this._crossRefProvider){ return []; }
-		return this._crossRefProvider.getDefsForTag(tag)
+	/**
+	 * @returns NULL when the plugin is not available, otherwise
+	 *    a list of hashes for files which define this tag
+	 * @todo (6/28/20) how to separate plugin code from app code?
+	 */
+	getDefsForTag(tag:string):string[]|null {
+		if(!this._workspace) { return []; }
+		let crossRefPlugin = this._workspace.getPluginByName("crossref_plugin");
+		return crossRefPlugin && crossRefPlugin.getDefsForTag(tag);
 	}
 
 	// EVENTS //////////////////////////////////////////////
 
-	handle<T extends MainIpcEvents>(name: T, data: Parameters<MainIpcHandlers[T]>[0]) {
+	async handle<T extends MainIpcEvents>(name: T, data: Parameters<MainIpcHandlers[T]>[0]) {
 		/** @remark (6/25/20) cannot properly type-check this call
 		 *  without support for "correlated record types", see e.g.
 		 *  (https://github.com/Microsoft/TypeScript/issues/30581)
@@ -192,7 +252,32 @@ export default class App extends EventEmitter {
 		return this._eventHandlers[name](data as any);
 	}
 
-	events() {
+	async handleChokidarEvent(event: ChokidarEvents, info: { path: string }): Promise<void> {
+		console.log(`app :: chokidar-event :: ${event}`, info.path);
+		// handle errors
+		if (event == ChokidarEvents.ERROR) { throw new Error(`app :: chokidar error :: ${info}`); }
+		/** @todo (6/19/20) what to do about file changes outside workspace? */
+		/** @todo (6/19/20) what to do about file changes when no workspace active? */
+		await this._workspace?.handleChangeDetected(event, info);
+		// file tree changed
+		await this._renderProxy?.fileTreeChanged(this.getFileTree());
+	}
+
+	attachEvents(){
+		this.attachWindowEvents();
+		this._fsal.on(FsalEvents.CHOKIDAR_EVENT, this.handleChokidarEvent);
+	}
+
+	detachEvents(){
+		this._fsal.off(FsalEvents.CHOKIDAR_EVENT, this.handleChokidarEvent);
+		this.detachWindowEvents();
+	}
+
+	// Attach / Detach Events ------------------------------
+
+	/** @todo (6/28/20) all this window boilerplate should be somewhere else */
+
+	attachWindowEvents() {
 		this.attach__windowAllClosed();
 		this.attach__activate();
 		this.attach__beforeQuit();
@@ -202,7 +287,9 @@ export default class App extends EventEmitter {
 		this.attach__updaterCheck();
 	}
 
-	// Attach / Detach Events ------------------------------
+	detachWindowEvents() {
+		/** @todo (6/28/20) any need to detach window events? */
+	}
 
 	attach__windowAllClosed = () =>
 		{ app.on("window-all-closed", this.__windowAllClosed); }
@@ -216,16 +303,16 @@ export default class App extends EventEmitter {
 		{ app.removeListener("before-quit", this.__beforeQuit); }
 
 	attach__forceQuit = () => 
-		{ ipc.on("force-quit", this.__forceQuit); }
+		{ ipcMain.on("force-quit", this.__forceQuit); }
 
 	attach__ready = () => 
 		{ app.on("ready", this.__ready); }
 
 	attach__cwdChanged = () =>
-		{ ipc.on("cwd-changed", this.__cwdChanged); }
+		{ ipcMain.on("cwd-changed", this.__cwdChanged); }
 
 	attach__updaterCheck = () =>
-		{ ipc.on("updater-check", this.__updaterCheck); }
+		{ ipcMain.on("updater-check", this.__updaterCheck); }
 
 	// Event Handlers --------------------------------------
 

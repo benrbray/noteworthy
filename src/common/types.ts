@@ -19,3 +19,7 @@ export type ProseCommand = (
 	dispatch?: ((tr: import("prosemirror-state").Transaction) => void),
 	view?: import("prosemirror-view").EditorView
 ) => boolean;
+
+export interface IDisposable {
+	dispose():void;
+}

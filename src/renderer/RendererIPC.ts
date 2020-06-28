@@ -10,24 +10,25 @@ export class RendererIpcHandlers {
 		this._renderer = renderer;
 	}
 
-	menuFileSave(){
+	async menuFileSave(){
 		this._renderer._editor?.saveCurrentFile(false);
 	}
 
-	menuFileSaveAs(){
+	async menuFileSaveAs(){
 		this._renderer._editor?.saveCurrentFile(true);
 	}
 
-	filetreeChanged(fileTree:IDirEntryMeta[]){
+	async fileTreeChanged(fileTree:IDirEntryMeta[]){
+		console.log("RenderIPC :: fileTreeChanged", fileTree.map(val=>val.name));
 		if (!this._renderer._explorer) { return; }
 		this._renderer._explorer.setFileTree(fileTree);
 	}
 
-	fileDidSave(data:{ saveas:boolean , path:string }){
+	async fileDidSave(data:{ saveas:boolean , path:string }){
 		this._renderer._editor?.handleFileDidSave()
 	}
 
-	fileDidOpen(file:IPossiblyUntitledFile){
+	async fileDidOpen(file:IPossiblyUntitledFile){
 		this._renderer.setCurrentFile(file);
 	}
 }
