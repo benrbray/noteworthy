@@ -76,12 +76,7 @@ export class CrossRefPlugin implements WorkspacePlugin {
 
 	async init():Promise<void> {
 		console.log("crossref-plugin :: init()");
-
 		this.attachEvents();
-
-		console.log("waiting.....................................");
-		await new Promise(resolve => setTimeout(resolve, 10000));
-		console.log("done waiting!!!!")
 	}
 
 	attachEvents(){}
