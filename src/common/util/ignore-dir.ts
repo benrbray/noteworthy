@@ -13,6 +13,7 @@
 
 const path = require('path')
 
+/** @todo (6/28/20) load ignored dirs from file? */
 // Ignored directory patterns
 const ignoreDirs:string[] = ['\.noteworthy'];//require('../data.json').ignoreDirs
 
@@ -21,7 +22,7 @@ const ignoreDirs:string[] = ['\.noteworthy'];//require('../data.json').ignoreDir
 * @param  {String} p The path to the directory. It will be checked against some regexps.
 * @return {Boolean}   True or false, depending on whether or not the dir should be ignored.
 */
-export default function (p:string):boolean {
+export function ignoreDir(p:string):boolean {
 	let name = path.basename(p)
 	// Directories are ignored on a regexp basis
 	for (let re of ignoreDirs) {
