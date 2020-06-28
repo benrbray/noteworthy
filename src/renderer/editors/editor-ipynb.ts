@@ -1,14 +1,15 @@
+// project imports
 import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
+import { Editor } from "./editor";
+import { ipynbSchema, ipynbParser, ipynbSerializer } from "@common/ipynb";
+import { buildInputRules_markdown, buildKeymap_markdown } from "@common/pm-schema";
+
+// prosemirror
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
 import { Schema as ProseSchema, DOMParser as ProseDOMParser } from "prosemirror-model";
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
 import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
-import { Editor } from "./editor";
-
-// markdown
-import { ipynbSchema, ipynbParser, ipynbSerializer } from "@common/ipynb";
-import { buildInputRules_markdown, buildKeymap_markdown } from "@common/pm-schema";
 
 // views
 import { ICursorPosObserver, MathView } from "@lib/prosemirror-math/src/math-nodeview";

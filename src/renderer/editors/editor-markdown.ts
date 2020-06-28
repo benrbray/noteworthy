@@ -8,6 +8,7 @@ import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin, EditorState } from "prosemirror-state";
 import { history } from "prosemirror-history";
 import { keymap } from "prosemirror-keymap";
+import { gapCursor } from "prosemirror-gapcursor";
 
 // project imports
 import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
@@ -21,7 +22,6 @@ import { buildInputRules_markdown, buildKeymap_markdown } from "@common/pm-schem
 import { MathView, ICursorPosObserver } from "@lib/prosemirror-math/src/math-nodeview";
 import { mathInputRules } from "@common/inputrules";
 import { openPrompt, TextField } from "@common/prompt/prompt";
-import { gapCursor } from "prosemirror-gapcursor";
 import mathSelectPlugin from "@root/lib/prosemirror-math/src/plugins/math-select";
 import { MainIpcHandlers } from "@main/MainIPC";
 

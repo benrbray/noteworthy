@@ -1,9 +1,13 @@
+// node imports
+import path from "path";
+
+// prosemirror
+import { Node as ProseNode, Mark } from "prosemirror-model";
+
+// project imports
 import NoteworthyApp from "@main/app";
 import { IWorkspaceDir, IFileMeta } from "@common/fileio";
-import path from "path";
 import { WorkspacePlugin } from "./plugin";
-
-import { Node as ProseNode, Mark } from "prosemirror-model";
 
 ////////////////////////////////////////////////////////////
 

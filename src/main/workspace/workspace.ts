@@ -1,15 +1,19 @@
-import { IFileMeta, IFileDesc, IDirectory, IDirEntryMeta, readFile } from "@common/fileio";
-import * as FSALFile from "../fsal/fsal-file";
-import * as FSALDir from "../fsal/fsal-dir";
+// node imports
 import * as pathlib from "path";
 import fs from "fs";
+
+// project imports
+import { IFileMeta, IFileDesc, IDirectory, IDirEntryMeta, readFile } from "@common/fileio";
 import { IDisposable } from "@common/types";
-import { WorkspacePlugin } from "@main/plugins/plugin";
 import { markdownParser } from "@common/markdown";
-import { FsalEvents, ChokidarEvents } from "@common/events";
-import FSAL from "@main/fsal/fsal";
-import { CrossRefPlugin } from "@main/plugins/crossref-plugin";
+import { ChokidarEvents } from "@common/events";
 import hash from "@common/util/hash";
+import { WorkspacePlugin } from "@main/plugins/plugin";
+import { CrossRefPlugin } from "@main/plugins/crossref-plugin";
+import * as FSALFile from "../fsal/fsal-file";
+import * as FSALDir from "../fsal/fsal-dir";
+
+////////////////////////////////////////////////////////////
 
 interface IWorkspaceData {
 	path: string,

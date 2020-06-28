@@ -1,21 +1,26 @@
+// node imports
+import * as pathlib from "path";
+
+// electron imports
 import { app, ipcMain, Event, IpcMainInvokeEvent } from "electron";
 import { enforceMacOSAppLocation, is } from 'electron-util';
 import { EventEmitter } from "events";
+
+// project imports
 import Main from "./windows/main";
 import Window from "./windows/window";
 import { MainIpcEvents, MainIpcHandlers } from "./MainIPC";
 import FSAL from "./fsal/fsal";
-import * as pathlib from "path";
-
 import * as FSALDir from "./fsal/fsal-dir";
 import { CrossRefPlugin } from "./plugins/crossref-plugin";
+import { WorkspacePlugin } from "./plugins/plugin";
+import { Workspace } from "./workspace/workspace";
+import { senderFor } from "@common/ipc";
 import { IDirectory, IFileMeta, IDirEntryMeta } from "@common/fileio";
 import { FsalEvents, AppEvents, ChokidarEvents } from "@common/events";
 import { RendererIpcEvents, RendererIpcHandlers } from "@renderer/RendererIPC";
-import { senderFor } from "@common/ipc";
-import { Workspace } from "./workspace/workspace";
-import { WorkspacePlugin } from "./plugins/plugin";
-import hash from "@common/util/hash";
+
+////////////////////////////////////////////////////////////
 
 export default class NoteworthyApp extends EventEmitter {
 	window: Window | undefined;

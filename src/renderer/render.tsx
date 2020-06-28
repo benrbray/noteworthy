@@ -13,6 +13,8 @@ import { MainIpcHandlers } from "@main/MainIPC";
 import { ipcRenderer, IpcRendererEvent } from "electron";
 import { invokerFor } from "@common/ipc";
 
+////////////////////////////////////////////////////////////
+
 class Renderer {
 
 	// renderer objects
