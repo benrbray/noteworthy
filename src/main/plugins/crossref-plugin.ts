@@ -1,7 +1,7 @@
 import NoteworthyApp from "@main/app";
 import { IWorkspaceDir, IFileMeta } from "@common/fileio";
 import path from "path";
-import { WorkspaceProvider } from "./provider";
+import { WorkspacePlugin } from "./plugin";
 
 import { Node as ProseNode, Mark } from "prosemirror-model";
 
@@ -47,19 +47,19 @@ function deserializeSetMap<V>(serialized: { [key: string]: V[] }): DefaultMap<st
 
 ////////////////////////////////////////////////////////////
 
-export class CrossRefProvider implements WorkspaceProvider {
+export class CrossRefPlugin implements WorkspacePlugin {
 
-	provider_name:string = "crossref_plugin";
+	plugin_name:string = "crossref_plugin";
 	
 	_app:NoteworthyApp;
 
-	// provider data
+	// plugin data
 	_doc2tags: DefaultMap<string, Set<string>>;
 	_tag2docs: DefaultMap<string, Set<string>>;
 	_tag2defs: DefaultMap<string, Set<string>>;
 
 	constructor(main:NoteworthyApp){
-		console.log(`xref-provider :: constructor()`);
+		console.log(`xref-plugin :: constructor()`);
 		this._app = main;
 
 		// crossref lookups
@@ -71,7 +71,7 @@ export class CrossRefProvider implements WorkspaceProvider {
 	// == Lifecycle ===================================== //
 
 	async init():Promise<void> {
-		console.log("crossref-provider :: init()");
+		console.log("crossref-plugin :: init()");
 
 		this.attachEvents();
 
@@ -104,12 +104,12 @@ export class CrossRefProvider implements WorkspaceProvider {
 	// == Workspace Events ============================== //
 	
 	async handleWorkspaceClosed(dir: IWorkspaceDir){
-		console.log("xref-provider :: handle(workspace-closed)");
+		console.log("xref-plugin :: handle(workspace-closed)");
 		this.clear();
 	}
 
 	async handleWorkspaceOpen(dir: IWorkspaceDir) {
-		console.log("xref-provider :: handle(workspace-open)");
+		console.log("xref-plugin :: handle(workspace-open)");
 		/** @todo (6/18/20) */
 	}
 
@@ -222,7 +222,7 @@ export class CrossRefProvider implements WorkspaceProvider {
 		})
 	}
 
-	deserialize(serialized:string):CrossRefProvider {
+	deserialize(serialized:string):CrossRefPlugin {
 		let json: any = JSON.parse(serialized);
 		this._doc2tags = deserializeSetMap(json.doc2tags);
 		this._tag2docs = deserializeSetMap(json.tag2docs);

@@ -4,11 +4,11 @@ import * as FSALDir from "../fsal/fsal-dir";
 import * as pathlib from "path";
 import fs from "fs";
 import { IDisposable } from "@common/types";
-import { WorkspaceProvider } from "@main/providers/provider";
+import { WorkspacePlugin } from "@main/plugins/plugin";
 import { markdownParser } from "@common/markdown";
 import { FsalEvents, ChokidarEvents } from "@common/events";
 import FSAL from "@main/fsal/fsal";
-import { CrossRefProvider } from "@main/providers/crossref-provider";
+import { CrossRefPlugin } from "@main/plugins/crossref-plugin";
 import hash from "@common/util/hash";
 
 interface IWorkspaceData {
@@ -31,14 +31,13 @@ export class Workspace implements IDisposable {
 	private _stale: boolean = true;
 
 	/** plugins which need to know about changes to the workspace */
-	private _plugins: WorkspaceProvider[];
+	private _plugins: WorkspacePlugin[];
 
 	constructor(
 		dir: IDirectory,
 		files: { [hash: string]: IFileMeta } = {},
-		plugins: WorkspaceProvider[] = []
+		plugins: WorkspacePlugin[] = []
 	) {
-		console.log("new Workspace() :: plugins =", plugins);
 		this._dir = dir;
 		this._files = files;
 		this._plugins = plugins;
@@ -209,19 +208,19 @@ export class Workspace implements IDisposable {
 
 	// -- Plugins --------------------------------------- //
 
-	registerPlugin(plugin: WorkspaceProvider): void {
+	registerPlugin(plugin: WorkspacePlugin): void {
 		this._plugins.push(plugin);
 	}
 
-	unregisterWorkspacePlugin(plugin: WorkspaceProvider) {
+	unregisterWorkspacePlugin(plugin: WorkspacePlugin) {
 		let index = this._plugins.indexOf(plugin);
 		if (index > -1) { this._plugins.splice(index, 1); }
 	}
 
-	getPluginByName(name:"crossref_plugin"):CrossRefProvider|null;
-	getPluginByName(name:string):WorkspaceProvider|null {
+	getPluginByName(name:"crossref_plugin"):CrossRefPlugin|null;
+	getPluginByName(name:string):WorkspacePlugin|null {
 		/** @todo (6/28/20) use an ordered dict to store plugins instead? */
-		return this._plugins.find(plugin => (plugin.provider_name == name)) || null;
+		return this._plugins.find(plugin => (plugin.plugin_name == name)) || null;
 	}
 
 	// -- Serialization --------------------------------- //
@@ -230,7 +229,7 @@ export class Workspace implements IDisposable {
 		return pathlib.join(workspacePath, ".noteworthy", "workspace.json");
 	}
 
-	static async fromJSON(workspacePath:string, json: string, plugins: WorkspaceProvider[]): Promise<Workspace | null> {
+	static async fromJSON(workspacePath:string, json: string, plugins: WorkspacePlugin[]): Promise<Workspace | null> {
 		/** @todo (6/27/20) validate incoming workspace/plugin json */
 		let data: IWorkspaceData = JSON.parse(json);
 		/** @todo (2/27/20) handle renamed workspace path */
@@ -249,7 +248,7 @@ export class Workspace implements IDisposable {
 		// deserialize plugins
 		let pluginState:any;
 		for(let plugin of plugins){
-			if(pluginState = data.pluginData[plugin.provider_name]){
+			if(pluginState = data.pluginData[plugin.plugin_name]){
 				plugin.deserialize(pluginState);
 			}
 		}
@@ -258,7 +257,7 @@ export class Workspace implements IDisposable {
 		return new Workspace(dir, data.files, plugins);
 	}
 
-	static async fromPath(workspacePath:string, plugins:WorkspaceProvider[]):Promise<Workspace|null> {
+	static async fromPath(workspacePath:string, plugins:WorkspacePlugin[]):Promise<Workspace|null> {
 		// read workspace data from file
 		let contents = readFile(Workspace.getDataPath(workspacePath));
 		if(!contents){ return null; }
@@ -273,7 +272,7 @@ export class Workspace implements IDisposable {
 	 * @param create If TRUE and no data folder found, a
 	 *     new workspace will be created.
 	 */
-	static async fromDir(dir:IDirectory, plugins:WorkspaceProvider[], create:boolean = false):Promise<Workspace|null> {
+	static async fromDir(dir:IDirectory, plugins:WorkspacePlugin[], create:boolean = false):Promise<Workspace|null> {
 		// restore existing workspace if data folder is present
 		let workspace = await Workspace.fromPath(dir.path, plugins);
 		if(!workspace && !create){ return null; }
@@ -285,7 +284,7 @@ export class Workspace implements IDisposable {
 		// serialize plugins
 		let pluginData: { [name:string] : any } = {};
 		for(let plugin of this._plugins){
-			pluginData[plugin.provider_name] = plugin.serialize();
+			pluginData[plugin.plugin_name] = plugin.serialize();
 		}
 
 		// serialize workspace

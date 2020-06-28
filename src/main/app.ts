@@ -8,13 +8,13 @@ import FSAL from "./fsal/fsal";
 import * as pathlib from "path";
 
 import * as FSALDir from "./fsal/fsal-dir";
-import { CrossRefProvider } from "./providers/crossref-provider";
+import { CrossRefPlugin } from "./plugins/crossref-plugin";
 import { IDirectory, IFileMeta, IDirEntryMeta } from "@common/fileio";
 import { FsalEvents, AppEvents, ChokidarEvents } from "@common/events";
 import { RendererIpcEvents, RendererIpcHandlers } from "@renderer/RendererIPC";
 import { senderFor } from "@common/ipc";
 import { Workspace } from "./workspace/workspace";
-import { WorkspaceProvider } from "./providers/provider";
+import { WorkspacePlugin } from "./plugins/plugin";
 import hash from "@common/util/hash";
 
 export default class NoteworthyApp extends EventEmitter {
@@ -143,8 +143,8 @@ export default class NoteworthyApp extends EventEmitter {
 		let dir:IDirectory = await FSALDir.parseDir(dirPath);
 		
 		// define plugins
-		let plugins: WorkspaceProvider[] = [
-			new CrossRefProvider(this)
+		let plugins: WorkspacePlugin[] = [
+			new CrossRefPlugin(this)
 		];
 
 		// load (possibly stale) workspace metadata from file

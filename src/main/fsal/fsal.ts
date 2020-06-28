@@ -76,9 +76,6 @@ export default class FSAL extends EventEmitter {
 
 		this._state.fileTree = [];
 		this.emit(FsalEvents.STATE_CHANGED, 'filetree')
-		//this.emit(FsalEvents.STATE_CHANGED, 'openFiles')
-		//this.emit(FsalEvents.STATE_CHANGED, 'openDirectory')
-		//this.emit(FsalEvents.STATE_CHANGED, 'activeFile')
 	}
 
 	// == WORKSPACE ===================================== //
