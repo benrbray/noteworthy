@@ -128,13 +128,11 @@ export class MainIpcHandlers {
 
 	// -- Request File Open ----------------------------- //
 
-	requestFileOpen(fileInfo: { hash?: string, path?: string }) {
-		if (!this._app.window) { return; }
-
+	async requestFileContents(fileInfo: { hash?: string, path?: string }):Promise<IFileWithContents|null> {
 		let { hash, path } = fileInfo;
 		// validate input
 		if (hash === undefined && path === undefined) {
-			throw new Error("MainIPC :: requestFileOpen() :: no file path or hash provided");
+			throw new Error("MainIPC :: requestFileContents() :: no file path or hash provided");
 		}
 
 		// load from hash
@@ -154,7 +152,13 @@ export class MainIpcHandlers {
 			...fileMeta
 		}
 
-		this._app._renderProxy?.fileDidOpen(file);
+		return file;
+	}
+
+	async requestFileOpen(fileInfo: { hash?: string, path?: string }):Promise<void> {
+		if (!this._app.window) { return; }
+		let file = await this.requestFileContents(fileInfo);
+		if(file) { this._app._renderProxy?.fileDidOpen(file); }
 	}
 
 	//// TAGS //////////////////////////////////////////////
@@ -167,19 +171,17 @@ export class MainIpcHandlers {
 
 	// -- Request Tag Open ------------------------------ //
 
-	async requestTagOpen(data:{tag: string, create:boolean}):Promise<void> {
-		if (!this._app.window) { return; }
-
+	async getHashForTag(data: { tag: string, create: boolean }):Promise<string|null> {
 		// get files which define this tag
-		let defs: string[]|null = this._app.getDefsForTag(data.tag);
-		let fileHash:string;
+		let defs: string[] | null = this._app.getDefsForTag(data.tag);
+		let fileHash: string;
 
-		if (defs == null){
+		if (defs == null) {
 			// expect NULL when no crossref plugin active
-			return;
+			return null;
 		} else if (defs.length == 0) {
 			// create a file for this tag when none exists?
-			if(!data.create){ return; }
+			if (!data.create) { return null; }
 			console.log(`MainIPC :: creating file for tag '${data.tag}'`);
 
 			/** @todo (6/27/20)
@@ -188,30 +190,45 @@ export class MainIpcHandlers {
 			 */
 
 			// create file for this tag when none exists
-			let fileName:string = data.tag + ".md";
-			let filePath:string|null = this._app.resolveWorkspaceRelativePath(fileName);
-			if(!filePath){
+			let fileName: string = data.tag + ".md";
+			let filePath: string | null = this._app.resolveWorkspaceRelativePath(fileName);
+			if (!filePath) {
 				console.error("MainIPC :: could not create file for tag, no active workspace");
-				return;
+				return null;
 			}
 
 			// create file
-			let fileContents:string = this._app.getDefaultFileContents(".md", fileName)
-			let file:IFileMeta|null = await this.requestFileCreate(filePath, fileContents);
-			if(!file){
+			let fileContents: string = this._app.getDefaultFileContents(".md", fileName)
+			let file: IFileMeta | null = await this.requestFileCreate(filePath, fileContents);
+			if (!file) {
 				console.error("MainIPC :: unknown error creating file for tag");
-				return;
+				return null;
 			}
 
 			// set hah
 			fileHash = file.hash;
-		} else if(defs.length == 1){
+		} else if (defs.length == 1) {
 			fileHash = defs[0];
 		} else {
 			/** @todo (6/20/20) handle more than one defining file for tag */
-			return;
+			return null;
 		}
 
+		return fileHash;
+	}
+
+	async getFileForTag(data: { tag: string, create: boolean }):Promise<IFileMeta|null> {
+		let fileHash = await this.getHashForTag(data);
+		if (!fileHash) return null;
+		return this._app.getFileByHash(fileHash);
+	}
+
+	async requestTagOpen(data:{tag: string, create:boolean}):Promise<void> {
+		if (!this._app.window) { return; }
+
+		// get files which define this tag
+		let fileHash = await this.getHashForTag(data);
+		if(!fileHash) return;
 		// load file from hash
 		this.requestFileOpen({ hash: fileHash });
 	}

@@ -12,6 +12,7 @@ import { JournalEditor } from "./editors/editor-journal";
 import { MainIpcHandlers } from "@main/MainIPC";
 import { ipcRenderer, IpcRendererEvent } from "electron";
 import { invokerFor } from "@common/ipc";
+import { NwtEditor } from "./editors/editor-nwt";
 
 ////////////////////////////////////////////////////////////
 
@@ -123,6 +124,11 @@ class Renderer {
 				break;
 			case ".journal":
 				this._editor = new JournalEditor(
+					this._currentFile, this._editorElt, this._mainProxy
+				);
+				break;
+			case ".nwt":
+				this._editor = new NwtEditor(
 					this._currentFile, this._editorElt, this._mainProxy
 				);
 				break;
