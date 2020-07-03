@@ -178,6 +178,7 @@ export class MainIpcHandlers {
 
 		if (defs == null) {
 			// expect NULL when no crossref plugin active
+			console.error("crossref plugin not active")
 			return null;
 		} else if (defs.length == 0) {
 			// create a file for this tag when none exists?

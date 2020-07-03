@@ -57,7 +57,7 @@ export abstract class Editor<TDocumentModel=any> {
 	// == Public Interface ============================== //
 	
 	setCurrentFile(file: IPossiblyUntitledFile): void {
-		console.log("editor :: setCurrentFile");
+		console.log("editor :: setCurrentFile", file);
 		this._currentFile = file;
 		this.setContents(this.parseContents(file.contents));
 		this.handleDocChanged();

@@ -8,6 +8,7 @@ import { Editor } from "@renderer/editors/editor";
 import { MarkdownEditor } from "@renderer/editors/editor-markdown";
 import { MainIpcHandlers } from "@main/MainIPC";
 import { IFileMeta, IFileWithContents } from "@common/fileio";
+import { replaceInvalidFileNameChars } from "@common/util/pathstrings";
 
 ////////////////////////////////////////////////////////////
 
@@ -59,41 +60,43 @@ export class EmbedView implements NodeView {
 		this._tagChooser.addEventListener("keydown", (evt)=>{
 			// ENTER: submit new tag name
 			if(evt.keyCode == 13){
-				let fileName = this._tagChooser.value;
-				this.getFile(fileName).then( file=> {
-					if(file) {
-						this._innerView?.setCurrentFile(file);
-						let tr = this._outerView.state.tr.setNodeMarkup(this._getPos(), undefined, { fileName });
-						this._outerView.dispatch(tr);
-					}
-				});
-				/** @todo (6/29/20) where to focus? */
-				this.ensureFocus();
+				this.setEmbedTag(this._tagChooser.value);
 			}
+			console.log(evt.keyCode);
 		})
 
+		// initialize
+		this.init(null);
 
 		// file provided?
 		let fileName: string | null = node.attrs.fileName || null;
-
-
 		if(fileName){
+			fileName = replaceInvalidFileNameChars(fileName);
 			console.log("nwt-embed :: filename provided ::", fileName);
-			this._tagChooser.value = fileName;
-			let hash = this._mainProxy.getHashForTag({ tag: fileName, create: true })
-				.then( hash => {
-					if(!hash){
-						console.error(`no hash found for tag '${fileName}'!`);
-						return null;
-					}
-					return this._mainProxy.requestFileContents({ hash })
-				}).then( file => { this.init(file || null); });
-		} else {
-			this.init(null);
+			this.setEmbedTag(fileName);
 		}
 
 		// ensure focus
 		this.dom.addEventListener("click", () => this.ensureFocus());
+	}
+
+	setEmbedTag(unsafeTagString:string){
+		// validate 
+		let safeString = replaceInvalidFileNameChars(unsafeTagString);
+		this._tagChooser.value = safeString;
+		// convert to valid file name
+		this.getFile(safeString).then(file => {
+			if (file) {
+				this._innerView?.setCurrentFile(file);
+				// update node attrs if needed
+				if(safeString !== this._node.attrs.fileName) {
+					let tr = this._outerView.state.tr.setNodeMarkup(this._getPos(), undefined, { fileName:safeString });
+					this._outerView.dispatch(tr);
+				}
+			}
+		});
+		/** @todo (6/29/20) where to focus? */
+		this.ensureFocus();
 	}
 
 	async getFile(fileName:string):Promise<IFileWithContents|null>{
@@ -121,7 +124,7 @@ export class EmbedView implements NodeView {
 
 	/**
 	 * Ensure focus on the inner editor whenever this node has focus.
-	 * This helps to prevent accidental deletions of math blocks.
+	 * This helps to prevent accidental deletions.
 	 */
 	ensureFocus() {
 		if (this._innerView && this._outerView.hasFocus()) {
