@@ -68,7 +68,7 @@
     "electron-util": "^0.14.1",
     "electron-window-state": "^5.0.3",
     "katex": "^0.11.1",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "markdown-it": "^11.0.0",
     "prosemirror-commands": "^1.1.4",
     "prosemirror-gapcursor": "^1.1.5",
