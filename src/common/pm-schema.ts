@@ -111,7 +111,7 @@ export function italicRule(markType: MarkType): InputRule {
 	return markInputRule(/(?<!\*)\*(?:[^\s\*](.*[^\s])?)\*([^\*])$/, markType);
 }
 export function underlineRule(markType: MarkType): InputRule {
-	return markInputRule(/_([^\s_](?:.*[^\s_])?)_(.)$/, markType);
+	return markInputRule(/(?<![^\s])_([^\s_](?:.*[^\s_])?)_(.)$/, markType);
 }
 export function wikilinkRule(markType: MarkType): InputRule {
 	return markInputRule(/\[\[([^\s](?:[^\]]*[^\s])?)\]\](.)$/, markType);
