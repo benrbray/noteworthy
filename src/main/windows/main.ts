@@ -86,7 +86,10 @@ export default class Main extends Route {
 				label: "Window",
 				submenu: [
 					{ role: "minimize" },
-					{ role: "close" },
+					{
+						label: "Close",
+						click: () => { global.ipc.handle("requestAppQuit") }
+					},
 					{ role: "zoom", visible: is.macos }
 				]
 			}, {
@@ -157,11 +160,12 @@ export default class Main extends Route {
 	}
 
 	__close = (event: Event) => {
+		console.log("main :: __close");
+		// when this is true, the app has decided it's OK to quit
 		if (global.isQuitting) { return; }
-		// TODO: this line comes from Notable, but it seems to
-		// prevent the application from actually closing.  Why was it here?
-		//event.preventDefault();
-		this.window.webContents.send("window-close");
+		// otherwise, we need to decide whether it's OK to quit
+		event.preventDefault();
+		global.ipc.handle("requestAppQuit");
 	}
 
 	__focus = () => {

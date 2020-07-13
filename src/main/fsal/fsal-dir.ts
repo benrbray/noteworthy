@@ -7,7 +7,8 @@ import { shell } from "electron";
 import { FileHash, IFileDesc, IDirectory, IDirEntry, IDirectoryMeta, IDirEntryMeta, IFileMeta } from "@common/fileio";
 import isFile from "@common/util/is-file";
 import isDir from "@common/util/is-dir";
-import ignoreDir from "@common/util/ignore-dir";
+import { ignoreDir } from "@common/util/ignore-dir";
+import { ignoreFile } from "@common/util/ignore-file";
 
 // fsal imports
 import * as FSALFile from "./fsal-file";
@@ -51,7 +52,7 @@ export async function parseDir(dirPath:string, parent:IDirectory|null=null):Prom
 		// file or directory?
 		let absolutePath: string = path.join(dir.path, child);
 		let pathIsDir: boolean = isDir(absolutePath) && !ignoreDir(absolutePath);
-		let pathIsFile: boolean = isFile(absolutePath);
+		let pathIsFile: boolean = isFile(absolutePath) && !ignoreFile(absolutePath);
 
 		// parse accordingly
 		if(pathIsFile){

@@ -123,7 +123,7 @@ li.task-list-item input[type='checkbox'] {
 
 #content {
 	grid-area: content;
-	padding: 1em;
+	padding: 0.5em;
 	overflow-y: scroll;
 	overflow-x: hidden;
 	background-color: white;
@@ -132,9 +132,13 @@ li.task-list-item input[type='checkbox'] {
 #sidebar {
 	grid-area: sidebar;
 	background-color: #f3f3f3;
+	overflow-y: scroll;
+	overflow-x: hidden;
 }
 
 #app {
+
+	color: #111;
 
 	h1::before { content: "# ";     color: #ccc; margin-left: 0.5rem; }
 	h2::before { content: "## ";    color: #ccc; margin-left: 0.5rem; }
@@ -148,6 +152,10 @@ li.task-list-item input[type='checkbox'] {
 		font-size: 18px;
 		font-family: var(--sans-font);
 		text-align: justify;
+	}
+
+	li p {
+		text-align: left;
 	}
 }
 
@@ -164,6 +172,62 @@ li.task-list-item input[type='checkbox'] {
 
 .file:hover {
 	background-color: rgba(0,0,0,0.1);
+}
+
+/* == EMBEDDED FILES ==================================== */
+
+.embed {
+	position: relative;
+	padding: 0.5em 0.5em 0.5em 0;
+	border: 1px solid #d0d0d0;
+	border-radius: 6px;
+	transition: 0.2s;
+}
+
+.embed input {
+	position: absolute;
+	top: -0.5em;
+	right: 2em;
+	border: 1px solid dodgerblue;
+	color: dodgerblue;
+	border-radius: 4px;
+	font-family: var(--code-font);
+
+	display: none;
+}
+
+.embed:focus-within {
+	border: 1px solid dodgerblue;
+}
+
+.embed:focus-within input {
+	display: block;
+	animation: anim-embed-focus-input;
+	animation-duration: 0.2s;
+}
+
+@keyframes anim-embed-focus-input {
+	from {
+		border-color: rgba(dodgerblue, 0);
+		color: #00880000;
+	}
+	to {
+		border-color: rgba(dodgerblue, 1);
+		color: rgba(dodgerblue, 1);
+	}
+}
+
+// -- Adjustments to Embedded Elements ------------------ //
+
+.embed p:first-of-type {
+	margin-top: 0;
+}
+.embed p:last-of-type {
+	margin-bottom: 0;
+}
+
+.embed h1 {
+	margin-top: 0;
 }
 
 /* == PROSEMIRROR ======================================= */

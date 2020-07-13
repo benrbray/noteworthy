@@ -1,12 +1,7 @@
-import { IWorkspaceDir, IFileMeta } from "@common/fileio";
+import { IWorkspaceDir } from "@common/fileio";
 
-export interface Provider {
-	init():void;
-	destroy():void;
-}
-
-export interface WorkspaceProvider {
-	provider_name:string;
+export interface WorkspacePlugin {
+	plugin_name:string;
 
 	handleWorkspaceClosed(dir:IWorkspaceDir):void;
 	handleWorkspaceOpen(dir:IWorkspaceDir):void;
@@ -17,5 +12,5 @@ export interface WorkspaceProvider {
 	handleFileChanged(filePath: string, fileHash: string, contents:any):void;
 
 	serialize():string;
-	deserialize(serialized:string):WorkspaceProvider;
+	deserialize(serialized:string):WorkspacePlugin;
 }

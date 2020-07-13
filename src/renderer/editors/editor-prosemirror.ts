@@ -1,12 +1,17 @@
-import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
+// prosemirror imports
+import { IPossiblyUntitledFile } from "@common/fileio";
+import { PlainSchema } from "@common/pm-schema";
+import { Editor } from "./editor";
+import { MainIpcHandlers } from "@main/MainIPC";
+
+// project imports
 import { EditorView as ProseEditorView } from "prosemirror-view";
 import { Schema as ProseSchema, DOMParser as ProseDOMParser } from "prosemirror-model";
-import { PlainSchema } from "@common/pm-schema";
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
 import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
-import { Editor } from "./editor";
-import { MainIpcHandlers } from "@main/MainIPC";
+
+////////////////////////////////////////////////////////////
 
 export class ProseMirrorEditor extends Editor<ProseEditorState> {
 

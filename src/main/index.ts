@@ -1,2 +1,2 @@
-import App from "./app";
-new App();
+import NoteworthyApp from "./app";
+new NoteworthyApp();

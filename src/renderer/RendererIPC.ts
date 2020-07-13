@@ -10,25 +10,44 @@ export class RendererIpcHandlers {
 		this._renderer = renderer;
 	}
 
-	menuFileSave(){
-		this._renderer._editor?.saveCurrentFile(false);
+	async menuFileSave():Promise<void> {
+		return this._renderer._editor?.saveCurrentFile(false);
 	}
 
-	menuFileSaveAs(){
-		this._renderer._editor?.saveCurrentFile(true);
+	async menuFileSaveAs():Promise<void> {
+		return this._renderer._editor?.saveCurrentFile(true);
 	}
 
-	filetreeChanged(fileTree:IDirEntryMeta[]){
+	async fileTreeChanged(fileTree:IDirEntryMeta[]):Promise<void>{
+		console.log("RenderIPC :: fileTreeChanged", fileTree.map(val=>val.name));
 		if (!this._renderer._explorer) { return; }
 		this._renderer._explorer.setFileTree(fileTree);
 	}
 
-	fileDidSave(data:{ saveas:boolean , path:string }){
-		this._renderer._editor?.handleFileDidSave()
+	async fileDidSave(data:{ saveas:boolean , path:string }):Promise<void> {
+		return this._renderer._editor?.handleFileDidSave()
 	}
 
-	fileDidOpen(file:IPossiblyUntitledFile){
-		this._renderer.setCurrentFile(file);
+	async fileDidOpen(file:IPossiblyUntitledFile):Promise<void> {
+		return this._renderer.setCurrentFile(file);
+	}
+
+	/**
+	 * @returns FALSE if file failed to close due to unsaved changes,
+	 *      TRUE otherwise.  Useful for deciding whether app can quit.
+	 */
+	async requestFileClose():Promise<void> {
+		if(!this._renderer._editor){ console.error("no editor to close!"); return; }
+		let result = await this._renderer._editor.closeAndDestroy();
+		return;
+	}
+
+	/**
+	 * @rejects when user cancels the close operation due to unsaved changes
+	 */
+	async requestClose(): Promise<void> {
+		/** @todo (7/12/20) close multiple open files? */
+		return this.requestFileClose();
 	}
 }
 

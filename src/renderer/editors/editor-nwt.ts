@@ -4,7 +4,7 @@ import { clipboard } from "electron";
 // prosemirror imports
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
 import { Schema as ProseSchema, DOMParser as ProseDOMParser, MarkType, Node as ProseNode, Mark, Slice } from "prosemirror-model";
-import { baseKeymap, toggleMark } from "prosemirror-commands";
+import { baseKeymap, toggleMark, setBlockType } from "prosemirror-commands";
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin, EditorState } from "prosemirror-state";
 import { history } from "prosemirror-history";
 import { keymap } from "prosemirror-keymap";
@@ -15,7 +15,8 @@ import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
 import { Editor } from "./editor";
 
 // markdown
-import { markdownSchema, markdownParser, markdownSerializer } from "@common/markdown";
+import { markdownParser, markdownSerializer } from "@common/markdown";
+import { nwtSchema } from "@common/nwt/nwt-schema";
 import { buildInputRules_markdown, buildKeymap_markdown } from "@common/pm-schema";
 
 // views
@@ -24,11 +25,13 @@ import { mathInputRules } from "@common/inputrules";
 import { openPrompt, TextField } from "@common/prompt/prompt";
 import mathSelectPlugin from "@root/lib/prosemirror-math/src/plugins/math-select";
 import { MainIpcHandlers } from "@main/MainIPC";
+import { findWrapping } from "prosemirror-transform";
+import { EmbedView } from "@common/nwt/nwt-embed";
 
 ////////////////////////////////////////////////////////////
 
 // editor class
-export class MarkdownEditor extends Editor<ProseEditorState> {
+export class NwtEditor extends Editor<ProseEditorState> {
 
 	_proseEditorView: ProseEditorView | null;
 	_proseSchema: ProseSchema;
@@ -44,7 +47,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		// no editor until initialized
 		this._initialized = false;
 		this._proseEditorView = null;
-		this._proseSchema = markdownSchema;
+		this._proseSchema = nwtSchema;
 		this._editorElt = editorElt;
 
 		function markActive(state:EditorState, type:MarkType) {
@@ -60,6 +63,27 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 			},
 			"Ctrl-s": (state, dispatch, view) => {
 				this.saveCurrentFile(false);
+				return true;
+			},
+			"Ctrl-Space": (state, dispatch, view) => {
+				let { $from, $to } = state.selection;
+				let nodeType = nwtSchema.nodes.embed_md;
+
+				openPrompt({
+					title: "Embed Document",
+					fields: {
+						fileName: new TextField({
+							label: "File Name",
+							required: true
+						}),
+					},
+					callback(attrs: { [key: string]: any; } | undefined) {
+						// insert new embed node at top level
+						let tr = state.tr.insert($to.after(1), nodeType.createAndFill(attrs))
+						dispatch(tr);
+						view.focus()
+					}
+				})
 				return true;
 			},
 			"Ctrl-k": (state, dispatch, view) => {
@@ -164,6 +188,9 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 					nodeViews.push(nodeView);
 					return nodeView;
 				},
+				"embed_md": (node, view, getPos) => {
+					return new EmbedView(node, view, getPos as (() => number), this._mainProxy);
+				}
 			},
 			dispatchTransaction: (tr: Transaction): void => {
 				// unsaved changes?
@@ -195,7 +222,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 						if (tag) { this._mainProxy.requestTagOpen({tag, create:true}); }
 					}
 					// links
-					else if(mark = markdownSchema.marks.link.isInSet(node.marks)){
+					else if(mark = nwtSchema.marks.link.isInSet(node.marks)){
 						let url:string = mark.attrs.href;
 						if (url) { this._mainProxy.requestExternalLinkOpen(url); }
 					}
@@ -212,7 +239,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				if(clipboard.availableFormats("clipboard").find(str => str.startsWith("image"))){
 					let dataUrl:string = clipboard.readImage("clipboard").toDataURL();
 					
-					let imgNode = markdownSchema.nodes.image.createAndFill({
+					let imgNode = nwtSchema.nodes.image.createAndFill({
 						src: dataUrl
 					});
 					
@@ -244,31 +271,20 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 	}
 	// == Document Model ================================ //
 
+
 	serializeContents(): string {
-		if(!this._proseEditorView){ return ""; }
-		return markdownSerializer.serialize(this._proseEditorView.state.doc);
+		if (!this._proseEditorView) { return ""; }
+		return JSON.stringify(
+			this._proseEditorView.state.toJSON(), undefined, "\t"
+		);
 	}
 
-	parseContents(contents: string):ProseEditorState {
-		console.log("editor-markdown :: parseContents", contents);
-
-		let parsed = markdownParser.parse(contents);
-		console.log(parsed);
-
-		return ProseEditorState.create({
-			doc: parsed,
-			plugins: [
-				// note: keymap order matters!
-				keymap(buildKeymap_markdown(this._proseSchema)),
-				keymap(baseKeymap),
-				this._keymap,
-				buildInputRules_markdown(this._proseSchema),
-				mathInputRules,
-				mathSelectPlugin,
-				history(),
-				gapCursor()
-			]
-		});
+	parseContents(contents: string): ProseEditorState {
+		let config = {
+			schema: nwtSchema,
+			plugins: [this._keymap]
+		}
+		return ProseEditorState.fromJSON(config, JSON.parse(contents))
 	}
 
 	setContents(contents: ProseEditorState): void {

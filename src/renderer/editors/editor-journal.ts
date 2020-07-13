@@ -1,17 +1,16 @@
 // prosemirror imports
 import { EditorView as ProseEditorView } from "prosemirror-view";
-import { Schema as ProseSchema, DOMParser as ProseDOMParser, NodeType, ContentMatch } from "prosemirror-model";
-import { EditorState as ProseEditorState, Transaction, 
-	Plugin as ProsePlugin, Selection } from "prosemirror-state";
+import { Schema as ProseSchema, NodeType } from "prosemirror-model";
+import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin, Selection } from "prosemirror-state";
 import { findWrapping } from "prosemirror-transform";
-import { baseKeymap, toggleMark, wrapIn, chainCommands,
-	splitBlock, newlineInCode, createParagraphNear, 
+import { baseKeymap, toggleMark, chainCommands,
+	splitBlock, createParagraphNear, 
 	lift, liftEmptyBlock, selectParentNode } from "prosemirror-commands";
 import { keymap } from "prosemirror-keymap";
 
 // project imports
 import { journalSchema } from "@common/prosemirror/schema/journal-schema";
-import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
+import { IPossiblyUntitledFile } from "@common/fileio";
 import { Editor } from "./editor";
 import { MainIpcHandlers } from "@main/MainIPC";
 

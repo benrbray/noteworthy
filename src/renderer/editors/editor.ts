@@ -1,5 +1,6 @@
 import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
 import { MainIpcHandlers } from "@main/MainIPC";
+import { to } from "@common/util/to";
 
 export abstract class Editor<TDocumentModel=any> {
 	// editor
@@ -57,7 +58,7 @@ export abstract class Editor<TDocumentModel=any> {
 	// == Public Interface ============================== //
 	
 	setCurrentFile(file: IPossiblyUntitledFile): void {
-		console.log("editor :: setCurrentFile");
+		console.log("editor :: setCurrentFile", file);
 		this._currentFile = file;
 		this.setContents(this.parseContents(file.contents));
 		this.handleDocChanged();
@@ -83,9 +84,11 @@ export abstract class Editor<TDocumentModel=any> {
 
 		// perform save
 		if (saveas || this._currentFile.path == null) {
-			await this._mainProxy.dialogFileSaveAs(this._currentFile);
+			let [err] = await to(this._mainProxy.dialogFileSaveAs(this._currentFile));
+			if(err) { return Promise.reject(err); }
 		} else {
-			await this._mainProxy.requestFileSave(this._currentFile);
+			let [err] = await to(this._mainProxy.requestFileSave(this._currentFile));
+			if(err) { return Promise.reject(err); }
 		}
 
 		/** @todo (6/22/20) is this the right place to call fileDidSave?
@@ -96,14 +99,26 @@ export abstract class Editor<TDocumentModel=any> {
 	}
 
 	async closeAndDestroy():Promise<void> {
+		console.log("editor :: closeAndDestroy");
 		// check for unsaved changes
 		if(this._currentFile && this._unsavedChanges){
-			let shouldSave: boolean = await this._mainProxy.askSaveDiscardChanges(this._currentFile.path || "<untitled>");
-			if(shouldSave){
-				await this.saveCurrentFile(false);
+			// prompt user for a desired action
+			let [err, choice] = await to(this._mainProxy.askSaveDiscardChanges(this._currentFile.path || "<untitled>"));
+			if(err) { return Promise.reject(err); }
+
+			// handle user action
+			if(choice == "Cancel") {
+				// cancel: user doesn't want to close after all!
+				return Promise.reject(choice);
+			} else if(choice == "Save" || choice == "Save As") {
+				// save file, checking for errors
+				let [err] = await to(this.saveCurrentFile(choice == "Save As"));
+				if (err) { return Promise.reject(err); }
+			} else if(choice == "Discard Changes") {
+				/* close without saving! */
 			}
 		}
-
+		// destroy
 		this.destroy();
 	}
 

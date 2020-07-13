@@ -1,11 +1,10 @@
 import * as _ from 'lodash'; // TODO: remove lodash
-import * as path from "path";
-import {BrowserWindow, BrowserWindowConstructorOptions} from "electron";
-import { is } from "electron-util";
+import {BrowserWindow, BrowserWindowConstructorOptions, ipcMain, IpcMainEvent} from "electron";
 import windowStateKeeper from 'electron-window-state';
 //import pkg from '@root/package.json';
 import Environment from '@common/environment';
 import Settings from '@common/settings';
+import { randomId } from '@common/util/random';
 
 class Window {
 	name:string;
@@ -54,6 +53,7 @@ class Window {
 		const state = windowStateKeeper(stateOptions),
 			dimensions = _.pick(state, ['x', 'y', 'width', 'height']);
 
+		/** @todo get rid of lodash */
 		options = _.merge(dimensions, {
 			frame: false, //!is.macos,
 			backgroundColor: (Settings.get('theme') === 'light') ? '#F7F7F7' : '#0F0F0F', //TODO: This won't scale with custom themes
@@ -86,6 +86,30 @@ class Window {
 		this.attach__didFinishLoad();
 		this.attach__closed();
 		this.attach__focus();
+	}
+
+	/**
+	 * Wraps window.webContents.send() in a Promise. Expects the render
+	 * process to send back a response after handling the message.
+	 * 
+	 * This is needed because unlike `ipcRenderer`, electron `WebContents`
+	 * has no invoke() method for when we expect a message result.  See:
+	 *
+	 *
+	 */
+	async invoke<T>(channel:string, ...args:any[]):Promise<T> {
+		return new Promise<T>((resolve, reject) => {
+			// generate unique id for event
+			let responseId = `RENDER_DID_HANDLE::${channel}::${randomId()}`;
+			// send message from main --> render
+			this.window.webContents.send(channel, responseId, ...args);
+			// expect response -- promise won't resolve otherwise
+			/** @todo (7/12/20) accept timeout (seconds) as argument? */
+			ipcMain.once(responseId, (evt:IpcMainEvent, success:boolean, result:any) => {
+				if(success) { resolve(result); }
+				else        { reject(result);  }
+			});
+		});
 	}
 
 	// Attach / Detach Events ------------------------------
