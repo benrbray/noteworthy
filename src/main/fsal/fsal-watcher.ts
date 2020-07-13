@@ -23,7 +23,7 @@ export default class FSALWatchdog extends EventEmitter {
 	 * @param p initial path to watch
 	 */
 	async init(p?:string){
-		console.log("fsal-watcher :: init()");
+		console.log("fsal-watcher :: init() :: path=", p);
 
 		// don't boot up twice, and only boot if there's at least one path
 		if(this._paths.size < 1 || this.isBooting()){ return; }
@@ -34,7 +34,12 @@ export default class FSALWatchdog extends EventEmitter {
 		// directories that should be ignored and a function that returns true
 		// for all files that are _not_ in the filetypes list (whitelisting)
 		// Further reading: https://github.com/micromatch/anymatch
-		let ignoreDirs: (RegExp|string)[] = [/(^|[/\\])\../, '**/.noteworthy/*'];
+		let ignoreDirs: (RegExp|string)[] = [
+			/(^|[/\\])\../,
+			'**/.noteworthy/**',
+			'**/.git/**',
+			'**/.vscode/**'
+		];
 		
 		this._process = chokidar.watch( (p?p:[]), {
 			ignored: ignoreDirs,
