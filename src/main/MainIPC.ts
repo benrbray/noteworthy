@@ -1,9 +1,12 @@
 import { dialog, shell } from "electron";
 import { readFile, saveFile, IFileWithContents, IPossiblyUntitledFile, IDirEntryMeta, IFileMeta } from "@common/fileio";
 import NoteworthyApp from "./app"
+import { DialogSaveDiscardOptions } from "@common/dialog";
+import { to } from "@common/util/to";
 
 ////////////////////////////////////////////////////////////
 
+/** @todo (7/12/20) move to separate file (duplicated in ipc.ts right now) */
 type FunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? K : never }[keyof T];
 type FunctionProperties<T> = Pick<T, FunctionPropertyNames<T>>;
 
@@ -89,17 +92,34 @@ export class MainIpcHandlers {
 
 	// -- Ask Save/Discard Changes ---------------------- //
 
-	async askSaveDiscardChanges(filePath: string): Promise<boolean> {
-		if (!this._app.window) { return false; }
-		let response = await dialog.showMessageBox(this._app.window?.window, {
+	/** @todo (7/12/20) better return type? extract array type? **/
+	async askSaveDiscardChanges(filePath: string): Promise<typeof DialogSaveDiscardOptions[number]> {
+		if (!this._app.window) { throw new Error("no window open! cannot open dialog!"); }
+		let response = await dialog.showMessageBox(this._app.window.window, {
 			type: "warning",
 			title: "Warning: Unsaved Changes",
 			message: `File (${filePath}) contains unsaved changes.`,
-			buttons: ["Cancel", "Save"],
-			defaultId: 1,
-			cancelId: 0
+			buttons: Array.from(DialogSaveDiscardOptions),
+			defaultId: DialogSaveDiscardOptions.indexOf("Save"),
+			cancelId: DialogSaveDiscardOptions.indexOf("Cancel"),
 		})
-		return (response.response == 1);
+		return DialogSaveDiscardOptions[response.response];
+	}
+
+	//// APPLICATION ///////////////////////////////////////
+
+	async requestAppQuit():Promise<void>{
+		/** @todo (7/12/20) handle multiple windows? multiple files open? */
+		if(this._app._renderProxy){
+			// attempt to close active editors/windows
+			let [err, result] = await to<string>(this._app._renderProxy.requestClose());
+			// ok if promise rejects because user cancelled shutdown
+			if(err == "Cancel"){ return; }
+			// anything else is an error
+			else if(err){ return Promise.reject(err); }
+		}
+		// close app
+		this._app.quit();
 	}
 
 	//// FILES /////////////////////////////////////////////
@@ -121,7 +141,7 @@ export class MainIpcHandlers {
 		if (!this._app.window) { return false; }
 
 		saveFile(file.path, file.contents);
-		// TODO: send success/fail back to renderer?
+		/** @todo (7/12/20) check for file save errors? */
 		this._app._renderProxy?.fileDidSave({saveas: false, path: file.path });
 		return true;
 	}

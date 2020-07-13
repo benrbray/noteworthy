@@ -15,9 +15,9 @@ import * as FSALDir from "./fsal/fsal-dir";
 import { CrossRefPlugin } from "./plugins/crossref-plugin";
 import { WorkspacePlugin } from "./plugins/plugin";
 import { Workspace } from "./workspace/workspace";
-import { senderFor } from "@common/ipc";
+import { senderFor, invokerFor } from "@common/ipc";
 import { IDirectory, IFileMeta, IDirEntryMeta } from "@common/fileio";
-import { FsalEvents, AppEvents, ChokidarEvents } from "@common/events";
+import { FsalEvents, AppEvents, ChokidarEvents, IpcEvents } from "@common/events";
 import { RendererIpcEvents, RendererIpcHandlers } from "@renderer/RendererIPC";
 
 ////////////////////////////////////////////////////////////
@@ -26,7 +26,7 @@ export default class NoteworthyApp extends EventEmitter {
 	window: Window | undefined;
 	
 	/** proxy for SENDING events to the render process */
-	_renderProxy:null|RendererIpcHandlers;
+	_renderProxy: null | RendererIpcHandlers;
 	/** handlers for events RECEIVED from the render process */
 	_eventHandlers:MainIpcHandlers;
 	/** file system abstraction layer */
@@ -114,9 +114,14 @@ export default class NoteworthyApp extends EventEmitter {
 
 	// == Quitting ====================================== //
 
+	/**
+	 * Perform all steps needed to shut down the application.
+	 * (Note: Actually shuts down!  Doesn't ask about unsaved changes!)
+	 */
 	quit(){
-		console.log("app :: quit");
+		// announce globally that we're actually quitting!
 		global.isQuitting = true;
+		// clean up
 		this.detach__beforeQuit();
 		this.closeWorkspace()
 		this._fsal.destroy();
@@ -130,7 +135,17 @@ export default class NoteworthyApp extends EventEmitter {
 		console.log("app :: load")
 		this.window = new Main();
 		this.window.init();
-		this._renderProxy = senderFor<RendererIpcHandlers>(this.window.window.webContents, "mainCommand", "main->render");
+
+		// deprecated 
+		// this._renderProxy = senderFor<RendererIpcHandlers>(
+		// 	this.window.window.webContents,
+		// 	"mainCommand", "main->render"
+		// );
+
+		this._renderProxy = invokerFor<RendererIpcHandlers>(
+			this.window,
+			IpcEvents.RENDERER_INVOKE, "main->render"
+		);
 	}
 
 	// == Workspaces ==================================== //
@@ -322,6 +337,7 @@ export default class NoteworthyApp extends EventEmitter {
 	// Event Handlers --------------------------------------
 
 	__windowAllClosed = () => {
+		console.log("app :: __windowAllClosed");
 		if(is.macos){ return this.initMenu(); };
 		this.quit();
 	}
@@ -362,6 +378,7 @@ export default class NoteworthyApp extends EventEmitter {
 	}
 
 	__updaterCheck = () => {
+		/** @todo (7/12/20) automatic updates */
 		// updater.removeAllListeners();
 
 		// if (notifications === true) {

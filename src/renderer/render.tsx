@@ -13,6 +13,8 @@ import { MainIpcHandlers } from "@main/MainIPC";
 import { ipcRenderer, IpcRendererEvent } from "electron";
 import { invokerFor } from "@common/ipc";
 import { NwtEditor } from "./editors/editor-nwt";
+import { to } from "@common/util/to";
+import { IpcEvents } from "@common/events";
 
 ////////////////////////////////////////////////////////////
 
@@ -28,13 +30,13 @@ class Renderer {
 	_sidebarElt: HTMLDivElement;
 
 	// prosemirror
-	_editor:ProseMirrorEditor|null;
-	_currentFile:IPossiblyUntitledFile;
+	_editor: ProseMirrorEditor | null;
+	_currentFile: IPossiblyUntitledFile;
 
 	// sidebar
-	_explorer:Explorer|undefined;
+	_explorer: Explorer | undefined;
 
-	constructor(){
+	constructor() {
 		// initialize objects
 		this._mainProxy = invokerFor<MainIpcHandlers>(ipcRenderer, "command", "render->main");
 		this._eventHandlers = new RendererIpcHandlers(this);
@@ -48,7 +50,7 @@ class Renderer {
 			modTime: -1,
 			creationTime: -1
 		};
-		
+
 		this._editor = null;
 
 		// dom elements
@@ -57,35 +59,44 @@ class Renderer {
 		this._sidebarElt = document.getElementById("sidebar") as HTMLDivElement;
 	}
 
-	init(){
+	init() {
 		console.log("render :: init()");
 
 		// handle events from main
-		ipcRenderer.on("mainCommand", (evt: IpcRendererEvent, key: RendererIpcEvents, data: any) => {
+		ipcRenderer.on("mainCommand", (evt, key: RendererIpcEvents, data: any) => {
 			this.handle(key, data);
 		});
+
+		ipcRenderer.on(IpcEvents.RENDERER_INVOKE,
+			(evt, responseId: string, key: RendererIpcEvents, data: any) => {
+				console.log("render.on() :: RENDERER_INVOKE ::", responseId, key, data);
+				this.handle(key, data)
+					.then((result: any) => { ipcRenderer.send(responseId, true, result); })
+					.catch((reason: any) => { ipcRenderer.send(responseId, false, reason); });
+			}
+		);
 
 		// file explorer
 		this.initExplorer();
 
 		// set current file
-		if(this._currentFile){
+		if (this._currentFile) {
 			this.setCurrentFile(this._currentFile);
 		}
 
 		// ctrl handler
 		/** @todo (6/20/20) where should this code go? */
-		const shiftHandler = (evt:KeyboardEvent) => {
-			if(evt.ctrlKey) { document.body.classList.add("user-ctrl");    }
-			else            { document.body.classList.remove("user-ctrl"); }
-		}
+		const shiftHandler = (evt: KeyboardEvent) => {
+			if (evt.ctrlKey) { document.body.classList.add("user-ctrl"); }
+			else { document.body.classList.remove("user-ctrl"); }
+		};
 
 		document.addEventListener("keydown", shiftHandler);
 		document.addEventListener("keyup", shiftHandler);
 		document.addEventListener("keypress", shiftHandler);
 	}
 
-	initExplorer(){
+	initExplorer() {
 		let explorerElt = document.createElement("div");
 		explorerElt.className = "explorer";
 		this._sidebarElt.appendChild(explorerElt);
@@ -96,19 +107,23 @@ class Renderer {
 		return this._eventHandlers[name](data as any);
 	}
 
-	async setCurrentFile(file:IPossiblyUntitledFile):Promise<void> {
+	async setCurrentFile(file: IPossiblyUntitledFile): Promise<void> {
 		// clean up current editor
 		/** @todo (6/9/20) improve performance by not completely
 		 * deleting old editor when new file has same type as old one */
-		if(this._editor){ await this._editor.closeAndDestroy(); }
+		if (this._editor) {
+			/** @todo (7/12/20) would this be better as a try/catch? */
+			let [err, result] = await to<string>(this._editor.closeAndDestroy());
+			if (err == "Cancel") { return; }
+			else if (err) { return Promise.reject(err); }
+		}
 
 		console.log("render :: setCurrentFile", file);
 		this._currentFile = file;
-
 		this._titleElt.textContent = file.path || "<untitled>";
 
 		// get extension type
-		let ext:string = pathlib.extname(this._currentFile.path || "");
+		let ext: string = pathlib.extname(this._currentFile.path || "");
 		console.log("setCurrentFile :: extension ", ext);
 
 		switch (ext) {
@@ -144,10 +159,8 @@ class Renderer {
 		this._editor.init();
 	}
 
-	setCurrentFilePath(filePath:string):void {
-		if(this._editor){
-			this._editor.setCurrentFilePath(filePath);
-		}
+	setCurrentFilePath(filePath: string): void {
+		this._editor?.setCurrentFilePath(filePath);
 	}
 }
 

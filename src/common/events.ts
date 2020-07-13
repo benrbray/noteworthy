@@ -46,7 +46,8 @@ export enum ChokidarEvents {
 
 export enum IpcEvents {
 	NOTIFY = "notify",
-	NOTIFY_ERROR = "notify-error"
+	NOTIFY_ERROR = "notify-error",
+	RENDERER_INVOKE = "renderer-invoke"
 }
 
 export enum AppEvents {
