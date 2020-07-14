@@ -161,9 +161,28 @@ li.task-list-item input[type='checkbox'] {
 
 /* -- File Explorer ------------------------------------- */
 
+.folder[collapsed=true]::before {
+	content: ">";
+}
+
+.folder[collapsed=true] .file {
+	display: none;
+}
+
+.folder {
+	color: #616161;
+	font-weight: bold;
+	background-color: rgba(0,0,0,0.2);
+	padding: 0.1em 0.5em;
+	user-select: none;
+	white-space: nowrap;
+	overflow-x: hidden;
+	text-overflow: ellipsis;
+}
+
 .file {
 	color: #616161;
-	padding: 0.1em 0.5em;
+	padding: 0.2em 0.5em;
 	user-select: none;
 	white-space: nowrap;
 	overflow-x: hidden;
