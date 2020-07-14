@@ -69,7 +69,9 @@ class MarkdownParseState {
 				let closed = (match[1] === "/");
 				let tagName = match[2].toLowerCase();
 				if(!isSupportedHtmlTag(tagName)){
-					throw new Error("Unsupported HTML Tag! " + tok.content);
+					console.error("Unsupported HTML Tag!", tok.content);
+					tokenType = "text";
+					//throw new Error("Unsupported HTML Tag! " + tok.content);
 				}
 				
 				// extract attrs
@@ -171,7 +173,7 @@ function isHtmlSingleton(tagName){
 function isSupportedHtmlTag(tagName){
 	return [
 		"div", "span", "hr", "br", "img", "u", "s", "em", "b",
-		"h1", "h2", "h3", "h4", "h5", "h6", "input"
+		"h1", "h2", "h3", "h4", "h5", "h6", "input", "dfn", "cite"
 	 ].includes(tagName);
 }
 
@@ -330,6 +332,8 @@ export const markdownParser = new MarkdownParser(markdownSchema, md, {
 	u: { mark: "underline" },
 	em: {mark: "em"},
 	tag: {mark: "tag"},
+	dfn: {mark: "definition"},
+	cite: {mark: "citation"},
 	citation: {mark: "citation"},
 	strong: {mark: "strong"},
 	link: {mark: "link", getAttrs: tok => ({

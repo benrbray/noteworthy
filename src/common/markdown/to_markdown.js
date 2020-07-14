@@ -131,6 +131,7 @@ export const markdownSerializer = new MarkdownSerializer({
 	underline: {open: "<u>", close: "</u>", mixable: true, expelEnclosingWhitespace: true},
 	strike: {open: "~~", close: "~~", mixable: true, expelEnclosingWhitespace: true},
 	tag: {open: "#[", close: "]", mixable: true, expelEnclosingWhitespace: true, escape:false},
+	definition: {open: "<dfn>", close: "</dfn>", mixable: true, expelEnclosingWhitespace: true, escape:false},
 	citation: {open: "@[", close: "]", mixable: true, expelEnclosingWhitespace: true, escape:false},
 	wikilink: {open: "[[", close: "]]", mixable: true, expelEnclosingWhitespace: true, escape:false},
 	link: {

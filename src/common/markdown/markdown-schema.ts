@@ -190,6 +190,11 @@ export function markdownSpec() { return {
 			toDOM(): DOMOutputSpec { return ["strong"] }
 		},
 
+		definition: {
+			parseDOM: [{ tag: "dfn" }],
+			toDOM(): DOMOutputSpec { return ["dfn"] }
+		},
+
 		link: {
 			attrs: {
 				href: {},

@@ -201,9 +201,13 @@ export class Workspace implements IDisposable {
 		let ext: string = pathlib.extname(file.path);
 		if (ext == ".md" || ext == ".txt") {
 			let doc = markdownParser.parse(contents);
-			for (let plugin of this._plugins) {
-				if(created){ plugin.handleFileCreated(file.path, file.hash, doc); }
-				else       { plugin.handleFileChanged(file.path, file.hash, doc); }
+			if(doc){
+				for (let plugin of this._plugins) {
+					if(created){ plugin.handleFileCreated(file.path, file.hash, doc); }
+					else       { plugin.handleFileChanged(file.path, file.hash, doc); }
+				}
+			} else {
+				console.error(`workspace :: handleFileChanged() :: error parsing file, skipping :: ${file.path}`);
 			}
 		}
 		// add to workspace
