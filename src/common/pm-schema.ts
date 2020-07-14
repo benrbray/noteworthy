@@ -212,6 +212,17 @@ export function buildKeymap_markdown(schema:Schema, mapKeys?:{ [key:string] : st
 		bind("Mod-b", toggleMark(type))
 		bind("Mod-B", toggleMark(type))
 	}
+
+	if (type = schema.marks.definition) {
+		bind("Mod-D", toggleMark(type))
+		bind("Mod-d", toggleMark(type))
+	}
+	if (type = schema.marks.wikilink) {
+		bind("Mod-[", toggleMark(type))
+	}
+	if (type = schema.marks.citation) {
+		bind("Mod-@", toggleMark(type))
+	}
 	if (type = schema.marks.em) {
 		bind("Mod-i", toggleMark(type))
 		bind("Mod-I", toggleMark(type))
@@ -238,9 +249,7 @@ export function buildKeymap_markdown(schema:Schema, mapKeys?:{ [key:string] : st
 	}
 	if (type = schema.nodes.list_item) {
 		bind("Enter", splitListItem(type))
-		bind("Mod-[", liftListItem(type))
 		bind("Shift-Tab", liftListItem(type))
-		bind("Mod-]", sinkListItem(type))
 		bind("Tab", sinkListItem(type))
 	}
 	if (type = schema.nodes.paragraph)
