@@ -1,3 +1,5 @@
+import YAML from "yaml";
+
 // ::- A specification for serializing a ProseMirror document as
 // Markdown/CommonMark text.
 export class MarkdownSerializer {
@@ -48,7 +50,16 @@ export class MarkdownSerializer {
 	serialize(content, options) {
 		let state = new MarkdownSerializerState(this.nodes, this.marks, options)
 		state.renderContent(content)
-		return state.out
+		
+		let result = state.out;
+
+		// include YAML frontmatter
+		let yamlMeta = content.attrs["yamlMeta"] || null;
+		if(yamlMeta) {
+			result = `---\n${YAML.stringify(yamlMeta)}---\n\n` + result;
+		}
+
+		return result;
 	}
 }
 

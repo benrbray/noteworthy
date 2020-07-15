@@ -1,39 +1,97 @@
 import markdownit from "markdown-it"
+import { yaml_plugin } from "./markdown-it-yaml"
 import { math_plugin } from "./markdown-it-katex"
 import { wikilinks_plugin } from "./markdown-it-wikilinks"
 import { tasklist_plugin } from "./markdown-it-tasklists"
 import { citation_plugin } from "./markdown-it-citations"
 import { tag_plugin } from "./markdown-it-tags"
-import { Schema, Mark } from "prosemirror-model"
+import { Schema as ProseSchema, Mark as ProseMark, Node as ProseNode, NodeType, MarkType } from "prosemirror-model";
 
 import { markdownSchema } from "./markdown-schema";
+import StateInline from "markdown-it/lib/rules_inline/state_inline";
+import StateBlock from "markdown-it/lib/rules_block/state_block";
+import Token from "markdown-it/lib/token";
+import MarkdownIt from "markdown-it";
 
-function maybeMerge(a, b) {
-	if (a.isText && b.isText && Mark.sameSet(a.marks, b.marks))
+////////////////////////////////////////////////////////////
+
+/* ==== TYPES =========================================== */
+
+interface IBlockType {
+	type: "block";
+	block: string;
+	html?:string;
+	getAttrs?: (tok:Token) => any;
+}
+
+interface INodeType {
+	type: "node";
+	node: string;
+	html?:string;
+	getAttrs?: (tok:Token) => any;
+}
+
+interface IMarkType {
+	type: "mark";
+	mark: string;
+	html?:string;
+	getAttrs?: (tok:Token) => any;
+}
+
+interface IIgnoreType {
+	type: "ignore";
+	html?:string;
+	getAttrs?: (tok:Token) => any;
+}
+
+type IParserSpec = IBlockType | INodeType | IMarkType | IIgnoreType;
+
+type TokenHandler = (state:MarkdownParseState, tok:Token)=>any;
+
+/* ==== MARKDOWN PARSE STATE ============================ */
+
+/* -- Helpers ------------------------------------------- */
+
+function maybeMerge(a:any, b:any) {
+	if (a.isText && b.isText && ProseMark.sameSet(a.marks, b.marks))
 		return a.withText(a.text + b.text)
 }
 
+function withoutTrailingNewline(str:string):string {
+	return str[str.length - 1] == "\n" ? str.slice(0, str.length - 1) : str
+}
+
+/* -- Parse State --------------------------------------- */
+
 // Object used to track the context of a running parse.
 class MarkdownParseState {
-	constructor(schema, tokenHandlers) {
+
+	schema:ProseSchema;
+	stack: {type:NodeType, content:ProseNode[], attrs?:any}[];
+	marks: ProseMark[];
+	tokenHandlers:{ [type:string] : TokenHandler}
+
+	constructor(schema:ProseSchema, tokenHandlers:{ [type:string] : TokenHandler}, topAttrs:any) {
 		this.schema = schema
-		this.stack = [{type: schema.topNodeType, content: []}]
-		this.marks = Mark.none
+		this.marks = ProseMark.none
 		this.tokenHandlers = tokenHandlers
+
+		// create ProseMirror topNode with specified attrs (e.g. YAML)
+		this.stack = [{type: schema.topNodeType, content: [], attrs: topAttrs}]
 	}
 
 	top() {
 		return this.stack[this.stack.length - 1]
 	}
 
-	push(elt) {
+	push(elt:ProseNode) {
 		if (this.stack.length) this.top().content.push(elt)
 	}
 
 	// : (string)
 	// Adds the given text to the current position in the document,
 	// using the current marks as styling.
-	addText(text) {
+	addText(text:string) {
 		if (!text) return
 		let nodes = this.top().content, last = nodes[nodes.length - 1]
 		let node = this.schema.text(text, this.marks), merged
@@ -43,22 +101,22 @@ class MarkdownParseState {
 
 	// : (Mark)
 	// Adds the given mark to the set of active marks.
-	openMark(mark) {
+	openMark(mark:ProseMark) {
 		this.marks = mark.addToSet(this.marks)
 	}
 
 	// : (Mark)
 	// Removes the given mark from the set of active marks.
-	closeMark(mark) {
+	closeMark(mark:MarkType) {
 		this.marks = mark.removeFromSet(this.marks)
 	}
 
-	parseTokens(toks) {
+	parseTokens(toks:Token[]) {
 		//let domParser = new DOMParser();
 
 		for (let i = 0; i < toks.length; i++) {
-			let tok = toks[i]
-			let tokenType = tok.type;
+			let tok:Token = toks[i]
+			let tokenType:string = tok.type;
 
 			// html_inline tokens have a `content` property, storing
 			// the html tag as a string like "<div>" or "</div>"
@@ -122,7 +180,7 @@ class MarkdownParseState {
 
 	// : (NodeType, ?Object, ?[Node]) → ?Node
 	// Add a node at the current position.
-	addNode(type, attrs, content) {
+	addNode(type:NodeType, attrs:object, content?:ProseNode[]) {
 		let node = type.createAndFill(attrs, content, this.marks)
 		if (!node) return null
 		this.push(node)
@@ -131,20 +189,23 @@ class MarkdownParseState {
 
 	// : (NodeType, ?Object)
 	// Wrap subsequent content in a node of the given type.
-	openNode(type, attrs) {
+	openNode(type:NodeType, attrs:object) {
 		this.stack.push({type: type, attrs: attrs, content: []})
 	}
 
 	// : () → ?Node
 	// Close and return the node that is currently on top of the stack.
 	closeNode() {
-		if (this.marks.length) this.marks = Mark.none
+		if (this.marks.length) this.marks = ProseMark.none
 		let info = this.stack.pop()
+		if(!info){ throw new Error("from_markdown :: no node to close!"); }
 		return this.addNode(info.type, info.attrs, info.content)
 	}
 }
 
-function attrs(spec, token) {
+/* -- Attrs --------------------------------------------- */
+
+function attrs(spec:IParserSpec, token:Token) {
 	// support `class` attr by default
 	let className = token.attrGet("class");
 	if (spec.getAttrs) return {
@@ -152,48 +213,23 @@ function attrs(spec, token) {
 		...spec.getAttrs(token)
 	}
 	// For backwards compatibility when `attrs` is a Function
-	else if (spec.attrs instanceof Function) return spec.attrs(token)
-	else return { ...spec.attrs, ...(className && {class:className }) };
+	//else if (spec.attrs instanceof Function) return spec.attrs(token)
+	//else return { ...spec.attrs, ...(className && {class:className }) };
 }
 
-// Code content is represented as a single token with a `content`
-// property in Markdown-it.
-function noOpenClose(type) {
-	let tags = [
-		"code_inline", "code_block", "fence", 
-		"math_inline", "math_display", "wikilink", 
-		"tasklist_item", "tag", "citation"
-	];
-	return tags.includes(type);
-}
+/* -- Token Handlers ------------------------------------ */
 
-function isHtmlSingleton(tagName){
-	return [ "hr", "br", "img"].includes(tagName)
-}
-function isSupportedHtmlTag(tagName){
-	return [
-		"div", "span", "hr", "br", "img", "u", "s", "em", "b",
-		"h1", "h2", "h3", "h4", "h5", "h6", "input", "dfn", "cite"
-	 ].includes(tagName);
-}
-
-function withoutTrailingNewline(str) {
-	return str[str.length - 1] == "\n" ? str.slice(0, str.length - 1) : str
-}
-
-function noOp() {}
-
-function tokenHandlers(schema, tokens) {
-	let handlers = Object.create(null)
+function tokenHandlers(schema:ProseSchema, tokens:{ [type:string] : IParserSpec }): { [type:string] : TokenHandler} {
+	let handlers:{ [type:string] : TokenHandler } = Object.create(null)
 	for (let type in tokens) {
-		let spec = tokens[type]; 
+		let spec:IParserSpec = tokens[type]; 
 		
 		// some token specs may override html tag
 		let tokenType = (spec.html ? spec.html : type);
 		
 		// define token handlers
-		if (spec.block) {
-			let nodeType = schema.nodeType(spec.block)
+		if (spec.type == "block") {
+			let nodeType = schema.nodes[spec.block];
 			if (noOpenClose(tokenType)) {
 				handlers[tokenType] = (state, tok) => {
 					state.openNode(nodeType, attrs(spec, tok))
@@ -204,10 +240,10 @@ function tokenHandlers(schema, tokens) {
 				handlers[tokenType + "_open"] = (state, tok) => state.openNode(nodeType, attrs(spec, tok))
 				handlers[tokenType + "_close"] = state => state.closeNode()
 			}
-		} else if (spec.node) {
-			let nodeType = schema.nodeType(spec.node)
+		} else if (spec.type == "node") {
+			let nodeType = schema.nodes[spec.node];
 			handlers[tokenType] = (state, tok) => state.addNode(nodeType, attrs(spec, tok))
-		} else if (spec.mark) {
+		} else if (spec.type == "mark") {
 			let markType = schema.marks[spec.mark]
 			if (noOpenClose(tokenType)) {
 				handlers[tokenType] = (state, tok) => {
@@ -219,7 +255,7 @@ function tokenHandlers(schema, tokens) {
 				handlers[tokenType + "_open"] = (state, tok) => state.openMark(markType.create(attrs(spec, tok)))
 				handlers[tokenType + "_close"] = state => state.closeMark(markType)
 			}
-		} else if (spec.ignore) {
+		} else if (spec.type == "ignore") {
 			if (noOpenClose(tokenType)) {
 				handlers[tokenType] = noOp
 			} else {
@@ -231,18 +267,26 @@ function tokenHandlers(schema, tokens) {
 		}
 	}
 
-	handlers.text = (state, tok) => state.addText(tok.content)
-	handlers.inline = (state, tok) => state.parseTokens(tok.children)
-	handlers.softbreak = handlers.softbreak || (state => state.addText("\n"))
+	handlers["text"] = (state, tok) => state.addText(tok.content)
+	handlers["inline"] = (state, tok) => tok.children && state.parseTokens(tok.children);
+	handlers["softbreak"] = handlers.softbreak || (state => state.addText("\n"))
 
 	return handlers
 }
+
+/* ==== MARKDOWN PARSER ================================= */
 
 // ::- A configuration of a Markdown parser. Such a parser uses
 // [markdown-it](https://github.com/markdown-it/markdown-it) to
 // tokenize a file, and then runs the custom rules it is given over
 // the tokens to create a ProseMirror document tree.
 export class MarkdownParser {
+
+	schema:ProseSchema;
+	tokenizer:markdownit;
+	tokens: { [type:string] : IParserSpec };
+	tokenHandlers: { [type:string] : TokenHandler };
+
 	// :: (Schema, MarkdownIt, Object)
 	// Create a parser with the given configuration. You can configure
 	// the markdown-it parser to parse the dialect you want, and provide
@@ -280,7 +324,7 @@ export class MarkdownParser {
 	//
 	// **`ignore`**`: ?bool`
 	//   : When true, ignore content for the matched token.
-	constructor(schema, tokenizer, tokens) {
+	constructor(schema:ProseSchema, tokenizer:markdownit, tokens:{ [type:string] : IParserSpec }) {
 		// :: Object The value of the `tokens` object used to construct
 		// this parser. Can be useful to copy and modify to base other
 		// parsers on.
@@ -294,61 +338,120 @@ export class MarkdownParser {
 	// Parse a string as [CommonMark](http://commonmark.org/) markup,
 	// and create a ProseMirror document as prescribed by this parser's
 	// rules.
-	parse(text) {
-		let state = new MarkdownParseState(this.schema, this.tokenHandlers), doc
-		state.parseTokens(this.tokenizer.parse(text, {}))
+	parse(text:string) {
+		
+		// tokenize with markdown-it
+		let env:any = {};
+		let tokens = this.tokenizer.parse(text, env);
+		let yamlMeta = env["yamlMeta"] || {};
+		console.log("YAML:", yamlMeta);
+		
+		// parse tokens
+		let state = new MarkdownParseState(this.schema, this.tokenHandlers, {yamlMeta});
+		state.parseTokens(tokens);
+
+		// parse tokens and convert to ProseMirror ducment
+		let doc:ProseNode|null;
 		do { doc = state.closeNode() } while (state.stack.length)
-		return doc
+		if(!doc){ throw new Error("from_markdown :: parse error!"); }
+
+		console.log(doc);
+
+		// return document + metadata
+		return doc;
 	}
 }
+
+/* ==== CONFIGURATION =================================== */
+
+/* -- MarkdownIt Tokenizer ------------------------------ */
 
 // :: MarkdownParser
 // A parser parsing unextended [CommonMark](http://commonmark.org/),
 // with inline HTML, and producing a document in the basic schema.
 let md = markdownit({html:true})
+	.use(yaml_plugin)
 	.use(math_plugin)
 	.use(wikilinks_plugin)
 	.use(tasklist_plugin)
 	.use(tag_plugin)
 	.use(citation_plugin)
 
+/* -- Token Types --------------------------------------- */
+
+// Code content is represented as a single token with a `content`
+// property in Markdown-it.
+function noOpenClose(type:string):boolean {
+	let tags = [
+		"code_inline", "code_block", "fence", 
+		"math_inline", "math_display", "wikilink", 
+		"tasklist_item", "tag", "citation"
+	];
+	return tags.includes(type);
+}
+
+function isHtmlSingleton(tagName:string): boolean {
+	return [ "hr", "br", "img"].includes(tagName)
+}
+function isSupportedHtmlTag(tagName:string):boolean {
+	return [
+		"div", "span", "hr", "br", "img", "u", "s", "em", "b",
+		"h1", "h2", "h3", "h4", "h5", "h6", "input", "dfn", "cite"
+	 ].includes(tagName);
+}
+
+function noOp() {}
+
+/* -- Parser Configuration ------------------------------ */
+
 export const markdownParser = new MarkdownParser(markdownSchema, md, {
-	blockquote: {block: "blockquote"},
-	paragraph: {block: "paragraph"},
-	list_item: {block: "list_item"},
-	bullet_list: {block: "bullet_list"},
-	ordered_list: {block: "ordered_list", getAttrs: tok => ({order: +tok.attrGet("start") || 1})},
-	heading: {block: "heading", getAttrs: tok => ({level: +tok.tag.slice(1)})},
-	code_block: {block: "code_block"},
-	fence: {block: "code_block", getAttrs: tok => ({params: tok.info || ""})},
-	hr: {node: "horizontal_rule"},
-	image: {node: "image", getAttrs: tok => ({
+	/* -- Blocks ---------------------------------------- */
+	blockquote:   { type:"block", block: "blockquote"  },
+	paragraph:    { type:"block", block: "paragraph"   },
+	list_item:    { type:"block", block: "list_item"   },
+	bullet_list:  { type:"block", block: "bullet_list" },
+	code_block:   { type:"block", block: "code_block"  },
+	
+	ordered_list: { type:"block", block: "ordered_list", getAttrs: tok => ({order: +(tok.attrGet("start") || 1)})},
+	heading:      { type:"block", block: "heading", getAttrs: tok => ({level: +tok.tag.slice(1)})},
+	fence:        { type:"block", block: "code_block", getAttrs: tok => ({params: tok.info || ""})},
+	
+	math_inline: {type:"block", block: "math_inline", getAttrs: tok => ({params: tok.info || ""})},
+	math_display: {type:"block", block: "math_display", getAttrs: tok => ({params: tok.info || ""})},
+
+	/* -- Nodes ----------------------------------------- */
+	hr:        { type:"node", node: "horizontal_rule" },
+	hardbreak: { type:"node", node: "hard_break"      },
+
+	image: { type:"node", node: "image", getAttrs: tok => ({
 		src: tok.attrGet("src"),
 		title: tok.attrGet("title") || null,
-		alt: tok.children[0] && tok.children[0].content || null
+		alt: tok.children && tok.children[0] && tok.children[0].content || null
 	})},
-	hardbreak: {node: "hard_break"},
-	s: { mark: "strike" },
-	u: { mark: "underline" },
-	em: {mark: "em"},
-	tag: {mark: "tag"},
-	dfn: {mark: "definition"},
-	cite: {mark: "citation"},
-	citation: {mark: "citation"},
-	strong: {mark: "strong"},
-	link: {mark: "link", getAttrs: tok => ({
-		href: tok.attrGet("href"),
-		title: tok.attrGet("title") || null
-	})},
+
 	tasklist_item: {
+		type: "node",
 		node: "tasklist_item",
 		getAttrs: tok=> ({
 			label:tok.attrGet("label"),
 			checked:(tok.attrGet("checked")!="false")
 		})
 	},
-	wikilink: {mark:"wikilink"},
-	code_inline: {mark: "code"},
-	math_inline: { block: "math_inline", getAttrs: tok => ({params: tok.info || ""})},
-	math_display: { block: "math_display", getAttrs: tok => ({params: tok.info || ""})}
+
+	/* -- Marks ----------------------------------------- */
+	s:           { type:"mark", mark: "strike"     },
+	u:           { type:"mark", mark: "underline"  },
+	em:          { type:"mark", mark: "em"         },
+	tag:         { type:"mark", mark: "tag"        },
+	dfn:         { type:"mark", mark: "definition" },
+	cite:        { type:"mark", mark: "citation"   },
+	citation:    { type:"mark", mark: "citation"   },
+	strong:      { type:"mark", mark: "strong"     },
+	wikilink:    { type:"mark", mark:"wikilink"    },
+	code_inline: { type:"mark", mark: "code"       },
+
+	link: {type:"mark",mark: "link", getAttrs: tok => ({
+		href: tok.attrGet("href"),
+		title: tok.attrGet("title") || null
+	})},
 })

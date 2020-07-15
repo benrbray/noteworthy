@@ -3,7 +3,8 @@ import { Schema, Node as ProseNode, SchemaSpec, Mark, DOMOutputSpec } from "pros
 export function markdownSpec() { return {
 	nodes: {
 		doc: {
-			content: "block+"
+			content: "block+",
+			attrs: { yamlMeta: { default: {} } }
 		},
 
 		paragraph: {
