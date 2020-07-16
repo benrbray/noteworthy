@@ -3,7 +3,7 @@ import * as pathlib from "path";
 
 // project imports
 import { RendererIpcEvents, RendererIpcHandlers } from "./RendererIPC";
-import { IPossiblyUntitledFile } from "@common/fileio";
+import { IPossiblyUntitledFile, IFileWithContents, IUntitledFile } from "@common/fileio";
 import { ProseMirrorEditor } from "./editors/editor-prosemirror";
 import { MarkdownEditor } from "./editors/editor-markdown";
 import { IpynbEditor } from "./editors/editor-ipynb";
@@ -15,6 +15,7 @@ import { invokerFor } from "@common/ipc";
 import { NwtEditor } from "./editors/editor-nwt";
 import { to } from "@common/util/to";
 import { IpcEvents } from "@common/events";
+import { Editor } from "./editors/editor";
 
 ////////////////////////////////////////////////////////////
 
@@ -25,9 +26,11 @@ class Renderer {
 	_eventHandlers: RendererIpcHandlers;
 
 	// ui elements
-	_titleElt: HTMLDivElement;
-	_editorElt: HTMLDivElement;
-	_sidebarElt: HTMLDivElement;
+	_ui:null | {
+		titleElt: HTMLDivElement;
+		editorElt: HTMLDivElement;
+		sidebarElt: HTMLDivElement;
+	}
 
 	// prosemirror
 	_editor: ProseMirrorEditor | null;
@@ -52,11 +55,7 @@ class Renderer {
 		};
 
 		this._editor = null;
-
-		// dom elements
-		this._titleElt = document.getElementById("title") as HTMLDivElement;
-		this._editorElt = document.getElementById("editor") as HTMLDivElement;
-		this._sidebarElt = document.getElementById("sidebar") as HTMLDivElement;
+		this._ui = null;
 	}
 
 	init() {
@@ -76,14 +75,32 @@ class Renderer {
 			}
 		);
 
-		// file explorer
-		this.initExplorer();
+		// initialize interface
+		this.initUI();
+		this.initKeyboardEvents();
 
 		// set current file
 		if (this._currentFile) {
 			this.setCurrentFile(this._currentFile);
 		}
+	}
 
+	initUI() {
+		// dom elements
+		this._ui = {
+			titleElt : document.getElementById("title") as HTMLDivElement,
+			editorElt : document.getElementById("editor") as HTMLDivElement,
+			sidebarElt : document.getElementById("sidebar") as HTMLDivElement,
+		}
+
+		// explorer
+		let explorerElt = document.createElement("div");
+		explorerElt.className = "explorer";
+		this._ui.sidebarElt.appendChild(explorerElt);
+		this._explorer = new Explorer(this._ui.sidebarElt, this._mainProxy);
+	}
+
+	initKeyboardEvents() {
 		// ctrl handler
 		/** @todo (6/20/20) where should this code go? */
 		const shiftHandler = (evt: KeyboardEvent) => {
@@ -96,12 +113,7 @@ class Renderer {
 		document.addEventListener("keypress", shiftHandler);
 	}
 
-	initExplorer() {
-		let explorerElt = document.createElement("div");
-		explorerElt.className = "explorer";
-		this._sidebarElt.appendChild(explorerElt);
-		this._explorer = new Explorer(this._sidebarElt, this._mainProxy);
-	}
+	////////////////////////////////////////////////////////
 
 	handle<T extends RendererIpcEvents>(name: T, data: Parameters<RendererIpcHandlers[T]>[0]) {
 		return this._eventHandlers[name](data as any);
@@ -118,44 +130,27 @@ class Renderer {
 			else if (err) { return Promise.reject(err); }
 		}
 
+		// set current file
 		console.log("render :: setCurrentFile", file);
 		this._currentFile = file;
-		this._titleElt.textContent = file.path || "<untitled>";
 
-		// get extension type
+		// update interface
+		if(!this._ui){ throw new Error("no user interface active!"); }
+		this._ui.titleElt.textContent = file.path || "<untitled>";
 		let ext: string = pathlib.extname(this._currentFile.path || "");
-		console.log("setCurrentFile :: extension ", ext);
 
+		// set current editor
+		let EditorConstructor:(typeof ProseMirrorEditor);
 		switch (ext) {
-			case ".ipynb":
-				this._editor = new IpynbEditor(
-					this._currentFile, this._editorElt, this._mainProxy
-				);
-				break;
-			case ".json":
-				this._editor = new ProseMirrorEditor(
-					this._currentFile, this._editorElt, this._mainProxy
-				);
-				break;
-			case ".journal":
-				this._editor = new JournalEditor(
-					this._currentFile, this._editorElt, this._mainProxy
-				);
-				break;
-			case ".nwt":
-				this._editor = new NwtEditor(
-					this._currentFile, this._editorElt, this._mainProxy
-				);
-				break;
-			case ".md":
-			case ".txt":
-			default:
-				this._editor = new MarkdownEditor(
-					this._currentFile, this._editorElt, this._mainProxy
-				);
-				break;
+			case ".ipynb":   EditorConstructor = IpynbEditor;       break;
+			case ".json":    EditorConstructor = ProseMirrorEditor; break;
+			case ".journal": EditorConstructor = JournalEditor;     break;
+			case ".nwt":     EditorConstructor = NwtEditor;         break;
+			default:         EditorConstructor = MarkdownEditor;    break;
 		}
 
+		// initialize editor
+		this._editor = new EditorConstructor(this._currentFile, this._ui.editorElt, this._mainProxy);
 		this._editor.init();
 	}
 
