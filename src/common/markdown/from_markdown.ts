@@ -344,7 +344,9 @@ export class MarkdownParser {
 		let env:any = {};
 		let tokens = this.tokenizer.parse(text, env);
 		let yamlMeta = env["yamlMeta"] || {};
-		console.log("YAML:", yamlMeta);
+		if(Object.keys(yamlMeta).length > 0){
+			console.log("YAML:", yamlMeta);
+		}
 		
 		// parse tokens
 		let state = new MarkdownParseState(this.schema, this.tokenHandlers, {yamlMeta});
@@ -354,8 +356,6 @@ export class MarkdownParser {
 		let doc:ProseNode|null;
 		do { doc = state.closeNode() } while (state.stack.length)
 		if(!doc){ throw new Error("from_markdown :: parse error!"); }
-
-		console.log(doc);
 
 		// return document + metadata
 		return doc;

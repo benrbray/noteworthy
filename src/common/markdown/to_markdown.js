@@ -53,10 +53,24 @@ export class MarkdownSerializer {
 		
 		let result = state.out;
 
-		// include YAML frontmatter
+		// is there YAML frontmatter?
 		let yamlMeta = content.attrs["yamlMeta"] || null;
-		if(yamlMeta) {
-			result = `---\n${YAML.stringify(yamlMeta)}---\n\n` + result;
+		// remove null keys
+		for(let prop in yamlMeta){
+			let value = yamlMeta[prop];
+			if(value === null || value === undefined){
+				delete yamlMeta[prop];
+			}
+		}
+		// ignore empty frontmatter
+		if(yamlMeta && Object.keys(yamlMeta).length !== 0) {
+			try {
+				let frontmatter = YAML.stringify(yamlMeta);
+				result = `---\n${frontmatter}---\n\n` + result;
+			} catch (err) {
+				result = `${"```yaml\nERROR: invalid YAML:\n"}${JSON.stringify(yamlMeta)}${"```"}\n\n` + result;
+				console.error("YAML serialize error:", err);
+			}
 		}
 
 		return result;

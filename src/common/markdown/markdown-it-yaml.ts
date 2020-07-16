@@ -30,13 +30,21 @@ const metaRule = (state:StateBlock, start:number, end:number, silent:boolean) =>
 		data.push(str);
 	}
 
-	// parse YAML frontmatter
-	let parsed:any = YAML.parse(data.join('\n')) || {};
-	/** @todo (7/14/20) is this the best way to share metadata? */
-	state.env.yamlMeta = parsed;
-
 	// advance state
 	state.line = line + 1;
+	
+	// parse YAML frontmatter
+	let parsed:any = null;
+	try {
+		parsed = YAML.parse(data.join('\n')) || {};
+	} catch(err){
+		console.error("YAML Parse Error:", err, "\n\nRAW:\n", data.join("\n"));
+	}
+	/** @todo (7/14/20) is this the best way to share metadata? */
+	if(parsed){
+		state.env.yamlMeta = parsed;
+	}
+
 	return true;
 }
 
