@@ -17,6 +17,9 @@ import { to } from "@common/util/to";
 import { IpcEvents } from "@common/events";
 import { Editor } from "./editors/editor";
 
+// solid js imports
+import { render } from "solid-js/dom";
+
 ////////////////////////////////////////////////////////////
 
 class Renderer {
