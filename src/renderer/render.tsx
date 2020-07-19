@@ -1,21 +1,26 @@
 // node imports
 import * as pathlib from "path";
+import { ipcRenderer, IpcRendererEvent } from "electron";
 
 // project imports
+import { MainIpcHandlers } from "@main/MainIPC";
 import { RendererIpcEvents, RendererIpcHandlers } from "./RendererIPC";
 import { IPossiblyUntitledFile, IFileWithContents, IUntitledFile, IFileMeta, IDirEntryMeta } from "@common/fileio";
+import { invokerFor } from "@common/ipc";
+import { to } from "@common/util/to";
+import { IpcEvents } from "@common/events";
+
+// editor importsimport { ProseMirrorEditor } from "./editors/editor-prosemirror";
 import { ProseMirrorEditor } from "./editors/editor-prosemirror";
 import { MarkdownEditor } from "./editors/editor-markdown";
 import { IpynbEditor } from "./editors/editor-ipynb";
-import { IFolderMarker, FileExplorer } from "./explorer/explorer";
 import { JournalEditor } from "./editors/editor-journal";
-import { MainIpcHandlers } from "@main/MainIPC";
-import { ipcRenderer, IpcRendererEvent } from "electron";
-import { invokerFor } from "@common/ipc";
 import { NwtEditor } from "./editors/editor-nwt";
-import { to } from "@common/util/to";
-import { IpcEvents } from "@common/events";
 import { Editor } from "./editors/editor";
+
+// ui imports
+import { IFolderMarker, FileExplorer } from "./ui/explorer";
+import { TagSearch } from "./ui/tag-search";
 
 // solid js imports
 import { render } from "solid-js/dom";
@@ -127,7 +132,7 @@ class Renderer {
 			];
 
 			const handleClick = (evt:MouseEvent) => {
-				let target:HTMLElement = evt.target as HTMLElement;
+				let target:HTMLElement = evt.currentTarget as HTMLElement;
 
 				/** @todo this is hacky, handle properly next time! */
 				if(target.className == "folder"){
@@ -143,6 +148,12 @@ class Renderer {
 				this._mainProxy.requestFileOpen({ hash: fileHash });
 			}
 
+			const search = async (query:string) => {
+				console.log("searching...", query);
+				let result = await this._mainProxy.tagSearch(query);
+				return result;
+			}
+
 			// components
 			const AppSidebar = () => {
 				return (<div id="sidebar">
@@ -156,7 +167,7 @@ class Renderer {
 								<div id="tab_outline">outline</div>
 							</Match>
 							<Match when={state.activeTab == 2}>
-								<div id="tab_tags">tags</div>
+								<TagSearch getSearchResults={search} handleClick={handleClick} />
 							</Match>
 							<Match when={state.activeTab == 3}>
 								<div id="tab_theme">themes</div>

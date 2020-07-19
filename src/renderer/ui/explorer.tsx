@@ -22,14 +22,14 @@ export const FileExplorer = (props:IFileExplorerProps) => {
 					class="folder"
 					title={entry.path}
 					onClick={props.handleClick}
-				>{entry.pathSuffix}</div>
+				><span class="codicon codicon-folder"/><span>{entry.pathSuffix}</span></div>
 			)} else { return (
 				<div
 					class="file"
 					title={entry.path}
 					data-filehash={entry.hash}
 					onClick={props.handleClick}
-				>{entry.name}</div>
+				><span class="codicon codicon-note"/><span>{entry.name}</span></div>
 			)}
 		}}
 	</For>);

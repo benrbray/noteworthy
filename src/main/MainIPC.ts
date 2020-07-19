@@ -3,6 +3,7 @@ import { readFile, saveFile, IFileWithContents, IPossiblyUntitledFile, IDirEntry
 import NoteworthyApp from "./app"
 import { DialogSaveDiscardOptions } from "@common/dialog";
 import { to } from "@common/util/to";
+import { filterNonVoid } from "@common/helpers";
 
 ////////////////////////////////////////////////////////////
 
@@ -190,6 +191,12 @@ export class MainIpcHandlers {
 	}
 
 	// -- Request Tag Open ------------------------------ //
+
+	async tagSearch(query:string):Promise<IFileMeta[]> {
+		const hashes:string[]|null = this._app.getTagMentions(query);
+		if(hashes === null){ return []; }
+		return filterNonVoid( hashes.map(hash => (this._app.getFileByHash(hash))) );
+	}
 
 	async getHashForTag(data: { tag: string, create: boolean }):Promise<string|null> {
 		// get files which define this tag

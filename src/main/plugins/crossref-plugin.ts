@@ -100,6 +100,13 @@ export class CrossRefPlugin implements WorkspacePlugin {
 		return Array.from(this._tag2defs.get(tag).values());
 	}
 
+	getTagMentions(tag:string):string[]{
+		tag = this.normalizeTag(tag);
+		let defs = this._tag2defs.get(tag);
+		let uses = this._tag2docs.get(tag);
+		return Array.from(new Set([...defs, ...uses]));
+	}
+
 	// == Workspace Events ============================== //
 	
 	async handleWorkspaceClosed(dir: IWorkspaceDir){
