@@ -250,11 +250,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 	}
 
 	parseContents(contents: string):ProseEditorState {
-		console.log("editor-markdown :: parseContents", contents);
-
 		let parsed = markdownParser.parse(contents);
-		console.log(parsed);
-
 		return ProseEditorState.create({
 			doc: parsed,
 			plugins: [
@@ -272,7 +268,6 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 	}
 
 	setContents(contents: ProseEditorState): void {
-		console.log("editor-markdown :: setContents", contents);
 		if(!this._proseEditorView){
 			console.warn("editor-markdown :: setContents :: no editor!");
 			return;

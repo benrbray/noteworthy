@@ -3,6 +3,7 @@ dist
 *.tgz
 *.log
 .vscode
+tsc_out
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json

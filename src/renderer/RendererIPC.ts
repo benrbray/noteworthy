@@ -20,8 +20,7 @@ export class RendererIpcHandlers {
 
 	async fileTreeChanged(fileTree:IDirEntryMeta[]):Promise<void>{
 		console.log("RenderIPC :: fileTreeChanged", fileTree.map(val=>val.name));
-		if (!this._renderer._explorer) { return; }
-		this._renderer._explorer.setFileTree(fileTree);
+		this._renderer.setFileTree(fileTree);
 	}
 
 	async fileDidSave(data:{ saveas:boolean , path:string }):Promise<void> {

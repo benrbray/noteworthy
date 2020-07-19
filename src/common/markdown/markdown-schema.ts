@@ -3,7 +3,8 @@ import { Schema, Node as ProseNode, SchemaSpec, Mark, DOMOutputSpec } from "pros
 export function markdownSpec() { return {
 	nodes: {
 		doc: {
-			content: "block+"
+			content: "block+",
+			attrs: { yamlMeta: { default: {} } }
 		},
 
 		paragraph: {
@@ -188,6 +189,11 @@ export function markdownSpec() { return {
 			parseDOM: [{ tag: "b" }, { tag: "strong" },
 			{ style: "font-weight", getAttrs: (value:string|Node) => /^(bold(er)?|[5-9]\d{2,})$/.test(value as string) && null }],
 			toDOM(): DOMOutputSpec { return ["strong"] }
+		},
+
+		definition: {
+			parseDOM: [{ tag: "dfn" }],
+			toDOM(): DOMOutputSpec { return ["dfn"] }
 		},
 
 		link: {

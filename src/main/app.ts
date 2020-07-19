@@ -261,6 +261,16 @@ export default class NoteworthyApp extends EventEmitter {
 		let crossRefPlugin = this._workspace.getPluginByName("crossref_plugin");
 		return crossRefPlugin && crossRefPlugin.getDefsForTag(tag);
 	}
+	/**
+	 * @returns NULL when the plugin is not available, otherwise
+	 *    a list of hashes for files which define this tag
+	 * @todo (6/28/20) how to separate plugin code from app code?
+	 */
+	getTagMentions(tag:string):string[]|null {
+		if(!this._workspace) { return []; }
+		let crossRefPlugin = this._workspace.getPluginByName("crossref_plugin");
+		return crossRefPlugin && crossRefPlugin.getTagMentions(tag);
+	}
 
 	// EVENTS //////////////////////////////////////////////
 

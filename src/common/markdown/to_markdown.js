@@ -1,3 +1,5 @@
+import YAML from "yaml";
+
 // ::- A specification for serializing a ProseMirror document as
 // Markdown/CommonMark text.
 export class MarkdownSerializer {
@@ -48,7 +50,30 @@ export class MarkdownSerializer {
 	serialize(content, options) {
 		let state = new MarkdownSerializerState(this.nodes, this.marks, options)
 		state.renderContent(content)
-		return state.out
+		
+		let result = state.out;
+
+		// is there YAML frontmatter?
+		let yamlMeta = content.attrs["yamlMeta"] || null;
+		// remove null keys
+		for(let prop in yamlMeta){
+			let value = yamlMeta[prop];
+			if(value === null || value === undefined){
+				delete yamlMeta[prop];
+			}
+		}
+		// ignore empty frontmatter
+		if(yamlMeta && Object.keys(yamlMeta).length !== 0) {
+			try {
+				let frontmatter = YAML.stringify(yamlMeta);
+				result = `---\n${frontmatter}---\n\n` + result;
+			} catch (err) {
+				result = `${"```yaml\nERROR: invalid YAML:\n"}${JSON.stringify(yamlMeta)}${"```"}\n\n` + result;
+				console.error("YAML serialize error:", err);
+			}
+		}
+
+		return result;
 	}
 }
 
@@ -131,6 +156,7 @@ export const markdownSerializer = new MarkdownSerializer({
 	underline: {open: "<u>", close: "</u>", mixable: true, expelEnclosingWhitespace: true},
 	strike: {open: "~~", close: "~~", mixable: true, expelEnclosingWhitespace: true},
 	tag: {open: "#[", close: "]", mixable: true, expelEnclosingWhitespace: true, escape:false},
+	definition: {open: "<dfn>", close: "</dfn>", mixable: true, expelEnclosingWhitespace: true, escape:false},
 	citation: {open: "@[", close: "]", mixable: true, expelEnclosingWhitespace: true, escape:false},
 	wikilink: {open: "[[", close: "]]", mixable: true, expelEnclosingWhitespace: true, escape:false},
 	link: {

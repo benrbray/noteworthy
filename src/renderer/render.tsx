@@ -1,22 +1,39 @@
 // node imports
 import * as pathlib from "path";
+import { ipcRenderer, IpcRendererEvent } from "electron";
 
 // project imports
-import { RendererIpcEvents, RendererIpcHandlers } from "./RendererIPC";
-import { IPossiblyUntitledFile } from "@common/fileio";
-import { ProseMirrorEditor } from "./editors/editor-prosemirror";
-import { MarkdownEditor } from "./editors/editor-markdown";
-import { IpynbEditor } from "./editors/editor-ipynb";
-import { Explorer } from "./explorer/explorer";
-import { JournalEditor } from "./editors/editor-journal";
 import { MainIpcHandlers } from "@main/MainIPC";
-import { ipcRenderer, IpcRendererEvent } from "electron";
+import { RendererIpcEvents, RendererIpcHandlers } from "./RendererIPC";
+import { IPossiblyUntitledFile, IFileWithContents, IUntitledFile, IFileMeta, IDirEntryMeta } from "@common/fileio";
 import { invokerFor } from "@common/ipc";
-import { NwtEditor } from "./editors/editor-nwt";
 import { to } from "@common/util/to";
 import { IpcEvents } from "@common/events";
 
+// editor importsimport { ProseMirrorEditor } from "./editors/editor-prosemirror";
+import { ProseMirrorEditor } from "./editors/editor-prosemirror";
+import { MarkdownEditor } from "./editors/editor-markdown";
+import { IpynbEditor } from "./editors/editor-ipynb";
+import { JournalEditor } from "./editors/editor-journal";
+import { NwtEditor } from "./editors/editor-nwt";
+import { Editor } from "./editors/editor";
+
+// ui imports
+import { IFolderMarker, FileExplorer } from "./ui/explorer";
+import { TagSearch } from "./ui/tag-search";
+
+// solid js imports
+import { render } from "solid-js/dom";
+import { createState, createEffect, createSignal, Suspense, Switch, Match, For } from "solid-js";
+
 ////////////////////////////////////////////////////////////
+
+interface IRendererState {
+	activeTab: number,
+	filePath: string,
+	fileTree: (IDirEntryMeta|IFolderMarker)[],
+	message: string
+}
 
 class Renderer {
 
@@ -25,16 +42,19 @@ class Renderer {
 	_eventHandlers: RendererIpcHandlers;
 
 	// ui elements
-	_titleElt: HTMLDivElement;
-	_editorElt: HTMLDivElement;
-	_sidebarElt: HTMLDivElement;
+	_ui:null | {
+		titleElt: HTMLDivElement;
+		editorElt: HTMLDivElement;
+	}
+
+	_react:null | any;
 
 	// prosemirror
 	_editor: ProseMirrorEditor | null;
 	_currentFile: IPossiblyUntitledFile;
 
 	// sidebar
-	_explorer: Explorer | undefined;
+	_fileTree: (IDirEntryMeta|IFolderMarker)[];
 
 	constructor() {
 		// initialize objects
@@ -51,12 +71,10 @@ class Renderer {
 			creationTime: -1
 		};
 
+		this._fileTree = [];
 		this._editor = null;
-
-		// dom elements
-		this._titleElt = document.getElementById("title") as HTMLDivElement;
-		this._editorElt = document.getElementById("editor") as HTMLDivElement;
-		this._sidebarElt = document.getElementById("sidebar") as HTMLDivElement;
+		this._ui = null;
+		this._react = null;
 	}
 
 	init() {
@@ -76,14 +94,132 @@ class Renderer {
 			}
 		);
 
-		// file explorer
-		this.initExplorer();
+		// initialize interface
+		this.initUI();
+		this.initKeyboardEvents();
 
 		// set current file
 		if (this._currentFile) {
 			this.setCurrentFile(this._currentFile);
 		}
+	}
 
+	initUI() {
+		console.log("\n\nUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIv\n\n\n");
+		const App = () => {
+			// create solid state
+			let [state, setState] = createState<IRendererState>({
+				activeTab: 0,
+				filePath:"not reactive!",
+				message:"",
+				fileTree:[]
+			});
+			this._react = { state, setState }
+
+			// print file path on change
+			createEffect(()=>console.log("\n\nfilePath:", state.filePath, "\n\n\n"));
+			createEffect(()=>console.log("\n\nmessage:", state.message, "\n\n\n"));
+
+			const Loading = () => {
+				return (<div>loading...</div>);
+			}
+
+			const tabLabels = [
+				{ codicon: "codicon-folder-opened" },
+				{ codicon: "codicon-book" },
+				{ codicon: "codicon-symbol-numeric" },
+				{ codicon: "codicon-symbol-color" },
+			];
+
+			const handleClick = (evt:MouseEvent) => {
+				let target:HTMLElement = evt.currentTarget as HTMLElement;
+
+				/** @todo this is hacky, handle properly next time! */
+				if(target.className == "folder"){
+					let collapsed:string = target.getAttribute("collapsed") || "false";
+					target.setAttribute("collapsed", collapsed == "true" ? "false" : "true");
+					return;
+				}
+
+				let fileHash = target.getAttribute("data-filehash");
+				if(fileHash === null){ return; }
+				
+				console.log("explorer :: clicked", fileHash);
+				this._mainProxy.requestFileOpen({ hash: fileHash });
+			}
+
+			const search = async (query:string) => {
+				console.log("searching...", query);
+				let result = await this._mainProxy.tagSearch(query);
+				return result;
+			}
+
+			// components
+			const AppSidebar = () => {
+				return (<div id="sidebar">
+					{/* Sidebar Content */}
+					<div class="content"><Suspense fallback={<Loading/>}>
+						<Switch>
+							<Match when={state.activeTab == 0}>
+								<FileExplorer fileTree={state.fileTree} handleClick={handleClick}/>
+							</Match>
+							<Match when={state.activeTab == 1}>
+								<div id="tab_outline">outline</div>
+							</Match>
+							<Match when={state.activeTab == 2}>
+								<TagSearch getSearchResults={search} handleClick={handleClick} />
+							</Match>
+							<Match when={state.activeTab == 3}>
+								<div id="tab_theme">themes</div>
+							</Match>
+						</Switch>
+					</Suspense></div>
+					{/* Sidebar Tabs*/}
+					<nav class="tabs">
+						<For each={tabLabels}>
+						{ (tab,idx) => {
+							let active = ()=>(state.activeTab == idx());
+							return (
+								<a class={`tab ${active()?"active":""}`} onClick={()=>setState({ activeTab: idx()})}>
+									<span class={`codicon ${tab.codicon}`}></span>
+								</a>
+							)}
+						}
+						</For>
+					</nav>
+				</div>);
+			}
+
+			const AppContent = () => {
+				return (<div id="content"><div id="editor"></div></div>);
+			}
+
+			const AppFooter = () => {
+				return (
+					<div id="footer">
+						<div id="title">{state.filePath}</div>
+					</div>
+				);
+			}
+
+			return (<div id="app">
+				<AppSidebar />
+				<AppContent />
+				<AppFooter />
+			</div>)
+		}
+
+		let mainElt:HTMLElement = document.getElementById("main") as HTMLElement;
+		render(() => <App/>, mainElt);
+
+		// dom elements
+		this._ui = {
+			titleElt : document.getElementById("title") as HTMLDivElement,
+			editorElt : document.getElementById("editor") as HTMLDivElement,
+		}
+	}
+
+	initKeyboardEvents() {
 		// ctrl handler
 		/** @todo (6/20/20) where should this code go? */
 		const shiftHandler = (evt: KeyboardEvent) => {
@@ -96,12 +232,7 @@ class Renderer {
 		document.addEventListener("keypress", shiftHandler);
 	}
 
-	initExplorer() {
-		let explorerElt = document.createElement("div");
-		explorerElt.className = "explorer";
-		this._sidebarElt.appendChild(explorerElt);
-		this._explorer = new Explorer(this._sidebarElt, this._mainProxy);
-	}
+	////////////////////////////////////////////////////////
 
 	handle<T extends RendererIpcEvents>(name: T, data: Parameters<RendererIpcHandlers[T]>[0]) {
 		return this._eventHandlers[name](data as any);
@@ -118,49 +249,85 @@ class Renderer {
 			else if (err) { return Promise.reject(err); }
 		}
 
+		// set current file
 		console.log("render :: setCurrentFile", file);
 		this._currentFile = file;
-		this._titleElt.textContent = file.path || "<untitled>";
 
-		// get extension type
+		// update interface
+		if(!this._ui){ throw new Error("no user interface active!"); }
+		
+		this._react.setState({filePath: file.path || "<untitled>"});
+		
 		let ext: string = pathlib.extname(this._currentFile.path || "");
-		console.log("setCurrentFile :: extension ", ext);
 
+		// set current editor
+		let EditorConstructor:(typeof ProseMirrorEditor);
 		switch (ext) {
-			case ".ipynb":
-				this._editor = new IpynbEditor(
-					this._currentFile, this._editorElt, this._mainProxy
-				);
-				break;
-			case ".json":
-				this._editor = new ProseMirrorEditor(
-					this._currentFile, this._editorElt, this._mainProxy
-				);
-				break;
-			case ".journal":
-				this._editor = new JournalEditor(
-					this._currentFile, this._editorElt, this._mainProxy
-				);
-				break;
-			case ".nwt":
-				this._editor = new NwtEditor(
-					this._currentFile, this._editorElt, this._mainProxy
-				);
-				break;
-			case ".md":
-			case ".txt":
-			default:
-				this._editor = new MarkdownEditor(
-					this._currentFile, this._editorElt, this._mainProxy
-				);
-				break;
+			case ".ipynb":   EditorConstructor = IpynbEditor;       break;
+			case ".json":    EditorConstructor = ProseMirrorEditor; break;
+			case ".journal": EditorConstructor = JournalEditor;     break;
+			case ".nwt":     EditorConstructor = NwtEditor;         break;
+			default:         EditorConstructor = MarkdownEditor;    break;
 		}
 
+		// initialize editor
+		this._editor = new EditorConstructor(this._currentFile, this._ui.editorElt, this._mainProxy);
 		this._editor.init();
 	}
 
 	setCurrentFilePath(filePath: string): void {
 		this._editor?.setCurrentFilePath(filePath);
+	}
+
+	setFileTree(fileTree:IDirEntryMeta[]){
+		console.log("render :: setFileTree");
+		// sort file tree!
+		/** @todo (7/14/20) this is hacky, should fix properly */
+		let sorted = fileTree.map(entry => ({entry, pathSplit:entry.path.split(pathlib.sep)}))
+			.sort((a,b) => {
+				let na = a.pathSplit.length;
+				let nb = b.pathSplit.length;
+				for(let i = 0; i < Math.max(na,nb); i++){
+					if(i >= na){ return  1; }
+					if(i >= nb){ return -1; }
+					if(a.pathSplit[i] == b.pathSplit[i]) continue;
+
+					let alast = (i == na - 1);
+					let blast = (i == nb - 1);
+					if(alast && !blast){ return 1; }
+					if(!alast && blast){ return -1; }
+
+					return (a.pathSplit[i] < b.pathSplit[i]) ? -1 : 1;
+				}
+				return (a.entry.path < b.entry.path)?-1:1;
+			});
+
+		this._fileTree = sorted.map(val => val.entry);
+
+		// find common prefix by comparing first/last sorted paths
+		// (https://stackoverflow.com/a/1917041/1444650)
+		let a1:string = fileTree[0].path;
+		let a2:string = fileTree[fileTree.length-1].path;
+		let i:number = 0;
+		while(i < a1.length && a1.charAt(i) === a2.charAt(i)) i++;
+		let prefix = a1.substring(0, i);
+
+		// insert folder markers
+		let prevDir = null;
+		for(let idx = 0; idx < this._fileTree.length; idx++){
+			let dirPath:string = pathlib.dirname(this._fileTree[idx].path);
+			if(dirPath !== prevDir){
+				this._fileTree.splice(idx, 0, {
+					folderMarker: true,
+					path: dirPath,
+					pathSuffix: dirPath.substring(prefix.length),
+					name: pathlib.basename(dirPath)
+				});
+				prevDir = dirPath;
+			}
+		}
+
+		this._react.setState({ message: "filetree changed!", fileTree: this._fileTree });
 	}
 }
 
