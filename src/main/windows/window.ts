@@ -55,11 +55,11 @@ class Window {
 
 		/** @todo get rid of lodash */
 		options = _.merge(dimensions, {
-			frame: false, //!is.macos,
+			frame: true, //!is.macos,
 			backgroundColor: (Settings.get('theme') === 'light') ? '#F7F7F7' : '#0F0F0F', //TODO: This won't scale with custom themes
 			show: false,
 			title: "Noteworthy", //pkg.productName,
-			titleBarStyle: 'hiddenInset',
+			//titleBarStyle: 'hiddenInset',
 			webPreferences: {
 				nodeIntegration: true,
 				webSecurity: true

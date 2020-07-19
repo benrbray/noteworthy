@@ -4,7 +4,7 @@
   "description": "Text editor with rich document semantics, based on ProseMirror.",
   "main": "./dist/index.js",
   "scripts": {
-    "clean:deps": "npx del 'node_modules/**/{README,LICENSE,license,.travis.yml,tsconfig.json,*.{md,MD,map,png,ts}}' '!node_modules/**/*.d.ts'",
+    "clean:deps": "",
     "clean:dist": "npx del dist",
     "clean:releases": "npx del releases",
     "clean": "npm run clean:dist && npm run clean:releases",
@@ -40,7 +40,10 @@
     "renderer": {
       "template": "src/renderer/index.html",
       "webpackConfig": "webpack.renderer.js"
-    }
+    },
+    "whiteListedModules": [
+      "solid-js"
+    ]
   },
   "repository": {
     "type": "git",

@@ -19,6 +19,7 @@ import { Editor } from "./editors/editor";
 
 // solid js imports
 import { render } from "solid-js/dom";
+import { createState, createEffect, createSignal } from "solid-js";
 
 ////////////////////////////////////////////////////////////
 
@@ -32,8 +33,9 @@ class Renderer {
 	_ui:null | {
 		titleElt: HTMLDivElement;
 		editorElt: HTMLDivElement;
-		sidebarElt: HTMLDivElement;
 	}
+
+	_react:null | any;
 
 	// prosemirror
 	_editor: ProseMirrorEditor | null;
@@ -59,6 +61,7 @@ class Renderer {
 
 		this._editor = null;
 		this._ui = null;
+		this._react = null;
 	}
 
 	init() {
@@ -89,18 +92,53 @@ class Renderer {
 	}
 
 	initUI() {
+		console.log("\n\nUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIv\n\n\n");
+		const App = () => {
+			// create solid state
+			let [state, setState] = createState({filePath:"not reactive!"});
+			this._react = { state, setState }
+
+			// print file path on change
+			createEffect(()=>console.log("\n\nfilePath:", state.filePath, "\n\n\n"));
+
+			// components
+			const AppSidebar = () => {
+				return (<div id="sidebar">
+					<div class="explorer" id="explorer"></div>
+				</div>);
+			}
+
+			const AppContent = () => {
+				return (<div id="content"><div id="editor"></div></div>);
+			}
+
+			const AppFooter = () => {
+				return (
+					<div id="footer" onClick={() => setState("filePath", l => l + "!")}>
+						<div id="title">{state.filePath}</div>
+					</div>
+				);
+			}
+
+			return (<div id="app">
+				<AppSidebar />
+				<AppContent />
+				<AppFooter />
+			</div>)
+		}
+
+		let mainElt:HTMLElement = document.getElementById("main") as HTMLElement;
+		render(() => <App/>, mainElt);
+
 		// dom elements
 		this._ui = {
 			titleElt : document.getElementById("title") as HTMLDivElement,
 			editorElt : document.getElementById("editor") as HTMLDivElement,
-			sidebarElt : document.getElementById("sidebar") as HTMLDivElement,
 		}
 
 		// explorer
-		let explorerElt = document.createElement("div");
-		explorerElt.className = "explorer";
-		this._ui.sidebarElt.appendChild(explorerElt);
-		this._explorer = new Explorer(this._ui.sidebarElt, this._mainProxy);
+		let explorerElt:HTMLElement = document.getElementById("explorer") as HTMLElement;
+		this._explorer = new Explorer(explorerElt, this._mainProxy);
 	}
 
 	initKeyboardEvents() {
@@ -139,7 +177,9 @@ class Renderer {
 
 		// update interface
 		if(!this._ui){ throw new Error("no user interface active!"); }
-		this._ui.titleElt.textContent = file.path || "<untitled>";
+		
+		this._react.setState({filePath: file.path || "<untitled>"});
+		
 		let ext: string = pathlib.extname(this._currentFile.path || "");
 
 		// set current editor

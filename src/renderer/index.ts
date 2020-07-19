@@ -18,9 +18,9 @@ let renderer:Renderer;
 onload = function(){
 
 	// create titlebar
-	new Titlebar({
+	/*new Titlebar({
 		backgroundColor: Color.fromHex("#DDDDDD")
-	});
+	});*/
 
 	renderer = new Renderer();
 	renderer.init();
