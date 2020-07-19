@@ -99,8 +99,8 @@ li.task-list-item input[type='checkbox'] {
 
 #app {
 	display: grid;
-	grid-template-areas: "sidebar content" "sidebar content" "footer footer";
-	grid-template-rows: 2em 1fr 1.2em;
+	grid-template-areas: "sidebar content" "sidebar content" "sidebar footer";
+	grid-template-rows: 2em 1fr 1.5em;
 	grid-template-columns: 200px 1fr;
 	
 	width: 100%;
@@ -109,9 +109,10 @@ li.task-list-item input[type='checkbox'] {
 
 #footer {
 	grid-area: footer;
-	background-color: #ccc;
+	background-color: #e0e0e0;
 	vertical-align: middle;
 	overflow: hidden;
+	line-height: 1.5em;
 }
 
 #title {
@@ -141,7 +142,6 @@ li.task-list-item input[type='checkbox'] {
 #sidebar {
 	grid-area: sidebar;
 	background-color: #f3f3f3;
-	overflow-y: scroll;
 	overflow-x: hidden;
 }
 
@@ -165,6 +165,50 @@ li.task-list-item input[type='checkbox'] {
 
 	li p {
 		text-align: left;
+	}
+}
+
+/* ==== SIDEBAR ========================================= */
+
+/* -- Sidebar Tabs -------------------------------------- */
+
+#sidebar {
+	position: relative;
+	display: flex;
+	flex-flow: column nowrap;
+	height: 100%;
+
+	.content {
+		flex-grow: 1;
+		overflow-y: scroll;
+	}
+
+	.tabs {
+		display: flex;
+		width: 100%;
+		height: 1.5em;
+		justify-content: space-between;
+		user-select: none;
+
+		a {
+			flex-grow: 1;
+			text-align: center;
+			background-color: rgba(0,0,0,0.2);
+			color: #303030;
+		}
+
+		.codicon {
+			vertical-align: middle;
+			line-height: 1.5em;
+		}
+	}
+
+	.tabs .active {
+		background: none;
+	}
+
+	.tabs a:not(.active):hover {
+		background-color: rgba(0,0,0,0.1);
 	}
 }
 
