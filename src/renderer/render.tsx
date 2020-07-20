@@ -25,6 +25,7 @@ import { TagSearch } from "./ui/tag-search";
 // solid js imports
 import { render } from "solid-js/dom";
 import { createState, createEffect, createSignal, Suspense, Switch, Match, For } from "solid-js";
+import { CalendarTab } from "./ui/calendarTab";
 
 ////////////////////////////////////////////////////////////
 
@@ -129,6 +130,7 @@ class Renderer {
 				{ codicon: "codicon-book" },
 				{ codicon: "codicon-symbol-numeric" },
 				{ codicon: "codicon-symbol-color" },
+				{ codicon: "codicon-calendar" },
 			];
 
 			const handleClick = (evt:MouseEvent) => {
@@ -171,6 +173,9 @@ class Renderer {
 							</Match>
 							<Match when={state.activeTab == 3}>
 								<div id="tab_theme">themes</div>
+							</Match>
+							<Match when={state.activeTab == 4}>
+								<CalendarTab />
 							</Match>
 						</Switch>
 					</Suspense></div>

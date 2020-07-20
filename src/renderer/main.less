@@ -362,8 +362,48 @@ div:hover::-webkit-scrollbar-thumb {
 		line-height: 2em;
 		outline: none;
 		border: none;
-		border-bottom: 3px solid gray;
+		border-bottom: 3px solid #999;
 	}
+}
+
+/* -- TAB: Calendar ------------------------------------- */
+
+.calendar {
+	padding: 0.2rem;
+	background-color: #ccc;
+	user-select: none;
+	text-align: center;
+	font-size: 0.8em;
+}
+
+.calendar .header {
+	display: flex;
+}
+.calendar .prev::before {
+	content: "<<";
+	padding: 0 1em;
+}
+.calendar .next::before {
+	content: ">>";
+	padding: 0 1em;
+}
+
+.calendar .title {
+	flex-grow: 1;
+	font-weight: bold;
+}
+
+.calendar table {
+	width: 100%;
+}
+
+.calendar td:hover {
+	background-color: #aaa;
+	border-radius: 0.2em;
+}
+
+.calendar td.g {
+	color: #999;
 }
 
 

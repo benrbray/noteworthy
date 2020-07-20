@@ -67,6 +67,7 @@
   "dependencies": {
     "chokidar": "^3.4.0",
     "custom-electron-titlebar": "^3.2.2-hotfix62",
+    "dateformat": "^3.0.3",
     "electron-store": "^5.1.1",
     "electron-util": "^0.14.1",
     "electron-window-state": "^5.0.3",
