@@ -90,6 +90,22 @@ li.task-list-item input[type='checkbox'] {
 	.citation:hover { text-decoration: underline; }
 }
 
+/* -- Scrollbar ----------------------------------------- */
+
+div::-webkit-scrollbar {
+	width: 6px;
+	background-color: white;
+}
+
+div::-webkit-scrollbar-thumb {
+	background-color: rgba(0,0,0,0);
+}
+
+div:hover::-webkit-scrollbar-thumb {
+	background-color: rgba(0,0,0,0.3);
+}
+
+
 /* == USER INTERFACE ==================================== */
 
 #main {
@@ -177,10 +193,12 @@ li.task-list-item input[type='checkbox'] {
 	display: flex;
 	flex-flow: column nowrap;
 	height: 100%;
+	overflow-y: hidden;
 
 	.content {
 		flex-grow: 1;
-		overflow-y: scroll;
+		min-height: 0;
+		max-height: 100%;
 	}
 
 	.tabs {
@@ -289,8 +307,12 @@ li.task-list-item input[type='checkbox'] {
   100% { opacity: 0; }
 }
 
-
 /* -- File Explorer ------------------------------------- */
+
+#tab_explorer {
+	max-height: 100%;
+	overflow-y: overlay;
+}
 
 .folder[collapsed=true]::before {
 	content: ">";
