@@ -166,7 +166,7 @@ export class CrossRefPlugin implements WorkspacePlugin {
 		// get all tags referenced / created by this file
 		let wikilinks: string[] = this.discoverWikilinks(doc);
 		let definedTags: string[] = this.getTagsDefinedBy({ fileMeta, doc });
-		let tags = new Set<string>(this.getTags(doc).concat(wikilinks, definedTags));
+		let tags = new Set<string>(this.getTags({ fileMeta, doc }).concat(wikilinks, definedTags));
 
 		// doc --> tag
 		this._doc2tags.set(fileMeta.hash, tags);
@@ -192,22 +192,26 @@ export class CrossRefPlugin implements WorkspacePlugin {
 			// tags defined by path
 			let fileName = path.basename(data.fileMeta.path, path.extname(data.fileMeta.path));
 			tags.push(this.normalizeTag(fileName));
-
-			// tags defined by creation time
-			let creation = data.fileMeta.creationTime;
-			let date = new Date(creation);
-			console.log(data.fileMeta.name, data.fileMeta.creationTime, date);
-			tags.push(this.normalizeDate(date));
 		}
 
 		/** @todo (7/19/20) normalize all at once? */
 		return tags;
 	}
 
-	getTags(doc:ProseNode):string[] {
+	getTags(data: { fileMeta?:IFileMeta, doc?:ProseNode }):string[] {
 		/** @todo read tags from yaml metadata */
-		/** @todo create tag for file creationTime */
-		return [];
+		let tags:string[] = [];
+
+		if(data.fileMeta){
+			// tags defined by creation time
+			let creation = data.fileMeta.creationTime;
+			let date = new Date(creation);
+			if(!isNaN(date.valueOf())){
+				tags.push(this.normalizeDate(date));
+			}
+		}
+
+		return tags;
 	}
 
 	discoverWikilinks(doc:ProseNode){
@@ -235,7 +239,7 @@ export class CrossRefPlugin implements WorkspacePlugin {
 	normalizeTag(content:string):string {
 		// is date?
 		let date:Date = new Date(content);
-		if(date.valueOf() !== NaN){
+		if(!isNaN(date.valueOf())){
 			return this.normalizeDate(date);
 		}
 
