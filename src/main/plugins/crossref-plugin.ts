@@ -119,23 +119,23 @@ export class CrossRefPlugin implements WorkspacePlugin {
 		/** @todo (6/18/20) */
 	}
 
-	handleFileDeleted(filePath: string, fileHash: string): void {
+	handleFileDeleted(filePath:string, fileHash:string): void {
 		console.log("xref :: file-delete", filePath);
 		this.removeWikilinks(fileHash);
 	}
 
-	handleFileCreated(filePath: string, fileHash: string, doc:ProseNode): void {
-		console.log("xref :: file-create", filePath);
-		this.addWikilinks(filePath, fileHash, doc);
+	handleFileCreated(fileMeta:IFileMeta, doc:ProseNode): void {
+		console.log("xref :: file-create", fileMeta.path);
+		this.addWikilinks(fileMeta, doc);
 	}
 
-	handleFileChanged(filePath: string, fileHash: string, doc:ProseNode): void {
-		console.log("xref :: file-change", filePath);
+	handleFileChanged(fileMeta:IFileMeta, doc:ProseNode): void {
+		console.log("xref :: file-change", fileMeta.path);
 
 		// remove wikilinks previously associated with this file
-		this.removeWikilinks(fileHash);
+		this.removeWikilinks(fileMeta.hash);
 		// discover wikilinks in new version of file
-		this.addWikilinks(filePath, fileHash, doc);
+		this.addWikilinks(fileMeta, doc);
 	}
 
 	// == Tag Management ================================ //
@@ -162,32 +162,46 @@ export class CrossRefPlugin implements WorkspacePlugin {
 		}
 	}
 
-	addWikilinks(filePath: string, fileHash: string, doc: ProseNode) {
+	addWikilinks(fileMeta:IFileMeta, doc: ProseNode) {
 		// get all tags referenced / created by this file
 		let wikilinks: string[] = this.discoverWikilinks(doc);
-		let definedTags: string[] = this.getTagsDefinedBy(filePath, doc);
+		let definedTags: string[] = this.getTagsDefinedBy({ fileMeta, doc });
 		let tags = new Set<string>(this.getTags(doc).concat(wikilinks, definedTags));
 
 		// doc --> tag
-		this._doc2tags.set(fileHash, tags);
+		this._doc2tags.set(fileMeta.hash, tags);
 
 		// tag --> doc
 		for (let tag of tags) {
-			this._tag2docs.get(tag).add(fileHash);
+			this._tag2docs.get(tag).add(fileMeta.hash);
 		}
 
 		// tag --> defs
 		for (let tag of definedTags) {
-			this._tag2defs.get(tag).add(fileHash);
+			this._tag2defs.get(tag).add(fileMeta.hash);
 		}
 	}
 
 	// == Tag Discovery ================================= //
 
-	getTagsDefinedBy(filePath:string, doc:ProseNode):string[] {
+	getTagsDefinedBy(data: { fileMeta?:IFileMeta, doc?:ProseNode }):string[] {
 		/** @todo read defined_tags from yaml metadata */
-		let ext = path.extname(filePath);
-		return [this.normalizeTag(path.basename(filePath, ext))];
+		let tags:string[] = [];
+
+		if(data.fileMeta){
+			// tags defined by path
+			let fileName = path.basename(data.fileMeta.path, path.extname(data.fileMeta.path));
+			tags.push(this.normalizeTag(fileName));
+
+			// tags defined by creation time
+			let creation = data.fileMeta.creationTime;
+			let date = new Date(creation);
+			console.log(data.fileMeta.name, data.fileMeta.creationTime, date);
+			tags.push(this.normalizeDate(date));
+		}
+
+		/** @todo (7/19/20) normalize all at once? */
+		return tags;
 	}
 
 	getTags(doc:ProseNode):string[] {
@@ -214,7 +228,18 @@ export class CrossRefPlugin implements WorkspacePlugin {
 		return wikilinks;
 	}
 
+	normalizeDate(date:Date):string {
+		return date.toDateString().toLowerCase();
+	}
+
 	normalizeTag(content:string):string {
+		// is date?
+		let date:Date = new Date(content);
+		if(date.valueOf() !== NaN){
+			return this.normalizeDate(date);
+		}
+
+		// handle everything else
 		return content.trim().toLowerCase().replace(/[\s-:_]/, "-");
 	}
 
