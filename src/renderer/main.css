@@ -79,16 +79,14 @@ li.task-list-item input[type='checkbox'] {
 
 
 /* active when CTRL key pressed */
-.user-ctrl {
-	a               { cursor: pointer; }
-	.tag            { cursor: pointer; }
-	.wikilink       { cursor: pointer; }
-	.citation       { cursor: pointer; }
-	a:hover         { text-decoration: underline; }
-	.tag:hover      { text-decoration: underline; }
-	.wikilink:hover { text-decoration: underline; }
-	.citation:hover { text-decoration: underline; }
-}
+.user-ctrl a               { cursor: pointer; }
+.user-ctrl .tag            { cursor: pointer; }
+.user-ctrl .wikilink       { cursor: pointer; }
+.user-ctrl .citation       { cursor: pointer; }
+.user-ctrl a:hover         { text-decoration: underline; }
+.user-ctrl .tag:hover      { text-decoration: underline; }
+.user-ctrl .wikilink:hover { text-decoration: underline; }
+.user-ctrl .citation:hover { text-decoration: underline; }
 
 /* -- Scrollbar ----------------------------------------- */
 
@@ -162,26 +160,25 @@ div:hover::-webkit-scrollbar-thumb {
 }
 
 #app {
-
 	color: #111;
+}
 
-	h1::before { content: "# ";     color: #ccc; margin-left: 0.5rem; }
-	h2::before { content: "## ";    color: #ccc; margin-left: 0.5rem; }
-	h3::before { content: "### ";   color: #ccc; margin-left: 0.5rem; }
-	h4::before { content: "#### ";  color: #ccc; margin-left: 0.5rem; }
-	h5::before { content: "##### "; color: #ccc; margin-left: 0.5rem; }
-	h6::before { content: "##### "; color: #ccc; margin-left: 0.5rem; }
+#app h1::before { content: "# ";     color: #ccc; margin-left: 0.5rem; }
+#app h2::before { content: "## ";    color: #ccc; margin-left: 0.5rem; }
+#app h3::before { content: "### ";   color: #ccc; margin-left: 0.5rem; }
+#app h4::before { content: "#### ";  color: #ccc; margin-left: 0.5rem; }
+#app h5::before { content: "##### "; color: #ccc; margin-left: 0.5rem; }
+#app h6::before { content: "##### "; color: #ccc; margin-left: 0.5rem; }
 
-	p {
-		margin-left: 0.5em;
-		font-size: 18px;
-		font-family: var(--sans-font);
-		text-align: justify;
-	}
+#app p {
+	margin-left: 0.5em;
+	font-size: 18px;
+	font-family: var(--sans-font);
+	text-align: justify;
+}
 
-	li p {
-		text-align: left;
-	}
+#app li p {
+	text-align: left;
 }
 
 /* ==== SIDEBAR ========================================= */
@@ -194,40 +191,40 @@ div:hover::-webkit-scrollbar-thumb {
 	flex-flow: column nowrap;
 	height: 100%;
 	overflow-y: hidden;
+}
 
-	.content {
-		flex-grow: 1;
-		min-height: 0;
-		max-height: 100%;
-	}
+#sidebar .content {
+	flex-grow: 1;
+	min-height: 0;
+	max-height: 100%;
+}
 
-	.tabs {
-		display: flex;
-		width: 100%;
-		height: 1.5em;
-		justify-content: space-between;
-		user-select: none;
+#sidebar .tabs {
+	display: flex;
+	width: 100%;
+	height: 1.5em;
+	justify-content: space-between;
+	user-select: none;
+}
 
-		a {
-			flex-grow: 1;
-			text-align: center;
-			background-color: rgba(0,0,0,0.2);
-			color: #303030;
-		}
+#sidebar .tabs a {
+	flex-grow: 1;
+	text-align: center;
+	background-color: rgba(0,0,0,0.2);
+	color: #303030;
+}
 
-		.codicon {
-			vertical-align: middle;
-			line-height: 1.5em;
-		}
-	}
+#sidebar .tabs .codicon {
+	vertical-align: middle;
+	line-height: 1.5em;
+}
 
-	.tabs .active {
-		background: none;
-	}
+#sidebar .tabs .active {
+	background: none;
+}
 
-	.tabs a:not(.active):hover {
-		background-color: rgba(0,0,0,0.1);
-	}
+#sidebar .tabs a:not(.active):hover {
+	background-color: rgba(0,0,0,0.1);
 }
 
 /* -- Loading Spinner ----------------------------------- */
@@ -357,13 +354,11 @@ div:hover::-webkit-scrollbar-thumb {
 
 /* -- TAB: Tag Search ----------------------------------- */
 
-#tab_tags {
-	input {
-		line-height: 2em;
-		outline: none;
-		border: none;
-		border-bottom: 3px solid #999;
-	}
+#tab_tags input {
+	line-height: 2em;
+	outline: none;
+	border: none;
+	border-bottom: 3px solid #999;
 }
 
 /* -- TAB: Calendar ------------------------------------- */
@@ -450,7 +445,7 @@ div:hover::-webkit-scrollbar-thumb {
 	}
 }
 
-// -- Adjustments to Embedded Elements ------------------ //
+/* -- Adjustments to Embedded Elements ------------------ */
 
 .embed p:first-of-type {
 	margin-top: 0;
@@ -461,6 +456,33 @@ div:hover::-webkit-scrollbar-thumb {
 
 .embed h1 {
 	margin-top: 0;
+}
+
+/* == YAML METADATA EDITOR ============================== */
+
+.meta-editor {
+	background-color: #e0e0e0;
+	padding: 1em;
+	margin: 1em 0.5em;
+	column-gap: 1em;
+	font-family: var(--code-font);
+}
+
+.meta-editor dl {
+	display: grid;
+	margin: 0;
+	grid-template-columns: auto 5fr;
+	grid-template-rows: 1fr;
+	grid-auto-flow: row;
+	overflow: hidden;
+}
+
+.meta-editor dt {
+	font-weight: bold;
+}
+
+.meta-editor dd {
+	margin: 0;
 }
 
 /* == PROSEMIRROR ======================================= */
@@ -510,9 +532,9 @@ footnote::after {
 	width: 0;
 }
 
-//// MATH ///////////////////////////////////////////////////
+/* == MATH ============================================== */
 
-/* Inline Math ------------------------------------------- */
+/* Inline Math ------------------------------------------ */
 
 inlinemath {
 	min-width: 1em;
@@ -557,7 +579,7 @@ p code {
 	padding: 0;
 }
 
-//// IPYNB ///////////////////////////////////////////////////
+/* == IPYNB ============================================= */
 
 cell_markdown {
 	display: block;
@@ -584,7 +606,7 @@ cell_markdown:focus-within {
 	border: 1px solid blue;
 }
 
-//// JOURNAL ///////////////////////////////////////////////
+/* == JOURNAL =========================================== */
 
 .journal-entry {
 	padding: 0.5em;
@@ -601,7 +623,7 @@ cell_markdown:focus-within {
 	margin-block-start: 0.5em;
 }
 
-//// PROMPT ////////////////////////////////////////////////
+/* == PROMPT ============================================ */
 
 .ProseMirror-prompt {
   background: white;

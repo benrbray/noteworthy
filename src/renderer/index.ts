@@ -5,7 +5,7 @@ import { Titlebar, Color } from "custom-electron-titlebar";
 import path from "path";
 
 // css
-import "./main.less";
+import "./main.css";
 import "./codicon/codicon.css";
 import "@root/node_modules/prosemirror-view/style/prosemirror.css";
 import "@root/node_modules/katex/dist/katex.min.css";
