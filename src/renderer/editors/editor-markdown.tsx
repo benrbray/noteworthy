@@ -24,6 +24,9 @@ import { mathInputRules } from "@common/inputrules";
 import { openPrompt, TextField } from "@common/prompt/prompt";
 import mathSelectPlugin from "@root/lib/prosemirror-math/src/plugins/math-select";
 import { MainIpcHandlers } from "@main/MainIPC";
+import { render } from "solid-js/dom";
+
+import { YamlEditor } from "../ui/yamlEditor";
 
 ////////////////////////////////////////////////////////////
 
@@ -33,6 +36,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 	_proseEditorView: ProseEditorView | null;
 	_proseSchema: ProseSchema;
 	_editorElt: HTMLElement;
+	_metaElt: HTMLElement;
 	_keymap: ProsePlugin;
 	_initialized:boolean;
 
@@ -46,6 +50,11 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		this._proseEditorView = null;
 		this._proseSchema = markdownSchema;
 		this._editorElt = editorElt;
+
+		// create metadata elt
+		this._metaElt = document.createElement("div");
+		this._metaElt.setAttribute("id", "meta-editor");
+		this._metaElt.setAttribute("class", "meta-editor");
 
 		function markActive(state:EditorState, type:MarkType) {
 			let { from, $from, to, empty } = state.selection
@@ -143,6 +152,12 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		} else {
 			state = ProseEditorState.create(config);
 		}
+
+		// init metadata editor
+		let yamlMeta = state.doc.attrs['yamlMeta'];
+		this._editorElt.appendChild(this._metaElt);
+		render(()=>(<YamlEditor yamlMeta={yamlMeta} />), this._metaElt);
+		
 		// create prosemirror instance
 		let nodeViews: ICursorPosObserver[] = [];
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
@@ -239,6 +254,8 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		// destroy prosemirror instance
 		this._proseEditorView?.destroy();
 		this._proseEditorView = null;
+		// destroy meta editor
+		this._metaElt.remove();
 		// de-initialize
 		this._initialized = false;
 	}

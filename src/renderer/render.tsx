@@ -196,7 +196,9 @@ class Renderer {
 			}
 
 			const AppContent = () => {
-				return (<div id="content"><div id="editor"></div></div>);
+				return (<div id="content">
+					<div id="editor"></div>
+				</div>);
 			}
 
 			const AppFooter = () => {
