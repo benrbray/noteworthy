@@ -352,6 +352,10 @@ div:hover::-webkit-scrollbar-thumb {
 	background-color: rgba(0,0,0,0.1);
 }
 
+.file.active, file.active:hover {
+	background-color: #a4c2f9;
+}
+
 /* -- TAB: Tag Search ----------------------------------- */
 
 #tab_tags input {
