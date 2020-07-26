@@ -235,6 +235,10 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 
 				let proseView:EditorView = (this._proseEditorView as EditorView);
 
+				/** @todo (7/26/20) make sure the metadata editor is notified
+				 * about any changes to the document metadata.
+				 */
+
 				// update 
 				for (let mathView of nodeViews) {
 					mathView.updateCursorPos(proseView.state);
