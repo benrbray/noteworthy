@@ -199,7 +199,7 @@ class Renderer {
 
 			const AppContent = () => {
 				return (<div id="content">
-					<div id="editor"></div>
+					<div spellcheck={false} id="editor"></div>
 				</div>);
 			}
 
