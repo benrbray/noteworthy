@@ -472,6 +472,17 @@ div:hover::-webkit-scrollbar-thumb {
 	border-bottom: 1px dashed #aaa;
 }
 
+.meta-editor .ProseMirror-focused {
+	color: black;
+}
+
+.meta-editor .ProseMirror-focused dd {
+	border-color: #aaa;
+}
+.meta-editor .ProseMirror-focused dt {
+	border-color: #aaa;
+}
+
 .meta-editor dl {
 	display: grid;
 	grid-auto-flow: row;
@@ -487,11 +498,22 @@ div:hover::-webkit-scrollbar-thumb {
 
 .meta-editor dt {
 	font-weight: bold;
+	min-width: 4em;
+	max-width: 20vw;
 }
 
-.meta-editor dd {
+.meta-editor dt, .meta-editor dd {
 	margin: 0;
+	padding: 1px;
+	border-width: 0 1px 1px 1px;
+	border-style: dotted;
+	border-color: transparent;
 }
+
+.meta-editor dt:first-of-type, .meta-editor dd:first-of-type {
+	border-width: 1px;
+}
+
 
 /* == PROSEMIRROR ======================================= */
 

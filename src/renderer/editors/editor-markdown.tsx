@@ -11,7 +11,7 @@ import { keymap } from "prosemirror-keymap";
 import { gapCursor } from "prosemirror-gapcursor";
 
 // project imports
-import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
+import { IPossiblyUntitledFile } from "@common/fileio";
 import { Editor } from "./editor";
 
 // markdown
@@ -27,6 +27,9 @@ import { MainIpcHandlers } from "@main/MainIPC";
 import { render } from "solid-js/dom";
 
 import { YamlEditor } from "../ui/yamlEditor";
+import { createEffect, createSignal } from "solid-js";
+import { SetDocAttrStep } from "@common/prosemirror/steps";
+import { shallowEqual } from "@common/util/equal";
 
 ////////////////////////////////////////////////////////////
 
@@ -55,6 +58,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		this._metaElt = document.createElement("div");
 		this._metaElt.setAttribute("id", "meta-editor");
 		this._metaElt.setAttribute("class", "meta-editor");
+		this._editorElt.appendChild(this._metaElt);
 
 		function markActive(state:EditorState, type:MarkType) {
 			let { from, $from, to, empty } = state.selection
@@ -62,9 +66,10 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 			else return state.doc.rangeHasMark(from, to, type)
 		}
 
+		/** @todo (7/26/19) clean up markdown keymap */
 		this._keymap = keymap({
 			"Tab": (state, dispatch, view) => {
-				dispatch(state.tr.deleteSelection().insertText("\t"));
+				if(dispatch) dispatch(state.tr.deleteSelection().insertText("\t"));
 				return true;
 			},
 			"Ctrl-s": (state, dispatch, view) => {
@@ -93,6 +98,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 						title: new TextField({ label: "Title" })
 					},
 					callback(attrs: { [key: string]: any; } | undefined) {
+						if(!view){ return; }
 						toggleMark(markType, attrs)(view.state, view.dispatch)
 						view.focus()
 					}
@@ -114,10 +120,12 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				for(let mark of $from.marks()){
 					if(mark.type.name == "link"){
 						let new_href = prompt("change link:", mark.attrs.href);
-						dispatch(state.tr.setNodeMarkup($from.pos, undefined, {
-							href: new_href,
-							title: mark.attrs.title
-						}));
+						if(dispatch) { 
+							dispatch(state.tr.setNodeMarkup($from.pos, undefined, {
+								href: new_href,
+								title: mark.attrs.title
+							}));
+						}
 					}
 				}
 
@@ -131,6 +139,52 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 	init() {
 		// only initialize once
 		if(this._initialized){ return; }
+		// initialization order matters
+		this.initProseEditor();
+		this.initYamlEditor();
+		// initialized
+		this._initialized = true;
+	}
+
+	initYamlEditor(){
+		// enforce initialization order
+		if(this._initialized)      { return; }
+		if(!this._proseEditorView) { throw new Error("cannot initialize YAML editor before ProseMirror"); }
+
+		// SolidJS: create Signal for reactivity
+		let state = this._proseEditorView.state;
+		let [yamlMeta, setYamlMeta] = createSignal({ data: state.doc.attrs['yamlMeta'] });
+
+		// SolidJS: render YAML editor
+		const Editor = ()=>{
+			// SolidJS: respond to metadata changes
+			createEffect(()=>{
+				let data = yamlMeta().data;
+				let proseView = this._proseEditorView;
+				if(!proseView){ return; }
+				
+				// check for metadata changes
+				/** @todo (7/26/19) should this comparison be deep or shallow? */
+				if(shallowEqual(data, proseView.state.doc.attrs['yamlMeta'])){
+					console.log("editor :: no metadata change detected");
+					return;
+				}
+				
+				proseView.dispatch(proseView.state.tr.step(
+					new SetDocAttrStep("yamlMeta", data)
+				));
+			});
+			// build component
+			return (<YamlEditor yamlMeta={yamlMeta().data} setYamlMeta={setYamlMeta} />)
+		}
+		
+		render(Editor, this._metaElt);
+	}
+
+	initProseEditor(){
+		// enforce initialization order
+		if(this._initialized){ return; }
+
 		// create prosemirror config
 		let config = {
 			schema: this._proseSchema,
@@ -152,11 +206,6 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		} else {
 			state = ProseEditorState.create(config);
 		}
-
-		// init metadata editor
-		let yamlMeta = state.doc.attrs['yamlMeta'];
-		this._editorElt.appendChild(this._metaElt);
-		render(()=>(<YamlEditor yamlMeta={yamlMeta} />), this._metaElt);
 		
 		// create prosemirror instance
 		let nodeViews: ICursorPosObserver[] = [];
@@ -246,8 +295,6 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				return false;
 			}
 		});
-		// initialized
-		this._initialized = true;
 	}
 
 	destroy(): void {
