@@ -150,17 +150,10 @@ export class Workspace implements IDisposable {
 			return;
 		}
 
-		// notify workspace of file change
-		/** @todo (6/27/20)
-		 * the events below all call _workspace.updatePath() already
-		 * can we safely remove the line below to avoid calling it twice?
-		 */
-		//await this.updatePath(info.path);
-
 		// notify plugins
-		if (event == ChokidarEvents.UNLINK_FILE) { this.handleFileDeleted(file); }
+		if      (event == ChokidarEvents.UNLINK_FILE) {       this.handleFileDeleted(file);        }
 		else if (event == ChokidarEvents.CHANGE_FILE) { await this.handleFileChanged(file, false); }
-		else if (event == ChokidarEvents.ADD_FILE) { await this.handleFileChanged(file, true); }
+		else if (event == ChokidarEvents.ADD_FILE)    { await this.handleFileChanged(file, true);  }
 	}
 
 	/**
