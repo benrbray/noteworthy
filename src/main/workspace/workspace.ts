@@ -6,12 +6,13 @@ import fs from "fs";
 import { IFileMeta, IFileDesc, IDirectory, IDirEntryMeta, readFile } from "@common/fileio";
 import { IDisposable } from "@common/types";
 import { ChokidarEvents } from "@common/events";
-import { IDoc, loadFile } from "@common/doctypes/doctypes";
+import { IDoc } from "@common/doctypes/doctypes";
 import hash from "@common/util/hash";
 import { WorkspacePlugin } from "@main/plugins/plugin";
 import { CrossRefPlugin } from "@main/plugins/crossref-plugin";
 import * as FSALFile from "../fsal/fsal-file";
 import * as FSALDir from "../fsal/fsal-dir";
+import { loadFile } from "@common/doctypes/parse-doc";
 
 ////////////////////////////////////////////////////////////
 
