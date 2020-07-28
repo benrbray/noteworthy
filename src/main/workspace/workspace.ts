@@ -5,8 +5,8 @@ import fs from "fs";
 // project imports
 import { IFileMeta, IFileDesc, IDirectory, IDirEntryMeta, readFile } from "@common/fileio";
 import { IDisposable } from "@common/types";
-import { markdownParser } from "@common/markdown";
 import { ChokidarEvents } from "@common/events";
+import { IDoc, loadFile } from "@common/doctypes/doctypes";
 import hash from "@common/util/hash";
 import { WorkspacePlugin } from "@main/plugins/plugin";
 import { CrossRefPlugin } from "@main/plugins/crossref-plugin";
@@ -192,27 +192,17 @@ export class Workspace implements IDisposable {
 		/** @todo (6/28/20) rather than reading EVERY file that changed,
 		 * read a file only if a plugin requests its contents (based on ext/filename)
 		 */
-		let contents = readFile(file.path);
+		let contents:IDoc|null = loadFile(fileMeta);
 		if (contents === null) {
 			console.error(`workspace :: handleFileCreated() :: error reading file :: ${file.path}`);
+			/** @todo (7/28/20) gracefully handle parse errors which cause contents to be null */
 			return this.handleFileDeleted(file);
 		}
 
 		// parse file contents and notify plugins
-		/** @todo (6/19/20) support wikilinks for other file types */
-		let ext: string = pathlib.extname(file.path);
-		if (ext == ".md" || ext == ".txt") {
-			try {
-				let doc = markdownParser.parse(contents);
-				if(doc){
-					for (let plugin of this._plugins) {
-						if(created){ plugin.handleFileCreated(fileMeta, doc); }
-						else       { plugin.handleFileChanged(fileMeta, doc); }
-					}
-				}
-			} catch (err) {
-				console.error(`workspace :: handleFileChanged() :: error parsing file, skipping :: ${file.path}`);
-			}
+		for (let plugin of this._plugins) {
+			if(created){ plugin.handleFileCreated(fileMeta, contents); }
+			else       { plugin.handleFileChanged(fileMeta, contents); }
 		}
 	}
 

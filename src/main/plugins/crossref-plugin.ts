@@ -8,6 +8,7 @@ import { Node as ProseNode, Mark } from "prosemirror-model";
 import NoteworthyApp from "@main/app";
 import { IWorkspaceDir, IFileMeta } from "@common/fileio";
 import { WorkspacePlugin } from "./plugin";
+import { IDoc } from "@common/doctypes/doctypes";
 
 ////////////////////////////////////////////////////////////
 
@@ -47,6 +48,35 @@ function deserializeSetMap<V>(serialized: { [key: string]: V[] }): DefaultMap<st
 		result.set(key, new Set(serialized[key]));
 	}
 	return result;
+}
+
+////////////////////////////////////////////////////////////
+
+/**
+ * Document types should implement this interface in order
+ * to be recognized by the built-in cross-reference system.
+ */
+export interface ICrossRefProvider {
+	/** @todo (7/28/20) better solution? */
+	IS_XREF_PROVIDER:true;
+
+	/**
+	 * A list of tags mentioned by this resource.
+	 * 
+	 * @returns A list of (unnormalized) tag names.
+	 */
+	getTagsMentioned():string[];
+	/**
+	 * A list of tags defined by this resource.  Documents
+	 * mentioning these tags will point to this resource.
+	 * 
+	 * @returns A list of (unnormalized) tag names.
+	 */
+	getTagsDefined():string[];
+}
+
+export function isXrefProvider(resource:unknown):resource is ICrossRefProvider {
+	return (resource as any).IS_XREF_PROVIDER === true;
 }
 
 ////////////////////////////////////////////////////////////
@@ -120,17 +150,21 @@ export class CrossRefPlugin implements WorkspacePlugin {
 	}
 
 	handleFileDeleted(filePath:string, fileHash:string): void {
-		console.log("xref :: file-delete", filePath);
+		//console.log("xref :: file-delete", filePath);
 		this.removeWikilinks(fileHash);
 	}
 
-	handleFileCreated(fileMeta:IFileMeta, doc:ProseNode): void {
-		console.log("xref :: file-create", fileMeta.path);
+	handleFileCreated(fileMeta:IFileMeta, doc:IDoc): void {
+		//console.log("xref :: file-create", fileMeta.path);
+		if(!isXrefProvider(doc)) { return; }
+
+		// discover wikilinks in created file
 		this.addWikilinks(fileMeta, doc);
 	}
 
-	handleFileChanged(fileMeta:IFileMeta, doc:ProseNode): void {
-		console.log("xref :: file-change", fileMeta.path);
+	handleFileChanged(fileMeta:IFileMeta, doc:IDoc): void {
+		//console.log("xref :: file-change", fileMeta.path);
+		if(!isXrefProvider(doc)) { return; }
 
 		// remove wikilinks previously associated with this file
 		this.removeWikilinks(fileMeta.hash);
@@ -162,11 +196,11 @@ export class CrossRefPlugin implements WorkspacePlugin {
 		}
 	}
 
-	addWikilinks(fileMeta:IFileMeta, doc: ProseNode) {
+	addWikilinks(fileMeta:IFileMeta, doc: ICrossRefProvider) {
 		// get all tags referenced / created by this file
-		let wikilinks: string[] = this.discoverWikilinks(doc);
 		let definedTags: string[] = this.getTagsDefinedBy({ fileMeta, doc });
-		let tags = new Set<string>(this.getTags({ fileMeta, doc }).concat(wikilinks, definedTags));
+		let mentionedTags: string[] = this.getTagsMentionedBy({ fileMeta, doc });
+		let tags = new Set<string>([...definedTags, ...mentionedTags]);
 
 		// doc --> tag
 		this._doc2tags.set(fileMeta.hash, tags);
@@ -184,10 +218,17 @@ export class CrossRefPlugin implements WorkspacePlugin {
 
 	// == Tag Discovery ================================= //
 
-	getTagsDefinedBy(data: { fileMeta?:IFileMeta, doc?:ProseNode }):string[] {
-		/** @todo read defined_tags from yaml metadata */
+	getTagsDefinedBy(data: { fileMeta?:IFileMeta, doc?:ICrossRefProvider }):string[] {
 		let tags:string[] = [];
 
+		// tags defined within file
+		if(data.doc){
+			tags = tags.concat(data.doc.getTagsDefined().map(
+				tag => this.normalizeTag(tag)
+			));
+		}
+
+		// tags defined by file metadat
 		if(data.fileMeta){
 			// tags defined by path
 			let fileName = path.basename(data.fileMeta.path, path.extname(data.fileMeta.path));
@@ -198,10 +239,18 @@ export class CrossRefPlugin implements WorkspacePlugin {
 		return tags;
 	}
 
-	getTags(data: { fileMeta?:IFileMeta, doc?:ProseNode }):string[] {
+	getTagsMentionedBy(data: { fileMeta?:IFileMeta, doc?:ICrossRefProvider }):string[] {
 		/** @todo read tags from yaml metadata */
 		let tags:string[] = [];
 
+		// tags mentioned within file
+		if(data.doc){
+			tags = tags.concat(data.doc.getTagsMentioned().map(
+				tag => this.normalizeTag(tag)
+			));
+		}
+
+		// tags mentioned by metadata
 		if(data.fileMeta){
 			// tags defined by creation time
 			let creation = data.fileMeta.creationTime;
@@ -212,24 +261,6 @@ export class CrossRefPlugin implements WorkspacePlugin {
 		}
 
 		return tags;
-	}
-
-	discoverWikilinks(doc:ProseNode){
-		let wikilinks:string[] = [];
-
-		doc.descendants((node:ProseNode, pos:number, parent:ProseNode) => {
-			if(!node.type.isText){ return true; }
-
-			let markTypes = ["wikilink", "tag", "citation"];
-
-			if(node.marks.find((mark:Mark) => markTypes.includes(mark.type.name))) {
-				let content:string = this.normalizeTag(node.textContent);
-				wikilinks.push(content);
-			}
-			return false;
-		})
-
-		return wikilinks;
 	}
 
 	normalizeDate(date:Date):string {

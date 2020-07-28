@@ -3,7 +3,7 @@ import { clipboard } from "electron";
 
 // prosemirror imports
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
-import { Schema as ProseSchema, DOMParser as ProseDOMParser, MarkType, Node as ProseNode, Mark, Slice } from "prosemirror-model";
+import { Schema as ProseSchema, MarkType, Mark, Slice } from "prosemirror-model";
 import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin, EditorState } from "prosemirror-state";
 import { history } from "prosemirror-history";
@@ -15,8 +15,12 @@ import { IPossiblyUntitledFile } from "@common/fileio";
 import { Editor } from "./editor";
 
 // markdown
-import { markdownSchema, markdownParser, markdownSerializer } from "@common/markdown";
+import { markdownSchema, markdownSerializer } from "@common/markdown";
 import { buildInputRules_markdown, buildKeymap_markdown } from "@common/pm-schema";
+
+// solidjs
+import { render } from "solid-js/dom";
+import { createEffect, createSignal } from "solid-js";
 
 // views
 import { MathView, ICursorPosObserver } from "@lib/prosemirror-math/src/math-nodeview";
@@ -24,12 +28,11 @@ import { mathInputRules } from "@common/inputrules";
 import { openPrompt, TextField } from "@common/prompt/prompt";
 import mathSelectPlugin from "@root/lib/prosemirror-math/src/plugins/math-select";
 import { MainIpcHandlers } from "@main/MainIPC";
-import { render } from "solid-js/dom";
 
 import { YamlEditor } from "../ui/yamlEditor";
-import { createEffect, createSignal } from "solid-js";
 import { SetDocAttrStep } from "@common/prosemirror/steps";
 import { shallowEqual } from "@common/util/equal";
+import { MarkdownDoc } from "@common/doctypes/markdown-doc";
 
 ////////////////////////////////////////////////////////////
 
@@ -238,6 +241,9 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				/** @todo (7/26/20) make sure the metadata editor is notified
 				 * about any changes to the document metadata.
 				 */
+				if(tr.steps.find((value) => (value instanceof SetDocAttrStep))){
+				
+				}
 
 				// update 
 				for (let mathView of nodeViews) {
@@ -318,9 +324,11 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 	}
 
 	parseContents(contents: string):ProseEditorState {
-		let parsed = markdownParser.parse(contents);
+		let parsed:MarkdownDoc|null = MarkdownDoc.parse(contents);
+		if(!parsed) { throw new Error("Parse error!"); }
+
 		return ProseEditorState.create({
-			doc: parsed,
+			doc: parsed.proseDoc,
 			plugins: [
 				// note: keymap order matters!
 				keymap(buildKeymap_markdown(this._proseSchema)),
