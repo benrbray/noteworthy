@@ -79,16 +79,30 @@ li.task-list-item input[type='checkbox'] {
 
 
 /* active when CTRL key pressed */
-.user-ctrl {
-	a               { cursor: pointer; }
-	.tag            { cursor: pointer; }
-	.wikilink       { cursor: pointer; }
-	.citation       { cursor: pointer; }
-	a:hover         { text-decoration: underline; }
-	.tag:hover      { text-decoration: underline; }
-	.wikilink:hover { text-decoration: underline; }
-	.citation:hover { text-decoration: underline; }
+.user-ctrl a               { cursor: pointer; }
+.user-ctrl .tag            { cursor: pointer; }
+.user-ctrl .wikilink       { cursor: pointer; }
+.user-ctrl .citation       { cursor: pointer; }
+.user-ctrl a:hover         { text-decoration: underline; }
+.user-ctrl .tag:hover      { text-decoration: underline; }
+.user-ctrl .wikilink:hover { text-decoration: underline; }
+.user-ctrl .citation:hover { text-decoration: underline; }
+
+/* -- Scrollbar ----------------------------------------- */
+
+div::-webkit-scrollbar {
+	width: 6px;
+	background-color: white;
 }
+
+div::-webkit-scrollbar-thumb {
+	background-color: rgba(0,0,0,0);
+}
+
+div:hover::-webkit-scrollbar-thumb {
+	background-color: rgba(0,0,0,0.3);
+}
+
 
 /* == USER INTERFACE ==================================== */
 
@@ -146,26 +160,25 @@ li.task-list-item input[type='checkbox'] {
 }
 
 #app {
-
 	color: #111;
+}
 
-	h1::before { content: "# ";     color: #ccc; margin-left: 0.5rem; }
-	h2::before { content: "## ";    color: #ccc; margin-left: 0.5rem; }
-	h3::before { content: "### ";   color: #ccc; margin-left: 0.5rem; }
-	h4::before { content: "#### ";  color: #ccc; margin-left: 0.5rem; }
-	h5::before { content: "##### "; color: #ccc; margin-left: 0.5rem; }
-	h6::before { content: "##### "; color: #ccc; margin-left: 0.5rem; }
+#app h1::before { content: "# ";     color: #ccc; margin-left: 0.5rem; }
+#app h2::before { content: "## ";    color: #ccc; margin-left: 0.5rem; }
+#app h3::before { content: "### ";   color: #ccc; margin-left: 0.5rem; }
+#app h4::before { content: "#### ";  color: #ccc; margin-left: 0.5rem; }
+#app h5::before { content: "##### "; color: #ccc; margin-left: 0.5rem; }
+#app h6::before { content: "##### "; color: #ccc; margin-left: 0.5rem; }
 
-	p {
-		margin-left: 0.5em;
-		font-size: 18px;
-		font-family: var(--sans-font);
-		text-align: justify;
-	}
+#app p {
+	margin-left: 0.5em;
+	font-size: 18px;
+	font-family: var(--sans-font);
+	text-align: justify;
+}
 
-	li p {
-		text-align: left;
-	}
+#app li p {
+	text-align: left;
 }
 
 /* ==== SIDEBAR ========================================= */
@@ -177,39 +190,41 @@ li.task-list-item input[type='checkbox'] {
 	display: flex;
 	flex-flow: column nowrap;
 	height: 100%;
+	overflow-y: hidden;
+}
 
-	.content {
-		flex-grow: 1;
-		overflow-y: scroll;
-	}
+#sidebar .content {
+	flex-grow: 1;
+	min-height: 0;
+	max-height: 100%;
+}
 
-	.tabs {
-		display: flex;
-		width: 100%;
-		height: 1.5em;
-		justify-content: space-between;
-		user-select: none;
+#sidebar .tabs {
+	display: flex;
+	width: 100%;
+	height: 1.5em;
+	justify-content: space-between;
+	user-select: none;
+}
 
-		a {
-			flex-grow: 1;
-			text-align: center;
-			background-color: rgba(0,0,0,0.2);
-			color: #303030;
-		}
+#sidebar .tabs a {
+	flex-grow: 1;
+	text-align: center;
+	background-color: rgba(0,0,0,0.2);
+	color: #303030;
+}
 
-		.codicon {
-			vertical-align: middle;
-			line-height: 1.5em;
-		}
-	}
+#sidebar .tabs .codicon {
+	vertical-align: middle;
+	line-height: 1.5em;
+}
 
-	.tabs .active {
-		background: none;
-	}
+#sidebar .tabs .active {
+	background: none;
+}
 
-	.tabs a:not(.active):hover {
-		background-color: rgba(0,0,0,0.1);
-	}
+#sidebar .tabs a:not(.active):hover {
+	background-color: rgba(0,0,0,0.1);
 }
 
 /* -- Loading Spinner ----------------------------------- */
@@ -289,8 +304,12 @@ li.task-list-item input[type='checkbox'] {
   100% { opacity: 0; }
 }
 
-
 /* -- File Explorer ------------------------------------- */
+
+#tab_explorer {
+	max-height: 100%;
+	overflow-y: overlay;
+}
 
 .folder[collapsed=true]::before {
 	content: ">";
@@ -333,15 +352,57 @@ li.task-list-item input[type='checkbox'] {
 	background-color: rgba(0,0,0,0.1);
 }
 
+.file.active, file.active:hover {
+	background-color: #a4c2f9;
+}
+
 /* -- TAB: Tag Search ----------------------------------- */
 
-#tab_tags {
-	input {
-		line-height: 2em;
-		outline: none;
-		border: none;
-		border-bottom: 3px solid gray;
-	}
+#tab_tags input {
+	line-height: 2em;
+	outline: none;
+	border: none;
+	border-bottom: 3px solid #999;
+}
+
+/* -- TAB: Calendar ------------------------------------- */
+
+.calendar {
+	padding: 0.2rem;
+	background-color: #ccc;
+	user-select: none;
+	text-align: center;
+	font-size: 0.8em;
+}
+
+.calendar .header {
+	display: flex;
+}
+.calendar .prev::before {
+	content: "<<";
+	padding: 0 1em;
+}
+.calendar .next::before {
+	content: ">>";
+	padding: 0 1em;
+}
+
+.calendar .title {
+	flex-grow: 1;
+	font-weight: bold;
+}
+
+.calendar table {
+	width: 100%;
+}
+
+.calendar td:hover {
+	background-color: #aaa;
+	border-radius: 0.2em;
+}
+
+.calendar td.g {
+	color: #999;
 }
 
 
@@ -388,7 +449,7 @@ li.task-list-item input[type='checkbox'] {
 	}
 }
 
-// -- Adjustments to Embedded Elements ------------------ //
+/* -- Adjustments to Embedded Elements ------------------ */
 
 .embed p:first-of-type {
 	margin-top: 0;
@@ -400,6 +461,59 @@ li.task-list-item input[type='checkbox'] {
 .embed h1 {
 	margin-top: 0;
 }
+
+/* == YAML METADATA EDITOR ============================== */
+
+.meta-editor {
+	padding: 1em 0;
+	margin: 0 0.5em 1em 0.5em;
+	font-family: var(--code-font);
+	color: #aaa;
+	border-bottom: 1px dashed #aaa;
+}
+
+.meta-editor .ProseMirror-focused {
+	color: black;
+}
+
+.meta-editor .ProseMirror-focused dd {
+	border-color: #aaa;
+}
+.meta-editor .ProseMirror-focused dt {
+	border-color: #aaa;
+}
+
+.meta-editor dl {
+	display: grid;
+	grid-auto-flow: row;
+	grid-template-columns: auto 5fr;
+	grid-template-rows: 1fr;
+	column-gap: 1em;
+
+	margin: 0;
+	font-size: 0.8em;
+
+	overflow: hidden;
+}
+
+.meta-editor dt {
+	font-weight: bold;
+	min-width: 4em;
+	max-width: 20vw;
+}
+
+.meta-editor dt, .meta-editor dd {
+	margin: 0;
+	padding: 1px;
+	border-width: 0 1px 1px 1px;
+	border-style: dotted;
+	border-color: transparent;
+}
+
+.meta-editor dt:first-of-type, .meta-editor dd:first-of-type {
+	border-width: 1px;
+}
+
 
 /* == PROSEMIRROR ======================================= */
 
@@ -448,9 +562,9 @@ footnote::after {
 	width: 0;
 }
 
-//// MATH ///////////////////////////////////////////////////
+/* == MATH ============================================== */
 
-/* Inline Math ------------------------------------------- */
+/* Inline Math ------------------------------------------ */
 
 inlinemath {
 	min-width: 1em;
@@ -495,7 +609,7 @@ p code {
 	padding: 0;
 }
 
-//// IPYNB ///////////////////////////////////////////////////
+/* == IPYNB ============================================= */
 
 cell_markdown {
 	display: block;
@@ -522,7 +636,7 @@ cell_markdown:focus-within {
 	border: 1px solid blue;
 }
 
-//// JOURNAL ///////////////////////////////////////////////
+/* == JOURNAL =========================================== */
 
 .journal-entry {
 	padding: 0.5em;
@@ -539,7 +653,7 @@ cell_markdown:focus-within {
 	margin-block-start: 0.5em;
 }
 
-//// PROMPT ////////////////////////////////////////////////
+/* == PROMPT ============================================ */
 
 .ProseMirror-prompt {
   background: white;

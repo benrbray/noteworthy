@@ -58,7 +58,9 @@ export class NwtEditor extends Editor<ProseEditorState> {
 
 		this._keymap = keymap({
 			"Tab": (state, dispatch, view) => {
-				dispatch(state.tr.deleteSelection().insertText("\t"));
+				if(dispatch){
+					dispatch(state.tr.deleteSelection().insertText("\t"));
+				}
 				return true;
 			},
 			"Ctrl-s": (state, dispatch, view) => {
@@ -80,8 +82,8 @@ export class NwtEditor extends Editor<ProseEditorState> {
 					callback(attrs: { [key: string]: any; } | undefined) {
 						// insert new embed node at top level
 						let tr = state.tr.insert($to.after(1), nodeType.createAndFill(attrs))
-						dispatch(tr);
-						view.focus()
+						if(dispatch){ dispatch(tr); }
+						if(view){ view.focus(); }
 					}
 				})
 				return true;
@@ -94,7 +96,7 @@ export class NwtEditor extends Editor<ProseEditorState> {
 				let markType = this._proseSchema.marks.link;
 				if(markActive(state, markType)) {
 					console.log("link active");
-					toggleMark(markType)(state, dispatch)
+					if(dispatch){ toggleMark(markType)(state, dispatch) }
 					return true
 				}
 				console.log("opening prompt");
@@ -108,8 +110,10 @@ export class NwtEditor extends Editor<ProseEditorState> {
 						title: new TextField({ label: "Title" })
 					},
 					callback(attrs: { [key: string]: any; } | undefined) {
-						toggleMark(markType, attrs)(view.state, view.dispatch)
-						view.focus()
+						if(view){
+							toggleMark(markType, attrs)(view.state, view.dispatch)
+							view.focus()
+						}
 					}
 				})
 				return true;
@@ -129,10 +133,12 @@ export class NwtEditor extends Editor<ProseEditorState> {
 				for(let mark of $from.marks()){
 					if(mark.type.name == "link"){
 						let new_href = prompt("change link:", mark.attrs.href);
-						dispatch(state.tr.setNodeMarkup($from.pos, undefined, {
-							href: new_href,
-							title: mark.attrs.title
-						}));
+						if(dispatch){
+							dispatch(state.tr.setNodeMarkup($from.pos, undefined, {
+								href: new_href,
+								title: mark.attrs.title
+							}));
+						}
 					}
 				}
 

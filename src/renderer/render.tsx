@@ -24,15 +24,15 @@ import { TagSearch } from "./ui/tag-search";
 
 // solid js imports
 import { render } from "solid-js/dom";
-import { createState, createEffect, createSignal, Suspense, Switch, Match, For } from "solid-js";
+import { State as SolidState, SetStateFunction, createState, createEffect, createSignal, Suspense, Switch, Match, For } from "solid-js";
+import { CalendarTab } from "./ui/calendarTab";
 
 ////////////////////////////////////////////////////////////
 
 interface IRendererState {
 	activeTab: number,
-	filePath: string,
+	activeFile: null|IPossiblyUntitledFile;
 	fileTree: (IDirEntryMeta|IFolderMarker)[],
-	message: string
 }
 
 class Renderer {
@@ -47,7 +47,7 @@ class Renderer {
 		editorElt: HTMLDivElement;
 	}
 
-	_react:null | any;
+	_react:null | { state: SolidState<IRendererState>, setState: SetStateFunction<IRendererState> };
 
 	// prosemirror
 	_editor: ProseMirrorEditor | null;
@@ -105,20 +105,23 @@ class Renderer {
 	}
 
 	initUI() {
-		console.log("\n\nUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIUIv\n\n\n");
 		const App = () => {
 			// create solid state
 			let [state, setState] = createState<IRendererState>({
 				activeTab: 0,
-				filePath:"not reactive!",
-				message:"",
-				fileTree:[]
+				activeFile: null,
+				fileTree:[],
 			});
 			this._react = { state, setState }
 
-			// print file path on change
-			createEffect(()=>console.log("\n\nfilePath:", state.filePath, "\n\n\n"));
-			createEffect(()=>console.log("\n\nmessage:", state.message, "\n\n\n"));
+			// state computations
+			const activeHash = () => {
+				if(state.activeFile !== null && "hash" in state.activeFile){
+					return state.activeFile.hash;
+				} else {
+					return null;
+				}
+			}
 
 			const Loading = () => {
 				return (<div>loading...</div>);
@@ -129,6 +132,7 @@ class Renderer {
 				{ codicon: "codicon-book" },
 				{ codicon: "codicon-symbol-numeric" },
 				{ codicon: "codicon-symbol-color" },
+				{ codicon: "codicon-calendar" },
 			];
 
 			const handleClick = (evt:MouseEvent) => {
@@ -161,7 +165,7 @@ class Renderer {
 					<div class="content"><Suspense fallback={<Loading/>}>
 						<Switch>
 							<Match when={state.activeTab == 0}>
-								<FileExplorer fileTree={state.fileTree} handleClick={handleClick}/>
+								<FileExplorer activeHash={activeHash()} fileTree={state.fileTree} handleClick={handleClick}/>
 							</Match>
 							<Match when={state.activeTab == 1}>
 								<div id="tab_outline">outline</div>
@@ -171,6 +175,9 @@ class Renderer {
 							</Match>
 							<Match when={state.activeTab == 3}>
 								<div id="tab_theme">themes</div>
+							</Match>
+							<Match when={state.activeTab == 4}>
+								<CalendarTab />
 							</Match>
 						</Switch>
 					</Suspense></div>
@@ -191,13 +198,15 @@ class Renderer {
 			}
 
 			const AppContent = () => {
-				return (<div id="content"><div id="editor"></div></div>);
+				return (<div id="content">
+					<div spellcheck={false} id="editor"></div>
+				</div>);
 			}
 
 			const AppFooter = () => {
 				return (
 					<div id="footer">
-						<div id="title">{state.filePath}</div>
+						<div id="title">{state.activeFile?.path || "(no file selected)"}</div>
 					</div>
 				);
 			}
@@ -256,7 +265,9 @@ class Renderer {
 		// update interface
 		if(!this._ui){ throw new Error("no user interface active!"); }
 		
-		this._react.setState({filePath: file.path || "<untitled>"});
+		this._react?.setState({
+			activeFile: file
+		});
 		
 		let ext: string = pathlib.extname(this._currentFile.path || "");
 
@@ -327,7 +338,7 @@ class Renderer {
 			}
 		}
 
-		this._react.setState({ message: "filetree changed!", fileTree: this._fileTree });
+		this._react?.setState({ fileTree: this._fileTree });
 	}
 }
 

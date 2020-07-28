@@ -168,7 +168,6 @@ class MarkdownParseState {
 			// fetch token handler for this type
 			let handler = this.tokenHandlers[tokenType];
 			if (!handler) { 
-				console.log(tok);
 				handler = noOp;
 				console.error("Token type `" + tokenType + "` not supported by Markdown parser"); 
 			}
@@ -354,8 +353,13 @@ export class MarkdownParser {
 
 		// parse tokens and convert to ProseMirror ducment
 		let doc:ProseNode|null;
-		do { doc = state.closeNode() } while (state.stack.length)
-		if(!doc){ throw new Error("from_markdown :: parse error!"); }
+		do { doc = state.closeNode() } while (state.stack.length);
+
+		/** @todo (7/28/20) gracefully handle parse errors */
+		if(!doc){
+			console.error("from_markdown :: parse error!");
+			return null;
+		}
 
 		// return document + metadata
 		return doc;

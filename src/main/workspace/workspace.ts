@@ -5,13 +5,14 @@ import fs from "fs";
 // project imports
 import { IFileMeta, IFileDesc, IDirectory, IDirEntryMeta, readFile } from "@common/fileio";
 import { IDisposable } from "@common/types";
-import { markdownParser } from "@common/markdown";
 import { ChokidarEvents } from "@common/events";
+import { IDoc } from "@common/doctypes/doctypes";
 import hash from "@common/util/hash";
 import { WorkspacePlugin } from "@main/plugins/plugin";
 import { CrossRefPlugin } from "@main/plugins/crossref-plugin";
 import * as FSALFile from "../fsal/fsal-file";
 import * as FSALDir from "../fsal/fsal-dir";
+import { loadFile } from "@common/doctypes/parse-doc";
 
 ////////////////////////////////////////////////////////////
 
@@ -150,17 +151,10 @@ export class Workspace implements IDisposable {
 			return;
 		}
 
-		// notify workspace of file change
-		/** @todo (6/27/20)
-		 * the events below all call _workspace.updatePath() already
-		 * can we safely remove the line below to avoid calling it twice?
-		 */
-		//await this.updatePath(info.path);
-
 		// notify plugins
-		if (event == ChokidarEvents.UNLINK_FILE) { this.handleFileDeleted(file); }
+		if      (event == ChokidarEvents.UNLINK_FILE) {       this.handleFileDeleted(file);        }
 		else if (event == ChokidarEvents.CHANGE_FILE) { await this.handleFileChanged(file, false); }
-		else if (event == ChokidarEvents.ADD_FILE) { await this.handleFileChanged(file, true); }
+		else if (event == ChokidarEvents.ADD_FILE)    { await this.handleFileChanged(file, true);  }
 	}
 
 	/**
@@ -188,32 +182,29 @@ export class Workspace implements IDisposable {
 	async handleFileChanged(file: { path: string, hash: string }, created:boolean):Promise<void> {
 		/** @todo (6/19/20) determine if file actually belongs to workspace? */
 
+		// add to workspace
+		let fileMeta:IFileMeta|null = await this.updatePath(file.path);
+		if(fileMeta == null){
+			console.error(`workspace :: handleFileCreated() :: error reading file :: ${file.path}`);
+			return this.handleFileDeleted(file);
+		}
+
 		// read file contents
 		/** @todo (6/28/20) rather than reading EVERY file that changed,
 		 * read a file only if a plugin requests its contents (based on ext/filename)
 		 */
-		let contents = readFile(file.path);
+		let contents:IDoc|null = loadFile(fileMeta);
 		if (contents === null) {
-			throw new Error(`workspace :: handleFileCreated() :: error reading file :: ${file.path}`);
+			console.error(`workspace :: handleFileCreated() :: error reading file :: ${file.path}`);
+			/** @todo (7/28/20) gracefully handle parse errors which cause contents to be null */
+			return this.handleFileDeleted(file);
 		}
+
 		// parse file contents and notify plugins
-		/** @todo (6/19/20) support wikilinks for other file types */
-		let ext: string = pathlib.extname(file.path);
-		if (ext == ".md" || ext == ".txt") {
-			try {
-				let doc = markdownParser.parse(contents);
-				if(doc){
-					for (let plugin of this._plugins) {
-						if(created){ plugin.handleFileCreated(file.path, file.hash, doc); }
-						else       { plugin.handleFileChanged(file.path, file.hash, doc); }
-					}
-				}
-			} catch (err) {
-				console.error(`workspace :: handleFileChanged() :: error parsing file, skipping :: ${file.path}`);
-			}
+		for (let plugin of this._plugins) {
+			if(created){ plugin.handleFileCreated(fileMeta, contents); }
+			else       { plugin.handleFileChanged(fileMeta, contents); }
 		}
-		// add to workspace
-		await this.updatePath(file.path);
 	}
 
 	// -- Plugins --------------------------------------- //

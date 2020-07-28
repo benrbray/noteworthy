@@ -89,13 +89,9 @@ export enum FileCmp {
 	ADDED         =  2
 }
 
-export interface IWorkspaceMetaJSON {
+////////////////////////////////////////////////////////////
 
-}
-
-/////////////////// OLD
-
-export const readFile = (filePath: string): string|null => {
+export function readFile(filePath: string): string|null {
 	let fileText = null;
 	try {
 		fileText = fs.readFileSync(filePath, 'UTF-8');
@@ -105,7 +101,7 @@ export const readFile = (filePath: string): string|null => {
 	return fileText;
 };
 
-export const saveFile = (filePath: string, fileText: string): void => {
+export function saveFile(filePath: string, fileText: string): void {
 	console.log("saveFile ::", filePath, fileText);
 	try {
 		fs.writeFileSync(filePath, fileText, 'UTF-8');

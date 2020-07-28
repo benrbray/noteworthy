@@ -3,7 +3,7 @@ import { clipboard } from "electron";
 
 // prosemirror imports
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
-import { Schema as ProseSchema, DOMParser as ProseDOMParser, MarkType, Node as ProseNode, Mark, Slice } from "prosemirror-model";
+import { Schema as ProseSchema, MarkType, Mark, Slice } from "prosemirror-model";
 import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin, EditorState } from "prosemirror-state";
 import { history } from "prosemirror-history";
@@ -11,12 +11,16 @@ import { keymap } from "prosemirror-keymap";
 import { gapCursor } from "prosemirror-gapcursor";
 
 // project imports
-import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
+import { IPossiblyUntitledFile } from "@common/fileio";
 import { Editor } from "./editor";
 
 // markdown
-import { markdownSchema, markdownParser, markdownSerializer } from "@common/markdown";
+import { markdownSchema, markdownSerializer } from "@common/markdown";
 import { buildInputRules_markdown, buildKeymap_markdown } from "@common/pm-schema";
+
+// solidjs
+import { render } from "solid-js/dom";
+import { createEffect, createSignal } from "solid-js";
 
 // views
 import { MathView, ICursorPosObserver } from "@lib/prosemirror-math/src/math-nodeview";
@@ -24,6 +28,11 @@ import { mathInputRules } from "@common/inputrules";
 import { openPrompt, TextField } from "@common/prompt/prompt";
 import mathSelectPlugin from "@root/lib/prosemirror-math/src/plugins/math-select";
 import { MainIpcHandlers } from "@main/MainIPC";
+
+import { YamlEditor } from "../ui/yamlEditor";
+import { SetDocAttrStep } from "@common/prosemirror/steps";
+import { shallowEqual } from "@common/util/equal";
+import { MarkdownDoc } from "@common/doctypes/markdown-doc";
 
 ////////////////////////////////////////////////////////////
 
@@ -33,6 +42,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 	_proseEditorView: ProseEditorView | null;
 	_proseSchema: ProseSchema;
 	_editorElt: HTMLElement;
+	_metaElt: HTMLElement;
 	_keymap: ProsePlugin;
 	_initialized:boolean;
 
@@ -47,15 +57,22 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		this._proseSchema = markdownSchema;
 		this._editorElt = editorElt;
 
+		// create metadata elt
+		this._metaElt = document.createElement("div");
+		this._metaElt.setAttribute("id", "meta-editor");
+		this._metaElt.setAttribute("class", "meta-editor");
+		this._editorElt.appendChild(this._metaElt);
+
 		function markActive(state:EditorState, type:MarkType) {
 			let { from, $from, to, empty } = state.selection
 			if (empty) return type.isInSet(state.storedMarks || $from.marks())
 			else return state.doc.rangeHasMark(from, to, type)
 		}
 
+		/** @todo (7/26/19) clean up markdown keymap */
 		this._keymap = keymap({
 			"Tab": (state, dispatch, view) => {
-				dispatch(state.tr.deleteSelection().insertText("\t"));
+				if(dispatch) dispatch(state.tr.deleteSelection().insertText("\t"));
 				return true;
 			},
 			"Ctrl-s": (state, dispatch, view) => {
@@ -84,6 +101,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 						title: new TextField({ label: "Title" })
 					},
 					callback(attrs: { [key: string]: any; } | undefined) {
+						if(!view){ return; }
 						toggleMark(markType, attrs)(view.state, view.dispatch)
 						view.focus()
 					}
@@ -105,10 +123,12 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				for(let mark of $from.marks()){
 					if(mark.type.name == "link"){
 						let new_href = prompt("change link:", mark.attrs.href);
-						dispatch(state.tr.setNodeMarkup($from.pos, undefined, {
-							href: new_href,
-							title: mark.attrs.title
-						}));
+						if(dispatch) { 
+							dispatch(state.tr.setNodeMarkup($from.pos, undefined, {
+								href: new_href,
+								title: mark.attrs.title
+							}));
+						}
 					}
 				}
 
@@ -122,6 +142,52 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 	init() {
 		// only initialize once
 		if(this._initialized){ return; }
+		// initialization order matters
+		this.initProseEditor();
+		this.initYamlEditor();
+		// initialized
+		this._initialized = true;
+	}
+
+	initYamlEditor(){
+		// enforce initialization order
+		if(this._initialized)      { return; }
+		if(!this._proseEditorView) { throw new Error("cannot initialize YAML editor before ProseMirror"); }
+
+		// SolidJS: create Signal for reactivity
+		let state = this._proseEditorView.state;
+		let [yamlMeta, setYamlMeta] = createSignal({ data: state.doc.attrs['yamlMeta'] });
+
+		// SolidJS: render YAML editor
+		const Editor = ()=>{
+			// SolidJS: respond to metadata changes
+			createEffect(()=>{
+				let data = yamlMeta().data;
+				let proseView = this._proseEditorView;
+				if(!proseView){ return; }
+				
+				// check for metadata changes
+				/** @todo (7/26/19) should this comparison be deep or shallow? */
+				if(shallowEqual(data, proseView.state.doc.attrs['yamlMeta'])){
+					console.log("editor :: no metadata change detected");
+					return;
+				}
+				
+				proseView.dispatch(proseView.state.tr.step(
+					new SetDocAttrStep("yamlMeta", data)
+				));
+			});
+			// build component
+			return (<YamlEditor yamlMeta={yamlMeta().data} setYamlMeta={setYamlMeta} />)
+		}
+		
+		render(Editor, this._metaElt);
+	}
+
+	initProseEditor(){
+		// enforce initialization order
+		if(this._initialized){ return; }
+
 		// create prosemirror config
 		let config = {
 			schema: this._proseSchema,
@@ -143,6 +209,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		} else {
 			state = ProseEditorState.create(config);
 		}
+		
 		// create prosemirror instance
 		let nodeViews: ICursorPosObserver[] = [];
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
@@ -170,6 +237,13 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				if(tr.docChanged){ this.handleDocChanged(); }
 
 				let proseView:EditorView = (this._proseEditorView as EditorView);
+
+				/** @todo (7/26/20) make sure the metadata editor is notified
+				 * about any changes to the document metadata.
+				 */
+				if(tr.steps.find((value) => (value instanceof SetDocAttrStep))){
+				
+				}
 
 				// update 
 				for (let mathView of nodeViews) {
@@ -231,14 +305,14 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				return false;
 			}
 		});
-		// initialized
-		this._initialized = true;
 	}
 
 	destroy(): void {
 		// destroy prosemirror instance
 		this._proseEditorView?.destroy();
 		this._proseEditorView = null;
+		// destroy meta editor
+		this._metaElt.remove();
 		// de-initialize
 		this._initialized = false;
 	}
@@ -250,9 +324,11 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 	}
 
 	parseContents(contents: string):ProseEditorState {
-		let parsed = markdownParser.parse(contents);
+		let parsed:MarkdownDoc|null = MarkdownDoc.parse(contents);
+		if(!parsed) { throw new Error("Parse error!"); }
+
 		return ProseEditorState.create({
-			doc: parsed,
+			doc: parsed.proseDoc,
 			plugins: [
 				// note: keymap order matters!
 				keymap(buildKeymap_markdown(this._proseSchema)),

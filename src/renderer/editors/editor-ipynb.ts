@@ -15,6 +15,7 @@ import { keymap } from "prosemirror-keymap";
 import { ICursorPosObserver, MathView } from "@lib/prosemirror-math/src/math-nodeview";
 import { mathInputRules } from "@lib/prosemirror-math/src/plugins/math-inputrules";
 import { MainIpcHandlers } from "@main/MainIPC";
+import { ProseCommand } from "@common/types";
 
 ////////////////////////////////////////////////////////////
 
@@ -36,12 +37,14 @@ export class IpynbEditor extends Editor<ProseEditorState> {
 		this._proseEditorView = null;
 		this._proseSchema = ipynbSchema;
 
-		const insertStar = (state: ProseEditorState, dispatch: ((tr: Transaction) => void)) => {
+		const insertStar:ProseCommand = (state, dispatch) => {
 			var type = this._proseSchema.nodes.star;
 			var ref = state.selection;
 			var $from = ref.$from;
 			if (!$from.parent.canReplaceWith($from.index(), $from.index(), type)) { return false }
-			dispatch(state.tr.replaceSelectionWith(type.create()));
+			if(dispatch){
+				dispatch(state.tr.replaceSelectionWith(type.create()));
+			}
 			return true
 		}
 

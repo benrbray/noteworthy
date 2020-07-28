@@ -8,6 +8,7 @@ import { Node as ProseNode, Mark } from "prosemirror-model";
 import NoteworthyApp from "@main/app";
 import { IWorkspaceDir, IFileMeta } from "@common/fileio";
 import { WorkspacePlugin } from "./plugin";
+import { IDoc } from "@common/doctypes/doctypes";
 
 ////////////////////////////////////////////////////////////
 
@@ -47,6 +48,35 @@ function deserializeSetMap<V>(serialized: { [key: string]: V[] }): DefaultMap<st
 		result.set(key, new Set(serialized[key]));
 	}
 	return result;
+}
+
+////////////////////////////////////////////////////////////
+
+/**
+ * Document types should implement this interface in order
+ * to be recognized by the built-in cross-reference system.
+ */
+export interface ICrossRefProvider {
+	/** @todo (7/28/20) better solution? */
+	IS_XREF_PROVIDER:true;
+
+	/**
+	 * A list of tags mentioned by this resource.
+	 * 
+	 * @returns A list of (unnormalized) tag names.
+	 */
+	getTagsMentioned():string[];
+	/**
+	 * A list of tags defined by this resource.  Documents
+	 * mentioning these tags will point to this resource.
+	 * 
+	 * @returns A list of (unnormalized) tag names.
+	 */
+	getTagsDefined():string[];
+}
+
+export function isXrefProvider(resource:unknown):resource is ICrossRefProvider {
+	return (resource as any).IS_XREF_PROVIDER === true;
 }
 
 ////////////////////////////////////////////////////////////
@@ -119,23 +149,27 @@ export class CrossRefPlugin implements WorkspacePlugin {
 		/** @todo (6/18/20) */
 	}
 
-	handleFileDeleted(filePath: string, fileHash: string): void {
-		console.log("xref :: file-delete", filePath);
+	handleFileDeleted(filePath:string, fileHash:string): void {
+		//console.log("xref :: file-delete", filePath);
 		this.removeWikilinks(fileHash);
 	}
 
-	handleFileCreated(filePath: string, fileHash: string, doc:ProseNode): void {
-		console.log("xref :: file-create", filePath);
-		this.addWikilinks(filePath, fileHash, doc);
+	handleFileCreated(fileMeta:IFileMeta, doc:IDoc): void {
+		//console.log("xref :: file-create", fileMeta.path);
+		if(!isXrefProvider(doc)) { return; }
+
+		// discover wikilinks in created file
+		this.addWikilinks(fileMeta, doc);
 	}
 
-	handleFileChanged(filePath: string, fileHash: string, doc:ProseNode): void {
-		console.log("xref :: file-change", filePath);
+	handleFileChanged(fileMeta:IFileMeta, doc:IDoc): void {
+		//console.log("xref :: file-change", fileMeta.path);
+		if(!isXrefProvider(doc)) { return; }
 
 		// remove wikilinks previously associated with this file
-		this.removeWikilinks(fileHash);
+		this.removeWikilinks(fileMeta.hash);
 		// discover wikilinks in new version of file
-		this.addWikilinks(filePath, fileHash, doc);
+		this.addWikilinks(fileMeta, doc);
 	}
 
 	// == Tag Management ================================ //
@@ -162,59 +196,85 @@ export class CrossRefPlugin implements WorkspacePlugin {
 		}
 	}
 
-	addWikilinks(filePath: string, fileHash: string, doc: ProseNode) {
+	addWikilinks(fileMeta:IFileMeta, doc: ICrossRefProvider) {
 		// get all tags referenced / created by this file
-		let wikilinks: string[] = this.discoverWikilinks(doc);
-		let definedTags: string[] = this.getTagsDefinedBy(filePath, doc);
-		let tags = new Set<string>(this.getTags(doc).concat(wikilinks, definedTags));
+		let definedTags: string[] = this.getTagsDefinedBy({ fileMeta, doc });
+		let mentionedTags: string[] = this.getTagsMentionedBy({ fileMeta, doc });
+		let tags = new Set<string>([...definedTags, ...mentionedTags]);
 
 		// doc --> tag
-		this._doc2tags.set(fileHash, tags);
+		this._doc2tags.set(fileMeta.hash, tags);
 
 		// tag --> doc
 		for (let tag of tags) {
-			this._tag2docs.get(tag).add(fileHash);
+			this._tag2docs.get(tag).add(fileMeta.hash);
 		}
 
 		// tag --> defs
 		for (let tag of definedTags) {
-			this._tag2defs.get(tag).add(fileHash);
+			this._tag2defs.get(tag).add(fileMeta.hash);
 		}
 	}
 
 	// == Tag Discovery ================================= //
 
-	getTagsDefinedBy(filePath:string, doc:ProseNode):string[] {
-		/** @todo read defined_tags from yaml metadata */
-		let ext = path.extname(filePath);
-		return [this.normalizeTag(path.basename(filePath, ext))];
+	getTagsDefinedBy(data: { fileMeta?:IFileMeta, doc?:ICrossRefProvider }):string[] {
+		let tags:string[] = [];
+
+		// tags defined within file
+		if(data.doc){
+			tags = tags.concat(data.doc.getTagsDefined().map(
+				tag => this.normalizeTag(tag)
+			));
+		}
+
+		// tags defined by file metadat
+		if(data.fileMeta){
+			// tags defined by path
+			let fileName = path.basename(data.fileMeta.path, path.extname(data.fileMeta.path));
+			tags.push(this.normalizeTag(fileName));
+		}
+
+		/** @todo (7/19/20) normalize all at once? */
+		return tags;
 	}
 
-	getTags(doc:ProseNode):string[] {
+	getTagsMentionedBy(data: { fileMeta?:IFileMeta, doc?:ICrossRefProvider }):string[] {
 		/** @todo read tags from yaml metadata */
-		/** @todo create tag for file creationTime */
-		return [];
+		let tags:string[] = [];
+
+		// tags mentioned within file
+		if(data.doc){
+			tags = tags.concat(data.doc.getTagsMentioned().map(
+				tag => this.normalizeTag(tag)
+			));
+		}
+
+		// tags mentioned by metadata
+		if(data.fileMeta){
+			// tags defined by creation time
+			let creation = data.fileMeta.creationTime;
+			let date = new Date(creation);
+			if(!isNaN(date.valueOf())){
+				tags.push(this.normalizeDate(date));
+			}
+		}
+
+		return tags;
 	}
 
-	discoverWikilinks(doc:ProseNode){
-		let wikilinks:string[] = [];
-
-		doc.descendants((node:ProseNode, pos:number, parent:ProseNode) => {
-			if(!node.type.isText){ return true; }
-
-			let markTypes = ["wikilink", "tag", "citation"];
-
-			if(node.marks.find((mark:Mark) => markTypes.includes(mark.type.name))) {
-				let content:string = this.normalizeTag(node.textContent);
-				wikilinks.push(content);
-			}
-			return false;
-		})
-
-		return wikilinks;
+	normalizeDate(date:Date):string {
+		return date.toDateString().toLowerCase();
 	}
 
 	normalizeTag(content:string):string {
+		// is date?
+		let date:Date = new Date(content);
+		if(!isNaN(date.valueOf())){
+			return this.normalizeDate(date);
+		}
+
+		// handle everything else
 		return content.trim().toLowerCase().replace(/[\s-:_]/, "-");
 	}
 

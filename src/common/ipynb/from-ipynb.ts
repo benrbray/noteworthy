@@ -38,11 +38,13 @@ export class IpynbParser {
 				let cellText:string = cell.source.join("");
 				if (cellText.length < 1) { cellText = "&#65279;"; }
 
-				let cellMarkdown = markdownParser.parse(cellText).toJSON();
+				let cellMarkdown = markdownParser.parse(cellText);
+				if(cellMarkdown === null){ throw new Error("parse error!"); }
+				let cellJSON = cellMarkdown.toJSON();
 
 				proseContent.push({
 					type: "cell_markdown",
-					content: cellMarkdown.content
+					content: cellJSON.content
 				})
 			} else {
 				let cellText: string = cell.source.join("");

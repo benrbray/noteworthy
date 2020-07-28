@@ -1,7 +1,7 @@
-import { IDirEntry, IDirEntryMeta } from "@common/fileio";
+import { IDirEntryMeta } from "@common/fileio";
 import { MainIpcHandlers } from "@main/MainIPC";
 import * as pathlib from "path";
-import { For } from "solid-js";
+import { For, afterEffects, Match, Switch } from "solid-js";
 
 export interface IFolderMarker {
 	folderMarker:true,
@@ -12,11 +12,13 @@ export interface IFolderMarker {
 
 interface IFileExplorerProps {
 	fileTree:(IDirEntryMeta|IFolderMarker)[];
+	activeHash:string|null;
 	handleClick:(evt:MouseEvent)=>void;
 }
 export const FileExplorer = (props:IFileExplorerProps) => {
-	return (<For each={props.fileTree} fallback={<div>Empty!</div>}>
+	return (<div id="tab_explorer"><For each={props.fileTree} fallback={<div>Empty!</div>}>
 		{(entry:IDirEntryMeta|IFolderMarker)=>{
+			// folder vs file
 			if("folderMarker" in entry){ return (
 				<div
 					class="folder"
@@ -25,12 +27,12 @@ export const FileExplorer = (props:IFileExplorerProps) => {
 				><span class="codicon codicon-folder"/><span>{entry.pathSuffix}</span></div>
 			)} else { return (
 				<div
-					class="file"
+					class={(entry.hash == props.activeHash) ? "file active" : "file"}
 					title={entry.path}
 					data-filehash={entry.hash}
 					onClick={props.handleClick}
 				><span class="codicon codicon-note"/><span>{entry.name}</span></div>
 			)}
 		}}
-	</For>);
+	</For></div>);
 }
