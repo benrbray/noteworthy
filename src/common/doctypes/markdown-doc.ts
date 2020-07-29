@@ -40,7 +40,18 @@ export class MarkdownDoc implements IMarkdownDoc, ICrossRefProvider {
 		// tags defined by YAML metadata
 		let meta = this.getMeta();
 		if(meta.tags_defined){
-			tags = tags.concat(meta.tags_defined);
+			/** @todo (7/28/20) handle different tag list formats
+			 * tags_defined: justonetag
+			 * tags_defined: [properly, formatted, yaml list]
+			 * tags_defined: improperly, formatted, yaml list
+			 */
+			// handle improperly formatted yaml list
+			let defs:string | string[] = meta.tags_defined;
+			if(!Array.isArray(defs)){
+				defs = defs.split(/\s*,\s*/g);
+			}
+
+			tags = tags.concat(defs);
 		}
 
 		return tags;
@@ -52,7 +63,18 @@ export class MarkdownDoc implements IMarkdownDoc, ICrossRefProvider {
 		// tags mentioned by YAML metadata
 		let meta = this.getMeta();
 		if(meta.tags){
-			tags = tags.concat(meta.tags);
+			/** @todo (7/28/20) handle different tag list formats
+			 * tags_defined: justonetag
+			 * tags_defined: [properly, formatted, yaml list]
+			 * tags_defined: improperly, formatted, yaml list
+			 */
+			// handle improperly formatted yaml list
+			let mentioned:string | string[] = meta.tags;
+			if(!Array.isArray(mentioned)){
+				mentioned = mentioned.split(/\s*,\s*/g);
+			}
+
+			tags = tags.concat(mentioned);
 		}
 
 		// find all wikilinks, tags, citations
