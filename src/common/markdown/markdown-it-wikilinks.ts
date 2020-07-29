@@ -1,5 +1,11 @@
 /* markdown-it-wikilinks */
 
+/** @todo (7/29/20) support extended syntax
+ * [[link|label]]
+ * [[/link]]
+ * https://github.com/jsepia/markdown-it-wikilinks
+ */
+
 // markdown-it imports
 import MarkdownIt from "markdown-it";
 import Token from "markdown-it/lib/token";
