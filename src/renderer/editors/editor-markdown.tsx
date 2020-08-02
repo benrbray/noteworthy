@@ -266,15 +266,18 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 					// wikilinks, tags, citations
 					if (mark = node.marks.find((mark: Mark) => markTypes.includes(mark.type.name))){
 						let tag = node.text;
-						if (tag) { this._mainProxy.requestTagOpen({tag, create:true}); }
+						let directoryHint = this._currentFile?.dirPath;
+						if (tag) { this._mainProxy.requestTagOpen({tag, create:true, directoryHint}); }
+						return true;
 					}
 					// links
 					else if(mark = markdownSchema.marks.link.isInSet(node.marks)){
 						let url:string = mark.attrs.href;
 						if (url) { this._mainProxy.requestExternalLinkOpen(url); }
+						return true;
 					}
 				}
-				return true;
+				return false;
 			},
 			handlePaste: (view:EditorView, event:ClipboardEvent, slice:Slice<any>) => {
 				let file:File|undefined;

@@ -311,11 +311,11 @@ div:hover::-webkit-scrollbar-thumb {
 	overflow-y: overlay;
 }
 
-.folder[collapsed=true]::before {
+.folder[data-collapsed=true]::before {
 	content: ">";
 }
 
-.folder[collapsed=true] .file {
+.folder[data-collapsed=true] + .folder-contents {
 	display: none;
 }
 

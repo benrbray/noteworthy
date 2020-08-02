@@ -32,7 +32,7 @@ import { CalendarTab } from "./ui/calendarTab";
 interface IRendererState {
 	activeTab: number,
 	activeFile: null|IPossiblyUntitledFile;
-	fileTree: (IDirEntryMeta|IFolderMarker)[],
+	fileTree: [IFolderMarker, IDirEntryMeta[]][];
 }
 
 class Renderer {
@@ -54,7 +54,7 @@ class Renderer {
 	_currentFile: IPossiblyUntitledFile;
 
 	// sidebar
-	_fileTree: (IDirEntryMeta|IFolderMarker)[];
+	_fileTree: [IFolderMarker, IDirEntryMeta[]][];
 
 	constructor() {
 		// initialize objects
@@ -140,8 +140,8 @@ class Renderer {
 
 				/** @todo this is hacky, handle properly next time! */
 				if(target.className == "folder"){
-					let collapsed:string = target.getAttribute("collapsed") || "false";
-					target.setAttribute("collapsed", collapsed == "true" ? "false" : "true");
+					let collapsed:string = target.getAttribute("data-collapsed") || "false";
+					target.setAttribute("data-collapsed", collapsed == "true" ? "false" : "true");
 					return;
 				}
 
@@ -313,7 +313,7 @@ class Renderer {
 				return (a.entry.path < b.entry.path)?-1:1;
 			});
 
-		this._fileTree = sorted.map(val => val.entry);
+		fileTree = sorted.map(val => val.entry);
 
 		// find common prefix by comparing first/last sorted paths
 		// (https://stackoverflow.com/a/1917041/1444650)
@@ -324,20 +324,34 @@ class Renderer {
 		let prefix = a1.substring(0, i);
 
 		// insert folder markers
+		let directories:[IFolderMarker, IDirEntryMeta[]][] = [];
+		let folderMarker:IFolderMarker|null = null;
+		let fileList:IDirEntryMeta[] = [];
+		let startIdx = 0;
 		let prevDir = null;
-		for(let idx = 0; idx < this._fileTree.length; idx++){
-			let dirPath:string = pathlib.dirname(this._fileTree[idx].path);
+		for(let idx = 0; idx < fileTree.length; idx++){
+			let dirPath:string = pathlib.dirname(fileTree[idx].path);
+
 			if(dirPath !== prevDir){
-				this._fileTree.splice(idx, 0, {
+				// add previous folder
+				if(folderMarker && (idx-startIdx > 0)){ 
+					directories.push([folderMarker, fileTree.slice(startIdx, idx)]);
+				}
+
+				// set new foldermarker
+				folderMarker = {
 					folderMarker: true,
 					path: dirPath,
 					pathSuffix: dirPath.substring(prefix.length),
 					name: pathlib.basename(dirPath)
-				});
+				};
+
 				prevDir = dirPath;
+				startIdx = idx;
 			}
 		}
 
+		this._fileTree = directories;
 		this._react?.setState({ fileTree: this._fileTree });
 	}
 }
