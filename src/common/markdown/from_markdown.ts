@@ -12,6 +12,9 @@ import StateInline from "markdown-it/lib/rules_inline/state_inline";
 import StateBlock from "markdown-it/lib/rules_block/state_block";
 import Token from "markdown-it/lib/token";
 import MarkdownIt from "markdown-it";
+import directive_plugin from "./markdown-it-directive";
+import { DirectivePluginOptions } from "./markdown-it-directive";
+import { randomId } from "@common/util/random";
 
 ////////////////////////////////////////////////////////////
 
@@ -373,6 +376,9 @@ export class MarkdownParser {
 // :: MarkdownParser
 // A parser parsing unextended [CommonMark](http://commonmark.org/),
 // with inline HTML, and producing a document in the basic schema.
+
+console.log(directive_plugin);
+
 let md = markdownit({html:true})
 	.use(yaml_plugin)
 	.use(math_plugin)
@@ -380,6 +386,57 @@ let md = markdownit({html:true})
 	.use(tasklist_plugin)
 	.use(tag_plugin)
 	.use(citation_plugin)
+	.use(directive_plugin, {
+		inlineDirectives : { },
+		blockDirectives: {
+			"region" : (
+				state, content, contentTitle, inlineContent, dests, attrs,
+				contentStartLine, contentEndLine,
+				contentTitleStart, contentTitleEnd,
+				inlineContentStart, inlineContentEnd,
+				directiveStartLine, directiveEndLine
+			) => {
+				console.log("DIRECTIVE!!!!!!");
+				
+				// open tag
+				const token = state.push('region_open', '', 1);
+				token.map = [ directiveStartLine, directiveEndLine ];
+
+				// region attrs
+				console.log("DIRECTIVE ATTRS:", attrs, contentTitle, inlineContent, dests);
+				let id = attrs && attrs.id;
+				if(typeof id !== "string"){
+					if(Array.isArray(id) && id.length > 0){
+						id = id[0];
+					} else { 
+						/** @todo (7/30/20) ask user to provide region name if not present */
+						id = randomId(); 
+						console.error("no region id found -- using generated id =", id);
+					}
+				}
+				token.attrs = [ ["regionName", id] ];
+
+				// parse inner content
+				// (https://github.com/hilookas/markdown-it-directive-webcomponents/blob/9d1f6c04ad00406e5b7e14cb07dfdcb461ca6717/index.js#L99)
+				const oldMax = state.lineMax;
+				state.line = contentStartLine;
+				state.lineMax = contentEndLine;
+				state.md.block.tokenize(state, contentStartLine, contentEndLine);
+				state.lineMax = oldMax;
+
+				// close tag
+				const token_close = state.push("region_close", "", -1);
+			}
+		}
+	});
+
+console.log(md.render(`text before :directive_name[content](/link "destination" /another "one"){.class #id name=value name="string!"} text after
+
+:: directive_name [inline content] (/link "destination" /another "one") {.class #id name=value name="string!"} content title ::
+
+::: directive_name [inline content] (/link "destination" /another "one") {.class #id name=value name="string!"} content title ::
+content
+:::`));
 
 /* -- Token Types --------------------------------------- */
 
@@ -415,13 +472,15 @@ export const markdownParser = new MarkdownParser(markdownSchema, md, {
 	list_item:    { type:"block", block: "list_item"   },
 	bullet_list:  { type:"block", block: "bullet_list" },
 	code_block:   { type:"block", block: "code_block"  },
+	region:       { type:"block", block:"region", getAttrs: tok => ({ region: tok.attrGet("regionName")||undefined}) },
 	
 	ordered_list: { type:"block", block: "ordered_list", getAttrs: tok => ({order: +(tok.attrGet("start") || 1)})},
-	heading:      { type:"block", block: "heading", getAttrs: tok => ({level: +tok.tag.slice(1)})},
-	fence:        { type:"block", block: "code_block", getAttrs: tok => ({params: tok.info || ""})},
+	heading:      { type:"block", block: "heading",      getAttrs: tok => ({level: +tok.tag.slice(1)})},
+	fence:        { type:"block", block: "code_block",   getAttrs: tok => ({params: tok.info || ""})},
 	
-	math_inline: {type:"block", block: "math_inline", getAttrs: tok => ({params: tok.info || ""})},
-	math_display: {type:"block", block: "math_display", getAttrs: tok => ({params: tok.info || ""})},
+	math_inline:  { type:"block", block: "math_inline",  getAttrs: tok => ({params: tok.info || ""})},
+	math_display: { type:"block", block: "math_display", getAttrs: tok => ({params: tok.info || ""})},
+
 
 	/* -- Nodes ----------------------------------------- */
 	hr:        { type:"node", node: "horizontal_rule" },

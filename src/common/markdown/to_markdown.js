@@ -90,6 +90,20 @@ export const markdownSerializer = new MarkdownSerializer({
 		state.write("```")
 		state.closeBlock(node)
 	},
+	region(state, node) {
+		// ::::: region { #regionName } ::::::::::::::::::::
+		let region_open = "::::: region { #" + (node.attrs.region || "") + " } ";
+		let min_length = 60;
+		let num_colons = Math.max(5, min_length - region_open.length);
+		let total_length = region_open.length + num_colons;
+		// :::::::::::::::::::::::::::::::::::::::::::::::::
+
+		state.write(region_open + (":".repeat(num_colons)) + "\n\n")
+		state.renderContent(node)
+		state.ensureNewLine()
+		state.write(":".repeat(total_length));
+		state.closeBlock(node)
+	},
 	heading(state, node) {
 		state.write(state.repeat("#", node.attrs.level) + " ")
 		state.renderInline(node)
@@ -122,7 +136,6 @@ export const markdownSerializer = new MarkdownSerializer({
 		state.renderInline(node)
 		state.closeBlock(node)
 	},
-
 	image(state, node) {
 		state.write("![" + state.esc(node.attrs.alt || "") + "](" + state.esc(node.attrs.src) +
 								(node.attrs.title ? " " + state.quote(node.attrs.title) : "") + ")")
