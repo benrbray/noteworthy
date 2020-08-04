@@ -26,6 +26,7 @@ import { TagSearch } from "./ui/tag-search";
 import { render } from "solid-js/dom";
 import { State as SolidState, SetStateFunction, createState, createEffect, createSignal, Suspense, Switch, Match, For } from "solid-js";
 import { CalendarTab } from "./ui/calendarTab";
+//import { MonacoEditor } from "./editors/editor-monaco";
 
 ////////////////////////////////////////////////////////////
 
@@ -50,7 +51,7 @@ class Renderer {
 	_react:null | { state: SolidState<IRendererState>, setState: SetStateFunction<IRendererState> };
 
 	// prosemirror
-	_editor: ProseMirrorEditor | null;
+	_editor: Editor | null;
 	_currentFile: IPossiblyUntitledFile;
 
 	// sidebar
@@ -272,17 +273,21 @@ class Renderer {
 		let ext: string = pathlib.extname(this._currentFile.path || "");
 
 		// set current editor
-		let EditorConstructor:(typeof ProseMirrorEditor);
+		// (no way to describe type of abstract constructor)
+		// (https://github.com/Microsoft/TypeScript/issues/5843)
+		let editor:Editor;
+		const args = [this._currentFile, this._ui.editorElt, this._mainProxy] as const;
 		switch (ext) {
-			case ".ipynb":   EditorConstructor = IpynbEditor;       break;
-			case ".json":    EditorConstructor = ProseMirrorEditor; break;
-			case ".journal": EditorConstructor = JournalEditor;     break;
-			case ".nwt":     EditorConstructor = NwtEditor;         break;
-			default:         EditorConstructor = MarkdownEditor;    break;
+			case ".ipynb":   editor = new IpynbEditor(...args);       break;
+			case ".json":    editor = new ProseMirrorEditor(...args); break;
+			case ".journal": editor = new JournalEditor(...args);     break;
+			case ".nwt":     editor = new NwtEditor(...args);         break;
+			case ".md":      editor = new MarkdownEditor(...args);    break;
+			default:         editor = new MarkdownEditor(...args);      break;
 		}
 
 		// initialize editor
-		this._editor = new EditorConstructor(this._currentFile, this._ui.editorElt, this._mainProxy);
+		this._editor = editor;
 		this._editor.init();
 	}
 
