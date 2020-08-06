@@ -74,6 +74,7 @@
     "katex": "^0.11.1",
     "lodash": "^4.17.19",
     "markdown-it": "^11.0.0",
+    "markdown-it-directive": "^1.0.1",
     "prosemirror-commands": "^1.1.4",
     "prosemirror-gapcursor": "^1.1.5",
     "prosemirror-history": "^1.1.3",

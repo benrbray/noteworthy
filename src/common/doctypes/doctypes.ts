@@ -12,13 +12,16 @@ import { IFileMeta, readFile } from "@common/fileio";
  * 
  */
 
+/**
+ * @todo (7/28/20) properly validate YAML metadata
+ */
 export interface DocMeta {
 	title?:string;
 	author?:string;
 	url?:string;
 	date?:string;
-	tags_defined?:string[];
-	tags?:string[];
+	tags_defined?:string|string[];
+	tags?:string|string[];
 }
 
 export interface IDoc {

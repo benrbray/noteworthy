@@ -33,6 +33,8 @@ import { YamlEditor } from "../ui/yamlEditor";
 import { SetDocAttrStep } from "@common/prosemirror/steps";
 import { shallowEqual } from "@common/util/equal";
 import { MarkdownDoc } from "@common/doctypes/markdown-doc";
+import { RegionView } from "@common/markdown/region-view";
+import { mathBackspace } from "@root/lib/prosemirror-math/src/plugins/math-backspace";
 
 ////////////////////////////////////////////////////////////
 
@@ -75,6 +77,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				if(dispatch) dispatch(state.tr.deleteSelection().insertText("\t"));
 				return true;
 			},
+			"Backspace" : mathBackspace,
 			"Ctrl-s": (state, dispatch, view) => {
 				this.saveCurrentFile(false);
 				return true;
@@ -104,6 +107,27 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 						if(!view){ return; }
 						toggleMark(markType, attrs)(view.state, view.dispatch)
 						view.focus()
+					}
+				})
+				return true;
+			},
+			"Ctrl-r": (state, dispatch, view) => {
+				let { $from, $to } = state.selection;
+				let nodeType = this._proseSchema.nodes.region;
+
+				openPrompt({
+					title: "Create Region",
+					fields: {
+						region: new TextField({
+							label: "Region Name",
+							required: true
+						}),
+					},
+					callback(attrs: { [key: string]: any; } | undefined) {
+						// insert new embed node at top level
+						let tr = state.tr.insert($to.after(1), nodeType.createAndFill(attrs))
+						if(dispatch){ dispatch(tr); }
+						if(view){ view.focus(); }
 					}
 				})
 				return true;
@@ -231,6 +255,11 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 					nodeViews.push(nodeView);
 					return nodeView;
 				},
+				// "region" : (node,view,getPos) => {
+				// 	return new RegionView(
+				// 		node, view, getPos as (() => number), this._mainProxy
+				// 	);
+				// }
 			},
 			dispatchTransaction: (tr: Transaction): void => {
 				// unsaved changes?
@@ -266,15 +295,18 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 					// wikilinks, tags, citations
 					if (mark = node.marks.find((mark: Mark) => markTypes.includes(mark.type.name))){
 						let tag = node.text;
-						if (tag) { this._mainProxy.requestTagOpen({tag, create:true}); }
+						let directoryHint = this._currentFile?.dirPath;
+						if (tag) { this._mainProxy.requestTagOpen({tag, create:true, directoryHint}); }
+						return true;
 					}
 					// links
 					else if(mark = markdownSchema.marks.link.isInSet(node.marks)){
 						let url:string = mark.attrs.href;
 						if (url) { this._mainProxy.requestExternalLinkOpen(url); }
+						return true;
 					}
 				}
-				return true;
+				return false;
 			},
 			handlePaste: (view:EditorView, event:ClipboardEvent, slice:Slice<any>) => {
 				let file:File|undefined;

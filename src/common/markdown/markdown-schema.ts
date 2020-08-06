@@ -3,8 +3,28 @@ import { Schema, Node as ProseNode, SchemaSpec, Mark, DOMOutputSpec } from "pros
 export function markdownSpec() { return {
 	nodes: {
 		doc: {
-			content: "block+",
+			content: "(block|region)+",
 			attrs: { yamlMeta: { default: {} } }
+		},
+
+		region: {
+			content: "block+",
+			attrs: { "region" : { default: null } },
+			parseDOM: [{ 
+				tag: "div.region",
+				getAttrs(d:string|Node){
+					let dom: HTMLElement = d as HTMLElement;
+					return {
+						...(dom.hasAttribute("data-region") && { "region": dom.getAttribute("data-region") })
+					}
+				}
+			}],
+			toDOM(node: ProseNode): DOMOutputSpec {
+				return ["div", { 
+					class: "region",
+					...( node.attrs.region && { "data-region": node.attrs.region } )
+				}, 0];
+			}
 		},
 
 		paragraph: {

@@ -1,4 +1,10 @@
+// electron imports
 import { dialog, shell } from "electron";
+
+// node imports
+import * as pathlib from "path";
+
+// noteworthy imports
 import { readFile, saveFile, IFileWithContents, IPossiblyUntitledFile, IDirEntryMeta, IFileMeta } from "@common/fileio";
 import NoteworthyApp from "./app"
 import { DialogSaveDiscardOptions } from "@common/dialog";
@@ -198,7 +204,7 @@ export class MainIpcHandlers {
 		return filterNonVoid( hashes.map(hash => (this._app.getFileByHash(hash))) );
 	}
 
-	async getHashForTag(data: { tag: string, create: boolean }):Promise<string|null> {
+	async getHashForTag(data: { tag: string, create: boolean, directoryHint?:string }):Promise<string|null> {
 		// get files which define this tag
 		let defs: string[] | null = this._app.getDefsForTag(data.tag);
 		let fileHash: string;
@@ -219,7 +225,17 @@ export class MainIpcHandlers {
 
 			// create file for this tag when none exists
 			let fileName: string = data.tag + ".md";
-			let filePath: string | null = this._app.resolveWorkspaceRelativePath(fileName);
+
+			// determine new file path for this file
+			/** @todo (7/30/20) check for errors:
+			 * > what if path points to file that already exists?
+			 * > what if directoryHint is relative, not absolute?
+			 * > user setting to ignore directory hints
+			 */
+			let filePath: string | null;
+			if(data.directoryHint){ filePath = pathlib.join(data.directoryHint, fileName) }
+			else {                  filePath = this._app.resolveWorkspaceRelativePath(fileName); }
+
 			if (!filePath) {
 				console.error("MainIPC :: could not create file for tag, no active workspace");
 				return null;
@@ -251,7 +267,7 @@ export class MainIpcHandlers {
 		return this._app.getFileByHash(fileHash);
 	}
 
-	async requestTagOpen(data:{tag: string, create:boolean}):Promise<void> {
+	async requestTagOpen(data:{tag: string, create:boolean, directoryHint?:string}):Promise<void> {
 		if (!this._app.window) { return; }
 
 		// get files which define this tag
