@@ -1,10 +1,10 @@
 import markdownit from "markdown-it"
-import { yaml_plugin } from "./markdown-it-yaml"
-import { math_plugin } from "./markdown-it-katex"
-import { wikilinks_plugin } from "./markdown-it-wikilinks"
-import { tasklist_plugin } from "./markdown-it-tasklists"
-import { citation_plugin } from "./markdown-it-citations"
-import { tag_plugin } from "./markdown-it-tags"
+import { yaml_plugin } from "./plugins/markdown-it-yaml"
+import { math_plugin } from "./plugins/markdown-it-katex"
+import { wikilinks_plugin } from "./plugins/markdown-it-wikilinks"
+import { tasklist_plugin } from "./plugins/markdown-it-tasklists"
+import { citation_plugin } from "./plugins/markdown-it-citations"
+import { tag_plugin } from "./plugins/markdown-it-tags"
 import { Schema as ProseSchema, Mark as ProseMark, Node as ProseNode, NodeType, MarkType } from "prosemirror-model";
 
 import { markdownSchema } from "./markdown-schema";
@@ -12,8 +12,7 @@ import StateInline from "markdown-it/lib/rules_inline/state_inline";
 import StateBlock from "markdown-it/lib/rules_block/state_block";
 import Token from "markdown-it/lib/token";
 import MarkdownIt from "markdown-it";
-import directive_plugin from "./markdown-it-directive";
-import { DirectivePluginOptions } from "./markdown-it-directive";
+import directive_plugin, { DirectivePluginOptions } from "./plugins/markdown-it-directive";
 import { randomId } from "@common/util/random";
 
 ////////////////////////////////////////////////////////////
