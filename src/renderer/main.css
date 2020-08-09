@@ -609,39 +609,6 @@ footnote::after {
 	width: 0;
 }
 
-/* == MATH ============================================== */
-
-/* Inline Math ------------------------------------------ */
-
-inlinemath {
-	min-width: 1em;
-	min-height: calc(1em);
-	background-color: rgba(0,0,0,0.1);
-	display: inline-block;
-	font-size: 0.95em;
-	text-align: center;
-}
-
-inlinemath {
-	cursor: auto;
-}
-
-inlinemath .math-src::after, inlinemath .math-src::before {
-	content: "$";
-}
-
-inlinemath .math-src {
-	display: none;
-	font-family: monospace;
-	font-size: 1.2em;
-}
-
-inlinemath .math-src .ProseMirror { display: inline-block; }
-inlinemath .math-src .ProseMirror:focus { outline: none; }
-inlinemath .math-render { display: inline-block; cursor: pointer; }
-inlinemath.ProseMirror-selectednode .math-src { display: inline; }
-inlinemath.ProseMirror-selectednode .math-render { display: none; }
-
 code {
 	display: block;
 	padding: 0.5em;
