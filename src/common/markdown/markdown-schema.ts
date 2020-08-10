@@ -1,5 +1,18 @@
 import { Schema, Node as ProseNode, SchemaSpec, Mark, DOMOutputSpec } from "prosemirror-model"
 
+function normalizeBullet(bullet:string|undefined): string {
+	switch(bullet){
+		case "*": return "\u2022";
+		case "+": return "+";
+		// https://en.wikipedia.org/wiki/Hyphen
+		case "\u2010": return "\u002D"; /* hyphen */
+		case "\u2011": return "\u002D"; /* non-breaking hyphen */
+		case "\u2212": return "\u002D"; /* minus */
+		case "\u002D": return "\u002D"; /* hyphen-minus */
+		default: return "\u2022";
+	}
+}
+
 export function markdownSpec() { return {
 	nodes: {
 		doc: {
@@ -106,17 +119,37 @@ export function markdownSpec() { return {
 		bullet_list: {
 			content: "list_item+",
 			group: "block",
-			attrs: { tight: { default: false } },
-			parseDOM: [{ tag: "ul", getAttrs: (dom:string|Node) => ({ tight: (dom as HTMLElement).hasAttribute("data-tight") }) }],
-			toDOM(node: ProseNode): DOMOutputSpec { return ["ul", { ...(node.attrs.tight && { "data-tight": "true" }) }, 0] }
+			attrs: { tight: { default: false }, bullet: { default: "*" } },
+			parseDOM: [{
+				tag: "ul",
+				getAttrs: (dom:string|Node) => ({
+					tight: (dom as HTMLElement).hasAttribute("data-tight")
+				})
+			}],
+			toDOM(node: ProseNode): DOMOutputSpec {
+				return ["ul", {
+					...(node.attrs.tight && { "data-tight": "true" }),
+					...(node.attrs.bullet && { "data-bullet" : normalizeBullet(node.attrs.bullet || "*") })
+				}, 0]
+			}
 		},
 
 		list_item: {
 			content: "paragraph block*",
-			attrs: { class: { default: undefined } },
+			attrs: { class: { default: undefined }, bullet: { default: "*" } },
 			defining: true,
-			parseDOM: [{ tag: "li" }],
-			toDOM(node: ProseNode): DOMOutputSpec { return ["li", { ...(node.attrs.class && { class: node.attrs.class }) }, 0] }
+			parseDOM: [{
+				tag: "li",
+				getAttrs: (dom:string|Node) => ({
+					bullet: (dom as HTMLElement).dataset.bullet
+				})
+			}],
+			toDOM(node: ProseNode): DOMOutputSpec {
+				return ["li", {
+					...(node.attrs.class && { class: node.attrs.class }),
+					...(node.attrs.bullet && { "data-bullet" : normalizeBullet(node.attrs.bullet) })
+				}, 0];
+			}
 		},
 
 		/** @todo (6/21/20) should this be a nodeview? better click handling */

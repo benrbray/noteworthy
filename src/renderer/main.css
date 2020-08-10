@@ -1,9 +1,42 @@
 @import url('../../assets/fonts/lora/lora.css');
 
 :root {
+	/** Font Families **/
 	--code-font: "Droid Sans Mono", "Ubuntu Mono", "Consolas", monospace;
 	--serif-font: "Lora", serif;
 	--sans-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+	/** Font Usage **/
+	--font-ui: var(--sans-font);
+	--font-editor: var(--sans-font);
+
+	--line-height: 1.2em;
+	--line-height-list: var(--line-height);
+
+	/** UI Colors **/
+	--color-bg: #fefefe;
+	--color-bg-1: white;
+	--color-bg-2: #ddd;    /* for code_blocks */
+	
+	--color-text: #111;
+	--color-text-faint: #666;
+	--color-text-fainter: #aaa;
+
+	/** Semantic Colors **/
+	--color-good: green;
+	--color-bad: darkred;
+	--color-warning: goldenrod;
+	--color-neutral: steelblue;
+	--color-question: purple;
+	--color-todo: purple;
+
+	/** Editor Colors **/
+	--color-link: steelblue;
+	--color-wikilink: steelblue;
+	--color-citation: seagreen;
+	--color-definition: blue;
+	--color-inline-delims: #d0d0d0;
+	--color-heading-level: #e0e0e0;
 }
 
 .window-title {
@@ -11,7 +44,7 @@
 }
 
 body {
-	font-family: var(--sans-font);
+	font-family: var(--font-ui);
 	height: 100vh;
 	width: 100%;
 	padding: 0;
@@ -19,16 +52,42 @@ body {
 }
 
 /* links */
-a { color: steelblue; text-decoration: none; }
+a { color: var(--color-link); text-decoration: none; }
 
 li p {
 	margin: 0;
 }
 
+/* -- Lists --------------------------------------------- */
+
 ul {
-	padding-left: 2em;
+	padding-left: 2em;;
 	position: relative;
+	list-style-type: none;
+	line-height: var(--line-height-list);
 }
+
+/* List Bullet */
+li::before {
+	content: "\2022";
+	display: inline-block;
+	position: absolute;
+	left: 0;
+	width: 1em;
+	margin-left: -1em;
+}
+li[data-bullet]::before {
+	content: attr(data-bullet);
+	font-weight: bold;
+}
+li[data-bullet="*"]::before { content: "\2022"; }
+li[data-bullet="-"]::before { content: "\2212"; }
+
+/* Semantic List Items */
+li[data-bullet="+"] { color: var(--color-good);     }
+li[data-bullet="-"] { color: var(--color-bad);      }
+li[data-bullet="?"] { color: var(--color-question); }
+
 
 em.ul {
 	font-style: normal;
@@ -38,7 +97,7 @@ em.ul {
 /* blockquote */
 blockquote {
 	border-left: 0.6em solid #eee;
-	color: #666;
+	color: var(--color-text-faint);
 }
 
 img {
@@ -49,21 +108,21 @@ img {
 }
 
 /* wikilinks */
-.wikilink { font-family: var(--code-font); font-size: 0.95em; color: steelblue; }
-.wikilink::before { content: "[["; color: #e0e0e0; letter-spacing: -0.1em}
-.wikilink::after { content: "]]"; color: #e0e0e0; letter-spacing: -0.1em}
+.wikilink { font-family: var(--code-font); font-size: 0.95em; color: var(--color-wikilink); }
+.wikilink::before { content: "[["; color: var(--color-inline-delims); letter-spacing: -0.1em}
+.wikilink::after  { content: "]]"; color: var(--color-inline-delims); letter-spacing: -0.1em}
 
 /* tags */
-.tag { font-family: var(--sans-font); color: steelblue; }
+.tag { font-family: var(--font-main); color: steelblue; }
 .tag::before { content: "#"; font-family: var(--code-font);}
 
 /* citation */
 .citation { font-family: var(--code-font); font-size: 0.95em; color: seagreen; }
-.citation::before { content: "@["; color: #e0e0e0; letter-spacing: -0.1em; font-family: var(--code-font);}
-.citation::after { content: "]"; color: #e0e0e0; letter-spacing: -0.1em; font-family: var(--code-font);}
+.citation::before { content: "@["; color: var(--color-inline-delims); letter-spacing: -0.1em; font-family: var(--code-font);}
+.citation::after  { content: "]";  color: var(--color-inline-delims); letter-spacing: -0.1em; font-family: var(--code-font);}
 
 dfn, .definition {
-	color: blue;
+	color: var(--color-definition);
 	font-weight: bold;
 }
 
@@ -151,7 +210,8 @@ div:hover::-webkit-scrollbar-thumb {
 	padding: 0.5em 1.0em 0.5em 0.5em;
 	overflow-y: scroll;
 	overflow-x: hidden;
-	background-color: white;
+	background-color: var(--color-bg);
+	font-family: var(--font-editor);
 }
 
 #sidebar {
@@ -161,20 +221,20 @@ div:hover::-webkit-scrollbar-thumb {
 }
 
 #app {
-	color: #111;
+	color: var(--color-text);
 }
 
-#app h1::before { content: "# ";     color: #ccc; margin-left: 0.5rem; }
-#app h2::before { content: "## ";    color: #ccc; margin-left: 0.5rem; }
-#app h3::before { content: "### ";   color: #ccc; margin-left: 0.5rem; }
-#app h4::before { content: "#### ";  color: #ccc; margin-left: 0.5rem; }
-#app h5::before { content: "##### "; color: #ccc; margin-left: 0.5rem; }
-#app h6::before { content: "##### "; color: #ccc; margin-left: 0.5rem; }
+#app h1::before { content: "# ";      color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
+#app h2::before { content: "## ";     color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
+#app h3::before { content: "### ";    color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
+#app h4::before { content: "#### ";   color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
+#app h5::before { content: "##### ";  color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
+#app h6::before { content: "###### "; color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
 
 #app p {
 	margin-left: 0.5em;
 	font-size: 18px;
-	font-family: var(--sans-font);
+	font-family: var(--font-main);
 	text-align: justify;
 }
 
@@ -515,8 +575,8 @@ div:hover::-webkit-scrollbar-thumb {
 	padding: 1em 0;
 	margin: 0 0.5em 1em 0.5em;
 	font-family: var(--code-font);
-	color: #aaa;
-	border-bottom: 1px dashed #aaa;
+	color: var(--color-text-fainter);
+	border-bottom: 1px dashed var(--color-text-fainter);
 }
 
 .meta-editor .ProseMirror-focused {
@@ -524,10 +584,10 @@ div:hover::-webkit-scrollbar-thumb {
 }
 
 .meta-editor .ProseMirror-focused dd {
-	border-color: #aaa;
+	border-color: var(--color-text-fainter);
 }
 .meta-editor .ProseMirror-focused dt {
-	border-color: #aaa;
+	border-color: var(--color-text-fainter);
 }
 
 .meta-editor dl {
@@ -612,7 +672,7 @@ footnote::after {
 code {
 	display: block;
 	padding: 0.5em;
-	background-color: #ddd;
+	background-color: var(--color-bg-2);
 	font-family: "Consolas", "Ubuntu Mono", monospace;
 	font-size: 0.9em;
 	text-align: left;
@@ -648,6 +708,10 @@ cell_code {
 cell_markdown:focus-within {
 	outline: 3px solid black;
 	border: 1px solid blue;
+}
+
+math-display {
+	margin: 1em 0 1em 0;
 }
 
 /* == JOURNAL =========================================== */

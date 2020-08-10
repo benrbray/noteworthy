@@ -395,14 +395,11 @@ let md = markdownit({html:true})
 				inlineContentStart, inlineContentEnd,
 				directiveStartLine, directiveEndLine
 			) => {
-				console.log("DIRECTIVE!!!!!!");
-				
 				// open tag
 				const token = state.push('region_open', '', 1);
 				token.map = [ directiveStartLine, directiveEndLine ];
 
 				// region attrs
-				console.log("DIRECTIVE ATTRS:", attrs, contentTitle, inlineContent, dests);
 				let id = attrs && attrs.id;
 				if(typeof id !== "string"){
 					if(Array.isArray(id) && id.length > 0){
@@ -468,11 +465,11 @@ export const markdownParser = new MarkdownParser(markdownSchema, md, {
 	/* -- Blocks ---------------------------------------- */
 	blockquote:   { type:"block", block: "blockquote"  },
 	paragraph:    { type:"block", block: "paragraph"   },
-	list_item:    { type:"block", block: "list_item"   },
-	bullet_list:  { type:"block", block: "bullet_list" },
+	list_item:    { type:"block", block: "list_item", getAttrs: tok => ({ bullet: tok.markup || "*" })   },
+	bullet_list:  { type:"block", block: "bullet_list", getAttrs: tok => ({ bullet: tok.markup || "*" }) },
 	code_block:   { type:"block", block: "code_block"  },
 	region:       { type:"block", block:"region", getAttrs: tok => ({ region: tok.attrGet("regionName")||undefined}) },
-	
+
 	ordered_list: { type:"block", block: "ordered_list", getAttrs: tok => ({order: +(tok.attrGet("start") || 1)})},
 	heading:      { type:"block", block: "heading",      getAttrs: tok => ({level: +tok.tag.slice(1)})},
 	fence:        { type:"block", block: "code_block",   getAttrs: tok => ({params: tok.info || ""})},

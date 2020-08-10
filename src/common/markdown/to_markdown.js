@@ -414,7 +414,11 @@ export class MarkdownSerializerState {
 		this.inTightList = isTight
 		node.forEach((child, _, i) => {
 			if (i && isTight) this.flushClose(1)
-			this.wrapBlock(delim, firstDelim(i), node, () => this.render(child, node, i))
+			
+			// handle case where list item defines its own `bullet` attribute
+			let fn = child.attrs.bullet ? (() => `${child.attrs.bullet} `) : firstDelim;
+
+			this.wrapBlock(delim, fn(i), node, () => this.render(child, node, i))
 		})
 		this.inTightList = prevTight
 	}
