@@ -48,6 +48,9 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 	_keymap: ProsePlugin;
 	_initialized:boolean;
 
+	// macros (updated whenever KaTeX encounters \newcommand, \renewcommand, or \gdef)
+	_katexMacros: { [cmd:string] : string };
+
 	// == Constructor =================================== //
 
 	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, mainProxy: MainIpcHandlers) {
@@ -58,6 +61,9 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		this._proseEditorView = null;
 		this._proseSchema = markdownSchema;
 		this._editorElt = editorElt;
+
+		// macros (updated whenever KaTeX encounters \newcommand, \renewcommand, or \gdef)
+		this._katexMacros = {};
 
 		// create metadata elt
 		this._metaElt = document.createElement("div");
@@ -241,7 +247,11 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 			nodeViews: {
 				"math_inline": (node, view, getPos) => {
 					let nodeView = new MathView(
-						node, view, getPos as (() => number), { displayMode: false },
+						node, view, getPos as (() => number), 
+						{ katexOptions: {
+							displayMode: false, 
+							macros: this._katexMacros
+						} },
 						() => { nodeViews.splice(nodeViews.indexOf(nodeView)); },
 					);
 					nodeViews.push(nodeView);
@@ -249,7 +259,11 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				},
 				"math_display": (node, view, getPos) => {
 					let nodeView = new MathView(
-						node, view, getPos as (() => number), { displayMode: true },
+						node, view, getPos as (() => number),
+						{ katexOptions: {
+							displayMode: true,
+							macros: this._katexMacros
+						} },
 						() => { nodeViews.splice(nodeViews.indexOf(nodeView)); }
 					);
 					nodeViews.push(nodeView);
