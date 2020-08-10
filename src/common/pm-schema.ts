@@ -151,6 +151,10 @@ export function buildInputRules_markdown(schema:Schema) {
 	}
 	if (type = schema.marks.underline) rules.push(underlineRule(type));
 	if (type = schema.marks.strike) rules.push(strikeRule(type));
+
+	// special characters
+	rules.push(new InputRule(/(\\S)[^a-zA-Z_]$/, "§"));
+
 	return inputRules({ rules })
 }
 
