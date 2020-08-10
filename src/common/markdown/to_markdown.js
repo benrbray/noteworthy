@@ -104,6 +104,12 @@ export const markdownSerializer = new MarkdownSerializer({
 		state.write(":".repeat(total_length));
 		state.closeBlock(node)
 	},
+	embed(state, node){
+		// :: directive-name [inline content] (/link "destination" /another "one") {.class #id name=value name="string!"} content title ::
+		state.ensureNewLine();
+		state.write(`:: embed { #${state.esc(node.attrs.fileName)} region=${state.esc(node.attrs.regionName)} } ::`)
+		state.ensureNewLine();
+	},
 	heading(state, node) {
 		state.write(state.repeat("#", node.attrs.level) + " ")
 		state.renderInline(node)

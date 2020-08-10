@@ -16,7 +16,7 @@ function normalizeBullet(bullet:string|undefined): string {
 export function markdownSpec() { return {
 	nodes: {
 		doc: {
-			content: "(block|region)+",
+			content: "(block|region|embed)+",
 			attrs: { yamlMeta: { default: {} } }
 		},
 
@@ -36,6 +36,32 @@ export function markdownSpec() { return {
 				return ["div", { 
 					class: "region",
 					...( node.attrs.region && { "data-region": node.attrs.region } )
+				}, 0];
+			}
+		},
+
+		embed: {
+			content: "block+",
+			group: "embed",
+			atom: true,
+			attrs: {
+				fileName: {default: "" },
+				regionName : { default: "" },
+			},
+			parseDOM: [{
+				tag: "div.embed",
+				getAttrs(d: string| Node){
+					let dom: HTMLElement = d as HTMLElement;
+					return {
+						...(dom.hasAttribute("data-fileName") && { fileName: dom.getAttribute("data-fileName") }),
+						...(dom.hasAttribute("data-regionName") && { regionName: dom.getAttribute("data-regionName")})
+					}
+				}
+			}],
+			toDOM(node: ProseNode): DOMOutputSpec {
+				return ["div", {
+					class: "embed",
+					...node.attrs
 				}, 0];
 			}
 		},

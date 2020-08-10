@@ -9,6 +9,7 @@ import { MarkdownEditor } from "@renderer/editors/editor-markdown";
 import { MainIpcHandlers } from "@main/MainIPC";
 import { IFileMeta, IFileWithContents } from "@common/fileio";
 import { replaceInvalidFileNameChars } from "@common/util/pathstrings";
+import { MarkdownRegionEditor } from "@renderer/editors/editor-embed";
 
 ////////////////////////////////////////////////////////////
 
@@ -28,9 +29,11 @@ export class EmbedView implements NodeView {
 	dom: HTMLElement;
 
 	private _tagChooser:HTMLInputElement;
+	private _regionName:string|null;
 
 	private _innerElt: HTMLElement;
 	private _innerView: Editor | undefined;
+	private _initialized:boolean;
 
 	// == Lifecycle ===================================== //
 	
@@ -43,6 +46,7 @@ export class EmbedView implements NodeView {
 
 		// editing state
 		this._isEditing = false;
+		this._initialized = false;
 
 		// inner view
 		this.dom = document.createElement("div");
@@ -60,34 +64,36 @@ export class EmbedView implements NodeView {
 		this._tagChooser.addEventListener("keydown", (evt)=>{
 			// ENTER: submit new tag name
 			if(evt.keyCode == 13){
-				this.setEmbedTag(this._tagChooser.value);
+				this.setEmbedTag(this._tagChooser.value, this._regionName);
 			}
 			console.log(evt.keyCode);
 		})
 
-		// initialize
-		this.init(null);
-
 		// file provided?
 		let fileName: string | null = node.attrs.fileName || null;
+		let regionName: string | null = node.attrs.regionName || null;
+		this._regionName = regionName;
+
 		if(fileName){
 			fileName = replaceInvalidFileNameChars(fileName);
-			console.log("nwt-embed :: filename provided ::", fileName);
-			this.setEmbedTag(fileName);
+			console.log("nwt-embed :: filename provided ::", fileName, regionName);
+			this.setEmbedTag(fileName, regionName);
+		} else {
+			this.init(null, null);
 		}
 
 		// ensure focus
 		this.dom.addEventListener("click", () => this.ensureFocus());
 	}
 
-	setEmbedTag(unsafeTagString:string){
+	setEmbedTag(unsafeTagString:string, regionName:string|null){
 		// validate 
 		let safeString = replaceInvalidFileNameChars(unsafeTagString);
 		this._tagChooser.value = safeString;
 		// convert to valid file name
 		this.getFile(safeString).then(file => {
 			if (file) {
-				this._innerView?.setCurrentFile(file);
+				this.setFile(file, regionName);
 				// update node attrs if needed
 				if(safeString !== this._node.attrs.fileName) {
 					let tr = this._outerView.state.tr.setNodeMarkup(this._getPos(), undefined, { fileName:safeString });
@@ -110,16 +116,30 @@ export class EmbedView implements NodeView {
 			});
 	}
 
-	init(file: IFileWithContents | null) {
+	setFile(file:IFileWithContents|null, regionName:string|null){
+		if(!this._initialized){
+			this.init(file, regionName);
+		} else if(file) {
+			this._innerView?.setCurrentFile(file);
+		} else {
+			/** @todo (8/7/20) null file? produce error? */
+		}
+	}
+
+	init(file: IFileWithContents | null, regionName:string|null) {
+		if(this._initialized){ return; }
 		console.log("nwt-embed :: init ::", file && file.path);
 		// create a nested ProseMirror view
-		this._innerView = new MarkdownEditor(file, this._innerElt, this._mainProxy);
+		this._innerView = new MarkdownRegionEditor(file, this._innerElt, this._mainProxy, regionName);
 		this._innerView.init();
+		// initialized
+		this._initialized = true;
 	}
 
 	destroy():void {
 		this.closeEditor();
 		delete this.dom;
+		this._initialized = false;
 	}
 
 	/**

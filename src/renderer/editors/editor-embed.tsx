@@ -3,7 +3,7 @@ import { clipboard } from "electron";
 
 // prosemirror imports
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
-import { Schema as ProseSchema, MarkType, Mark, Slice } from "prosemirror-model";
+import { Node as ProseNode, Schema as ProseSchema, MarkType, Mark, Slice } from "prosemirror-model";
 import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin, EditorState } from "prosemirror-state";
 import { history } from "prosemirror-history";
@@ -34,43 +34,51 @@ import { SetDocAttrStep } from "@common/prosemirror/steps";
 import { shallowEqual } from "@common/util/equal";
 import { MarkdownDoc } from "@common/doctypes/markdown-doc";
 import { RegionView } from "@common/markdown/region-view";
-import { mathBackspace } from "@root/lib/prosemirror-math/src/plugins/math-backspace";
 import { EmbedView } from "@common/nwt/nwt-embed";
+//import { mathBackspace } from "@root/lib/prosemirror-math/src/plugins/math-backspace";
 
 ////////////////////////////////////////////////////////////
 
 // editor class
-export class MarkdownEditor extends Editor<ProseEditorState> {
+export class MarkdownRegionEditor extends Editor<ProseEditorState> {
 
+	// prosemirror
 	_proseEditorView: ProseEditorView | null;
 	_proseSchema: ProseSchema;
-	_editorElt: HTMLElement;
-	_metaElt: HTMLElement;
 	_keymap: ProsePlugin;
-	_initialized:boolean;
+
+	// dom
+	_editorElt: HTMLElement;
+
+	_globalState: ProseEditorState | null;
 
 	// macros (updated whenever KaTeX encounters \newcommand, \renewcommand, or \gdef)
 	_katexMacros: { [cmd:string] : string };
 
+	// state
+	_initialized:boolean;
+	_regionName:string|null;
+	_region:ProseNode|null;
+
 	// == Constructor =================================== //
 
-	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, mainProxy: MainIpcHandlers) {
+	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, mainProxy: MainIpcHandlers, regionName:string|null) {
 		super(file, editorElt, mainProxy);
+
+		console.log("editor-embed :: region =", regionName)
 
 		// no editor until initialized
 		this._initialized = false;
 		this._proseEditorView = null;
 		this._proseSchema = markdownSchema;
+		this._katexMacros = {};
 		this._editorElt = editorElt;
 
-		// macros (updated whenever KaTeX encounters \newcommand, \renewcommand, or \gdef)
-		this._katexMacros = {};
+		this._globalState = null;
 
-		// create metadata elt
-		this._metaElt = document.createElement("div");
-		this._metaElt.setAttribute("id", "meta-editor");
-		this._metaElt.setAttribute("class", "meta-editor");
-		this._editorElt.appendChild(this._metaElt);
+		// region
+		this._regionName = regionName;
+		this._region = null;
 
 		function markActive(state:EditorState, type:MarkType) {
 			let { from, $from, to, empty } = state.selection
@@ -84,7 +92,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				if(dispatch) dispatch(state.tr.deleteSelection().insertText("\t"));
 				return true;
 			},
-			"Backspace" : mathBackspace,
+			//"Backspace" : mathBackspace,
 			"Ctrl-s": (state, dispatch, view) => {
 				this.saveCurrentFile(false);
 				return true;
@@ -118,78 +126,6 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				})
 				return true;
 			},
-			"Ctrl-r": (state, dispatch, view) => {
-				let { $from, $to } = state.selection;
-				let nodeType = this._proseSchema.nodes.region;
-
-				openPrompt({
-					title: "Create Region",
-					fields: {
-						region: new TextField({
-							label: "Region Name",
-							required: true
-						}),
-					},
-					callback(attrs: { [key: string]: any; } | undefined) {
-						// insert new embed node at top level
-						let tr = state.tr.insert($to.after(1), nodeType.createAndFill(attrs))
-						if(dispatch){ dispatch(tr); }
-						if(view){ view.focus(); }
-					}
-				})
-				return true;
-			},
-			"Ctrl-m": (state, dispatch, view) => {
-				let { $from, $to } = state.selection;
-				let nodeType = this._proseSchema.nodes.embed;
-
-				openPrompt({
-					title: "Embed Region",
-					fields: {
-						fileName: new TextField({
-							label: "File Name",
-							required: true
-						}),
-						regionName: new TextField({
-							label: "Region Name",
-							required: true
-						}),
-					},
-					callback(attrs: { [key: string]: any; } | undefined) {
-						// insert new embed node at top level
-						let tr = state.tr.insert($to.after(1), nodeType.createAndFill(attrs))
-						if(dispatch){ dispatch(tr); }
-						if(view){ view.focus(); }
-					}
-				})
-				return true;
-			},
-			"Ctrl-e": (state, dispatch, view) => {
-				let { $from, $to } = state.selection;
-				// selection must be entirely within a single node
-				if(!$from.sameParent($to)){ return false; }
-				
-				console.log($from);
-				console.log($from.node(), $from.parent)
-				console.log("isText?", $from.node().isText, $from.node().isTextblock);
-				// get selected node
-
-				// marks
-				console.log($from.marks());
-				for(let mark of $from.marks()){
-					if(mark.type.name == "link"){
-						let new_href = prompt("change link:", mark.attrs.href);
-						if(dispatch) { 
-							dispatch(state.tr.setNodeMarkup($from.pos, undefined, {
-								href: new_href,
-								title: mark.attrs.title
-							}));
-						}
-					}
-				}
-
-				return true;
-			}
 		})
 	}
 
@@ -200,44 +136,8 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		if(this._initialized){ return; }
 		// initialization order matters
 		this.initProseEditor();
-		this.initYamlEditor();
 		// initialized
 		this._initialized = true;
-	}
-
-	initYamlEditor(){
-		// enforce initialization order
-		if(this._initialized)      { return; }
-		if(!this._proseEditorView) { throw new Error("cannot initialize YAML editor before ProseMirror"); }
-
-		// SolidJS: create Signal for reactivity
-		let state = this._proseEditorView.state;
-		let [yamlMeta, setYamlMeta] = createSignal({ data: state.doc.attrs['yamlMeta'] });
-
-		// SolidJS: render YAML editor
-		const Editor = ()=>{
-			// SolidJS: respond to metadata changes
-			createEffect(()=>{
-				let data = yamlMeta().data;
-				let proseView = this._proseEditorView;
-				if(!proseView){ return; }
-				
-				// check for metadata changes
-				/** @todo (7/26/19) should this comparison be deep or shallow? */
-				if(shallowEqual(data, proseView.state.doc.attrs['yamlMeta'])){
-					console.log("editor :: no metadata change detected");
-					return;
-				}
-				
-				proseView.dispatch(proseView.state.tr.step(
-					new SetDocAttrStep("yamlMeta", data)
-				));
-			});
-			// build component
-			return (<YamlEditor yamlMeta={yamlMeta().data} setYamlMeta={setYamlMeta} />)
-		}
-		
-		render(Editor, this._metaElt);
 	}
 
 	initProseEditor(){
@@ -265,12 +165,52 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		} else {
 			state = ProseEditorState.create(config);
 		}
+
+		// restrict editing to region?
+		let regionFound: boolean = false;
+		let region: ProseNode | null = null;
+		let regionPos:number = -1;
+
+		if(this._regionName){
+			state.doc.descendants((node, pos:number) => {
+				// search for regionName
+				console.log("CHECKING", node.type.name, node.attrs);
+				if(node.type.name == "region" && node.attrs["region"] === this._regionName){
+					if(!regionFound){
+						console.log("REGION FOUND:", node);
+						region = node;
+						regionFound = true;
+						regionPos = pos;
+					} else {
+						/** @todo (8/7/20) error when more than one region found */
+						throw new Error("multiple regions found with same name!");
+					}
+				}
+				
+				// regions are always top-level, so don't descend further
+				return false;
+			});
+
+			if(regionFound){
+				this._region = region; 
+			} else {
+				/** @todo (8/7/20) handle case where editor has regionName, but no region found with that name!  create the region instead, or error? */
+				throw new Error("no region found with name " + this._regionName);
+			}
+		}
+
+		// region state
+		let regionState = ProseEditorState.create({
+			...config,
+			doc: this._region
+		})
+
+		this._globalState = state;
 		
 		// create prosemirror instance
 		let nodeViews: ICursorPosObserver[] = [];
-		let macros:{ [cmd:string] : unknown } = {};
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
-			state: state,
+			state: regionState,
 			nodeViews: {
 				"math_inline": (node, view, getPos) => {
 					let nodeView = new MathView(
@@ -297,15 +237,8 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 					return nodeView;
 				},
 				"embed": (node, view, getPos) => {
-					return new EmbedView(
-						node, view, getPos as (() => number), this._mainProxy
-					);
-				},
-				// "region" : (node,view,getPos) => {
-				// 	return new RegionView(
-				// 		node, view, getPos as (() => number), this._mainProxy
-				// 	);
-				// }
+					return new EmbedView(node, view, getPos as (() => number), this._mainProxy);
+				}
 			},
 			dispatchTransaction: (tr: Transaction): void => {
 				// unsaved changes?
@@ -329,6 +262,20 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 
 				// apply transaction
 				proseView.updateState(proseView.state.apply(tr));
+
+				// apply transaction to parent
+				if(this._globalState){
+					let regionNode = this._globalState.doc.nodeAt(regionPos);
+					console.log("replacing", regionNode);
+					if(regionNode){
+						let tr = this._globalState.tr.replaceWith(regionPos, regionPos+regionNode.content.size, proseView.state.doc);
+						this._globalState = this._globalState.apply(tr);
+					} else {
+						throw new Error("no regionNode!");
+					}
+				} else {
+					throw new Error("no global state!");
+				}
 			},
 			handleClick: (view: ProseEditorView<any>, pos: number, event: MouseEvent) => {
 				let node = view.state.doc.nodeAt(pos);
@@ -389,16 +336,14 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		// destroy prosemirror instance
 		this._proseEditorView?.destroy();
 		this._proseEditorView = null;
-		// destroy meta editor
-		this._metaElt.remove();
 		// de-initialize
 		this._initialized = false;
 	}
 	// == Document Model ================================ //
 
 	serializeContents(): string {
-		if(!this._proseEditorView){ return ""; }
-		return markdownSerializer.serialize(this._proseEditorView.state.doc);
+		if(!this._globalState){ throw new Error("no global state to serialize!"); }
+		return markdownSerializer.serialize(this._globalState.doc);
 	}
 
 	parseContents(contents: string):ProseEditorState {

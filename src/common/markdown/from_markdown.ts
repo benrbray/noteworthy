@@ -422,17 +422,53 @@ let md = markdownit({html:true})
 
 				// close tag
 				const token_close = state.push("region_close", "", -1);
+			},
+			"embed" : (
+				state, content, contentTitle, inlineContent, dests, attrs,
+				contentStartLine, contentEndLine,
+				contentTitleStart, contentTitleEnd,
+				inlineContentStart, inlineContentEnd,
+				directiveStartLine, directiveEndLine
+			) => {
+				// open tag
+				const token = state.push('embed_block', '', 0);
+				token.map = [ directiveStartLine, directiveEndLine ];
+
+				console.log("EMBED ATTRS", attrs);
+				console.log("\tcontent", content)
+				console.log("\tcontentTitle", contentTitle)
+				console.log("\tinlineContent", inlineContent)
+				console.log("\tdests", dests);
+
+				// file name
+				let fileName = attrs && attrs.id;
+				if(typeof fileName !== "string"){
+					if(Array.isArray(fileName) && fileName.length > 0){
+						fileName = fileName[0];
+					} else { 
+						/** @todo (7/30/20) ask user to provide region name if not present */
+						throw new Error("no fileName found in embed");
+					}
+				}
+
+				// region name
+				let regionName = attrs && attrs.region;
+				if(typeof regionName !== "string"){
+					if(Array.isArray(regionName) && regionName.length > 0){
+						regionName = regionName[0];
+					} else { 
+						/** @todo (7/30/20) ask user to provide region name if not present */
+						throw new Error("no regionName found in embed");
+					}
+				}
+				console.log("EMBED BLOCK", fileName, regionName);
+
+				token.attrs = [ ["fileName", fileName], ["regionName", regionName] ];
+
+				state.line = contentEndLine;
 			}
 		}
 	});
-
-console.log(md.render(`text before :directive_name[content](/link "destination" /another "one"){.class #id name=value name="string!"} text after
-
-:: directive_name [inline content] (/link "destination" /another "one") {.class #id name=value name="string!"} content title ::
-
-::: directive_name [inline content] (/link "destination" /another "one") {.class #id name=value name="string!"} content title ::
-content
-:::`));
 
 /* -- Token Types --------------------------------------- */
 
@@ -487,6 +523,15 @@ export const markdownParser = new MarkdownParser(markdownSchema, md, {
 		title: tok.attrGet("title") || null,
 		alt: tok.children && tok.children[0] && tok.children[0].content || null
 	})},
+
+	embed_block:  { 
+		type:"node",
+		node: "embed",
+		getAttrs: (tok:Token) => ({
+			fileName: tok.attrGet("fileName")||undefined,
+			regionName: tok.attrGet("regionName")||undefined
+		})
+	},
 
 	tasklist_item: {
 		type: "node",
