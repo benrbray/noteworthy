@@ -1,15 +1,15 @@
 import { Schema, Node as ProseNode, SchemaSpec, Mark, DOMOutputSpec } from "prosemirror-model"
 
-function normalizeBullet(bullet:string|undefined): string {
+function normalizeBullet(bullet:string|undefined): string|null {
 	switch(bullet){
-		case "*": return "\u2022";
+		case "*": return null; // "\u2022";
 		case "+": return "+";
 		// https://en.wikipedia.org/wiki/Hyphen
 		case "\u2010": return "\u002D"; /* hyphen */
 		case "\u2011": return "\u002D"; /* non-breaking hyphen */
 		case "\u2212": return "\u002D"; /* minus */
 		case "\u002D": return "\u002D"; /* hyphen-minus */
-		default: return "\u2022";
+		default: return null;
 	}
 }
 
@@ -145,7 +145,7 @@ export function markdownSpec() { return {
 		bullet_list: {
 			content: "list_item+",
 			group: "block",
-			attrs: { tight: { default: false }, bullet: { default: "*" } },
+			attrs: { tight: { default: false }, bullet: { default: undefined } },
 			parseDOM: [{
 				tag: "ul",
 				getAttrs: (dom:string|Node) => ({
@@ -153,16 +153,17 @@ export function markdownSpec() { return {
 				})
 			}],
 			toDOM(node: ProseNode): DOMOutputSpec {
+				let bullet = normalizeBullet(node.attrs.bullet || "*");
 				return ["ul", {
 					...(node.attrs.tight && { "data-tight": "true" }),
-					...(node.attrs.bullet && { "data-bullet" : normalizeBullet(node.attrs.bullet || "*") })
+					...(bullet && { "data-bullet" : bullet })
 				}, 0]
 			}
 		},
 
 		list_item: {
 			content: "paragraph block*",
-			attrs: { class: { default: undefined }, bullet: { default: "*" } },
+			attrs: { class: { default: undefined }, bullet: { default: undefined } },
 			defining: true,
 			parseDOM: [{
 				tag: "li",
@@ -171,9 +172,10 @@ export function markdownSpec() { return {
 				})
 			}],
 			toDOM(node: ProseNode): DOMOutputSpec {
+				let bullet = normalizeBullet(node.attrs.bullet);
 				return ["li", {
 					...(node.attrs.class && { class: node.attrs.class }),
-					...(node.attrs.bullet && { "data-bullet" : normalizeBullet(node.attrs.bullet) })
+					...(bullet && { "data-bullet" : bullet })
 				}, 0];
 			}
 		},

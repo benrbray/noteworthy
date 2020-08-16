@@ -268,7 +268,6 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		
 		// create prosemirror instance
 		let nodeViews: ICursorPosObserver[] = [];
-		let macros:{ [cmd:string] : unknown } = {};
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
 			state: state,
 			nodeViews: {

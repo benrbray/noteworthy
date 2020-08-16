@@ -80,10 +80,16 @@ li[data-bullet]::before {
 	content: attr(data-bullet);
 	font-weight: bold;
 }
+ul[data-bullet="*"] > li:not(data-bullet)::before { content: "\2022"; }
+ul[data-bullet="-"] > li:not(data-bullet)::before { content: "\2212"; }
+ul[data-bullet="+"] > li:not(data-bullet)::before { content: "+"; }
 li[data-bullet="*"]::before { content: "\2022"; }
 li[data-bullet="-"]::before { content: "\2212"; }
 
 /* Semantic List Items */
+ul[data-bullet="+"] > li:not(data-bullet) { color: var(--color-good);     }
+ul[data-bullet="-"] > li:not(data-bullet) { color: var(--color-bad);      }
+ul[data-bullet="?"] > li:not(data-bullet) { color: var(--color-question); }
 li[data-bullet="+"] { color: var(--color-good);     }
 li[data-bullet="-"] { color: var(--color-bad);      }
 li[data-bullet="?"] { color: var(--color-question); }
