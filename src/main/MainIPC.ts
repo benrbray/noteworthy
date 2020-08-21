@@ -9,7 +9,7 @@ import { readFile, saveFile, IFileWithContents, IPossiblyUntitledFile, IDirEntry
 import NoteworthyApp from "./app"
 import { DialogSaveDiscardOptions } from "@common/dialog";
 import { to } from "@common/util/to";
-import { filterNonVoid } from "@common/helpers";
+import { filterNonVoid } from "@common/util/non-void";
 
 ////////////////////////////////////////////////////////////
 
