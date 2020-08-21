@@ -3,24 +3,22 @@ import { clipboard } from "electron";
 
 // prosemirror imports
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
-import { Schema as ProseSchema, DOMParser as ProseDOMParser, MarkType, Node as ProseNode, Mark, Slice } from "prosemirror-model";
-import { baseKeymap, toggleMark, setBlockType } from "prosemirror-commands";
+import { Schema as ProseSchema, MarkType, Node as ProseNode, Mark, Slice } from "prosemirror-model";
+import { baseKeymap, toggleMark } from "prosemirror-commands";
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin, EditorState } from "prosemirror-state";
 import { history } from "prosemirror-history";
 import { keymap } from "prosemirror-keymap";
 import { gapCursor } from "prosemirror-gapcursor";
 
 // project imports
-import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
+import { IPossiblyUntitledFile } from "@common/fileio";
 import { Editor } from "./editor";
 
 // markdown
-import { markdownParser, markdownSerializer } from "@common/markdown";
 import { nwtSchema } from "@common/nwt/nwt-schema";
 import { buildInputRules_markdown, buildKeymap_markdown } from "@common/pm-schema";
 
 // views
-import { MathView, ICursorPosObserver } from "@lib/prosemirror-math/src/math-nodeview";
 import { mathInputRules } from "@common/inputrules";
 import { openPrompt, TextField } from "@common/prompt/prompt";
 import mathSelectPlugin from "@root/lib/prosemirror-math/src/plugins/math-select";

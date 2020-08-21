@@ -23,17 +23,13 @@ import { render } from "solid-js/dom";
 import { createEffect, createSignal } from "solid-js";
 
 // views
-import { MathView, ICursorPosObserver } from "@lib/prosemirror-math/src/math-nodeview";
 import { mathInputRules } from "@common/inputrules";
 import { openPrompt, TextField } from "@common/prompt/prompt";
 import mathSelectPlugin from "@root/lib/prosemirror-math/src/plugins/math-select";
 import { MainIpcHandlers } from "@main/MainIPC";
 
-import { YamlEditor } from "../ui/yamlEditor";
 import { SetDocAttrStep } from "@common/prosemirror/steps";
-import { shallowEqual } from "@common/util/equal";
 import { MarkdownDoc } from "@common/doctypes/markdown-doc";
-import { RegionView } from "@common/markdown/region-view";
 import { EmbedView } from "@common/nwt/nwt-embed";
 import { mathPlugin } from "@root/lib/prosemirror-math/src/math-plugin";
 //import { mathBackspace } from "@root/lib/prosemirror-math/src/plugins/math-backspace";
