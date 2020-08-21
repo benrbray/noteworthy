@@ -27,6 +27,7 @@ import mathSelectPlugin from "@root/lib/prosemirror-math/src/plugins/math-select
 import { MainIpcHandlers } from "@main/MainIPC";
 import { findWrapping } from "prosemirror-transform";
 import { EmbedView } from "@common/nwt/nwt-embed";
+import { mathPlugin } from "@root/lib/prosemirror-math/src/math-plugin";
 
 ////////////////////////////////////////////////////////////
 
@@ -160,6 +161,7 @@ export class NwtEditor extends Editor<ProseEditorState> {
 				keymap(baseKeymap),
 				this._keymap,
 				buildInputRules_markdown(this._proseSchema),
+				mathPlugin,
 				mathInputRules,
 				mathSelectPlugin,
 				history(),
@@ -174,26 +176,9 @@ export class NwtEditor extends Editor<ProseEditorState> {
 			state = ProseEditorState.create(config);
 		}
 		// create prosemirror instance
-		let nodeViews: ICursorPosObserver[] = [];
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
 			state: state,
 			nodeViews: {
-				"math_inline": (node, view, getPos) => {
-					let nodeView = new MathView(
-						node, view, getPos as (() => number), { displayMode: false },
-						() => { nodeViews.splice(nodeViews.indexOf(nodeView)); },
-					);
-					nodeViews.push(nodeView);
-					return nodeView;
-				},
-				"math_display": (node, view, getPos) => {
-					let nodeView = new MathView(
-						node, view, getPos as (() => number), { displayMode: true },
-						() => { nodeViews.splice(nodeViews.indexOf(nodeView)); }
-					);
-					nodeViews.push(nodeView);
-					return nodeView;
-				},
 				"embed_md": (node, view, getPos) => {
 					return new EmbedView(node, view, getPos as (() => number), this._mainProxy);
 				}
@@ -203,11 +188,6 @@ export class NwtEditor extends Editor<ProseEditorState> {
 				if(tr.docChanged){ this.handleDocChanged(); }
 
 				let proseView:EditorView = (this._proseEditorView as EditorView);
-
-				// update 
-				for (let mathView of nodeViews) {
-					mathView.updateCursorPos(proseView.state);
-				}
 
 				console.log("selection :: ", tr.selection.from, tr.selection.to)
 

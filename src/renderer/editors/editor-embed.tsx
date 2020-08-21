@@ -35,6 +35,7 @@ import { shallowEqual } from "@common/util/equal";
 import { MarkdownDoc } from "@common/doctypes/markdown-doc";
 import { RegionView } from "@common/markdown/region-view";
 import { EmbedView } from "@common/nwt/nwt-embed";
+import { mathPlugin } from "@root/lib/prosemirror-math/src/math-plugin";
 //import { mathBackspace } from "@root/lib/prosemirror-math/src/plugins/math-backspace";
 
 ////////////////////////////////////////////////////////////
@@ -152,6 +153,7 @@ export class MarkdownRegionEditor extends Editor<ProseEditorState> {
 				keymap(baseKeymap),
 				this._keymap,
 				buildInputRules_markdown(this._proseSchema),
+				mathPlugin,
 				mathInputRules,
 				mathSelectPlugin,
 				history(),
@@ -208,34 +210,9 @@ export class MarkdownRegionEditor extends Editor<ProseEditorState> {
 		this._globalState = state;
 		
 		// create prosemirror instance
-		let nodeViews: ICursorPosObserver[] = [];
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
 			state: regionState,
 			nodeViews: {
-				"math_inline": (node, view, getPos) => {
-					let nodeView = new MathView(
-						node, view, getPos as (() => number), 
-						{ katexOptions: {
-							displayMode: false, 
-							macros: this._katexMacros
-						} },
-						() => { nodeViews.splice(nodeViews.indexOf(nodeView)); },
-					);
-					nodeViews.push(nodeView);
-					return nodeView;
-				},
-				"math_display": (node, view, getPos) => {
-					let nodeView = new MathView(
-						node, view, getPos as (() => number),
-						{ katexOptions: {
-							displayMode: true,
-							macros: this._katexMacros
-						} },
-						() => { nodeViews.splice(nodeViews.indexOf(nodeView)); }
-					);
-					nodeViews.push(nodeView);
-					return nodeView;
-				},
 				"embed": (node, view, getPos) => {
 					return new EmbedView(node, view, getPos as (() => number), this._mainProxy);
 				}
@@ -251,11 +228,6 @@ export class MarkdownRegionEditor extends Editor<ProseEditorState> {
 				 */
 				if(tr.steps.find((value) => (value instanceof SetDocAttrStep))){
 				
-				}
-
-				// update 
-				for (let mathView of nodeViews) {
-					mathView.updateCursorPos(proseView.state);
 				}
 
 				console.log("selection :: ", tr.selection.from, tr.selection.to)

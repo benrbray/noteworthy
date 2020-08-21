@@ -16,6 +16,7 @@ import { ICursorPosObserver, MathView } from "@lib/prosemirror-math/src/math-nod
 import { mathInputRules } from "@lib/prosemirror-math/src/plugins/math-inputrules";
 import { MainIpcHandlers } from "@main/MainIPC";
 import { ProseCommand } from "@common/types";
+import { mathPlugin } from "@root/lib/prosemirror-math/src/math-plugin";
 
 ////////////////////////////////////////////////////////////
 
@@ -65,7 +66,8 @@ export class IpynbEditor extends Editor<ProseEditorState> {
 			plugins: [
 				keymap(baseKeymap),
 				keymap(buildKeymap_markdown(this._proseSchema)),
-				buildInputRules_markdown(this._proseSchema)
+				buildInputRules_markdown(this._proseSchema),
+				mathPlugin,
 			]
 		};
 		// create prosemirror state (from file)
@@ -79,24 +81,6 @@ export class IpynbEditor extends Editor<ProseEditorState> {
 		let nodeViews: ICursorPosObserver[] = [];
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
 			state: state,
-			nodeViews: {
-				"math_inline": (node, view, getPos) => {
-					let nodeView = new MathView(
-						node, view, getPos as (() => number), { displayMode: false },
-						() => { nodeViews.splice(nodeViews.indexOf(nodeView)); },
-					);
-					nodeViews.push(nodeView);
-					return nodeView;
-				},
-				"math_display": (node, view, getPos) => {
-					let nodeView = new MathView(
-						node, view, getPos as (() => number), { displayMode: true },
-						() => { nodeViews.splice(nodeViews.indexOf(nodeView)); }
-					);
-					nodeViews.push(nodeView);
-					return nodeView;
-				},
-			},
 			dispatchTransaction: (tr: Transaction): void => {
 				let proseView: EditorView = (this._proseEditorView as EditorView);
 

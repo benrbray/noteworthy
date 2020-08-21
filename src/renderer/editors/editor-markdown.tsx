@@ -36,6 +36,7 @@ import { MarkdownDoc } from "@common/doctypes/markdown-doc";
 import { RegionView } from "@common/markdown/region-view";
 import { mathBackspace } from "@root/lib/prosemirror-math/src/plugins/math-backspace";
 import { EmbedView } from "@common/nwt/nwt-embed";
+import { mathPlugin } from "@root/lib/prosemirror-math/src/math-plugin";
 
 ////////////////////////////////////////////////////////////
 
@@ -49,9 +50,6 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 	_keymap: ProsePlugin;
 	_initialized:boolean;
 
-	// macros (updated whenever KaTeX encounters \newcommand, \renewcommand, or \gdef)
-	_katexMacros: { [cmd:string] : string };
-
 	// == Constructor =================================== //
 
 	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, mainProxy: MainIpcHandlers) {
@@ -62,9 +60,6 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		this._proseEditorView = null;
 		this._proseSchema = markdownSchema;
 		this._editorElt = editorElt;
-
-		// macros (updated whenever KaTeX encounters \newcommand, \renewcommand, or \gdef)
-		this._katexMacros = {};
 
 		// create metadata elt
 		this._metaElt = document.createElement("div");
@@ -252,6 +247,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				keymap(baseKeymap),
 				this._keymap,
 				buildInputRules_markdown(this._proseSchema),
+				mathPlugin,
 				mathInputRules,
 				mathSelectPlugin,
 				history(),
@@ -267,44 +263,14 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		}
 		
 		// create prosemirror instance
-		let nodeViews: ICursorPosObserver[] = [];
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
 			state: state,
 			nodeViews: {
-				"math_inline": (node, view, getPos) => {
-					let nodeView = new MathView(
-						node, view, getPos as (() => number), 
-						{ katexOptions: {
-							displayMode: false, 
-							macros: this._katexMacros
-						} },
-						() => { nodeViews.splice(nodeViews.indexOf(nodeView)); },
-					);
-					nodeViews.push(nodeView);
-					return nodeView;
-				},
-				"math_display": (node, view, getPos) => {
-					let nodeView = new MathView(
-						node, view, getPos as (() => number),
-						{ katexOptions: {
-							displayMode: true,
-							macros: this._katexMacros
-						} },
-						() => { nodeViews.splice(nodeViews.indexOf(nodeView)); }
-					);
-					nodeViews.push(nodeView);
-					return nodeView;
-				},
 				"embed": (node, view, getPos) => {
 					return new EmbedView(
 						node, view, getPos as (() => number), this._mainProxy
 					);
 				},
-				// "region" : (node,view,getPos) => {
-				// 	return new RegionView(
-				// 		node, view, getPos as (() => number), this._mainProxy
-				// 	);
-				// }
 			},
 			dispatchTransaction: (tr: Transaction): void => {
 				// unsaved changes?
@@ -317,11 +283,6 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				 */
 				if(tr.steps.find((value) => (value instanceof SetDocAttrStep))){
 				
-				}
-
-				// update 
-				for (let mathView of nodeViews) {
-					mathView.updateCursorPos(proseView.state);
 				}
 
 				console.log("selection :: ", tr.selection.from, tr.selection.to)
@@ -412,6 +373,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				keymap(baseKeymap),
 				this._keymap,
 				buildInputRules_markdown(this._proseSchema),
+				mathPlugin,
 				mathInputRules,
 				mathSelectPlugin,
 				history(),
