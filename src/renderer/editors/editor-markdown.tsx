@@ -188,6 +188,27 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		})
 	}
 
+	// == ProseMirror Configuration ===================== //
+
+	/**
+	 * Initialize a set of plugins appropriate for this editor.
+	 */
+	createDefaultProseMirrorPlugins(){
+		return [
+			// note: keymap order matters!
+			keymap(buildKeymap_markdown(this._proseSchema)),
+			keymap(baseKeymap),
+			this._keymap,
+			buildInputRules_markdown(this._proseSchema),
+			// math
+			mathPlugin,
+			mathInputRules,
+			mathSelectPlugin,
+			history(),
+			gapCursor()
+		]
+	}
+
 	// == Lifecycle ===================================== //
 
 	init() {
@@ -242,17 +263,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		// create prosemirror config
 		let config = {
 			schema: this._proseSchema,
-			plugins: [
-				keymap(buildKeymap_markdown(this._proseSchema)),
-				keymap(baseKeymap),
-				this._keymap,
-				buildInputRules_markdown(this._proseSchema),
-				mathPlugin,
-				mathInputRules,
-				mathSelectPlugin,
-				history(),
-				gapCursor()
-			]
+			plugins: this.createDefaultProseMirrorPlugins()
 		}
 		// create prosemirror state (from file)
 		let state:ProseEditorState;
@@ -367,18 +378,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 
 		return ProseEditorState.create({
 			doc: parsed.proseDoc,
-			plugins: [
-				// note: keymap order matters!
-				keymap(buildKeymap_markdown(this._proseSchema)),
-				keymap(baseKeymap),
-				this._keymap,
-				buildInputRules_markdown(this._proseSchema),
-				mathPlugin,
-				mathInputRules,
-				mathSelectPlugin,
-				history(),
-				gapCursor()
-			]
+			plugins: this.createDefaultProseMirrorPlugins()
 		});
 	}
 
