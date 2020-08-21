@@ -1,0 +1,255 @@
+
+
+/* image */
+#editor img {
+	display: block;
+	margin: 1em 0 1em 0;
+	max-width: 100%;
+	max-height: 70vh;
+}
+
+/* tab-size */
+#editor {
+	tab-size: 4;
+}
+
+/* code */
+#editor pre      { display: block; }
+#editor pre code { display: block; }
+
+/* == Style Modifications when CTRL is Pressed ========== */
+
+/* active when CTRL key pressed */
+.user-ctrl a               { cursor: pointer; }
+.user-ctrl .tag            { cursor: pointer; }
+.user-ctrl .wikilink       { cursor: pointer; }
+.user-ctrl .citation       { cursor: pointer; }
+.user-ctrl a:hover         { text-decoration: underline !important; background-color: var(--color-bg-highlight); }
+.user-ctrl .tag:hover      { text-decoration: underline; background-color: var(--color-bg-highlight);}
+.user-ctrl .wikilink:hover { text-decoration: underline; background-color: var(--color-bg-highlight);}
+.user-ctrl .citation:hover { text-decoration: underline; background-color: var(--color-bg-highlight);}
+
+/* == List Styles ======================================= */
+
+#editor li p {
+	margin: 0;
+	text-align: left;
+}
+
+#editor ul {
+	margin-top: 0.2em;
+	padding-left: 2em;
+	position: relative;
+	list-style-type: none;
+	line-height: var(--line-height-list);
+}
+
+#editor ul li {
+	margin-bottom: 0.2em;
+}
+
+/* -- List Bullet --------------------------------------- */
+
+#editor ul li::before {
+	content: "\2022";
+	display: inline-block;
+	position: absolute;
+	left: 0;
+	width: 1em;
+	margin-left: -1em;
+}
+
+#editor ul li[data-bullet]::before {
+	content: attr(data-bullet);
+	font-weight: bold;
+}
+#editor ul[data-bullet="*"] > li:not(data-bullet)::before { content: "\2022"; }
+#editor ul[data-bullet="-"] > li:not(data-bullet)::before { content: "\2212"; }
+#editor ul[data-bullet="+"] > li:not(data-bullet)::before { content: "+"; }
+#editor ul li[data-bullet="*"]::before { content: "\2022"; }
+#editor ul li[data-bullet="-"]::before { content: "\2212"; }
+
+/* Semantic List Items */
+#editor ul[data-bullet="+"] > li:not(data-bullet) { color: var(--color-good);     }
+#editor ul[data-bullet="-"] > li:not(data-bullet) { color: var(--color-bad);      }
+#editor ul[data-bullet="?"] > li:not(data-bullet) { color: var(--color-question); }
+#editor ul li[data-bullet="+"] { color: var(--color-good);     }
+#editor ul li[data-bullet="-"] { color: var(--color-bad);      }
+#editor ul li[data-bullet="?"] { color: var(--color-question); }
+
+/* -- Task Lists ---------------------------------------- */
+
+/* task lists */
+li.task-list-item {
+	list-style-type: none;
+	left: -1em;
+}
+
+li.task-list-item input[type='checkbox'] {
+	position: relative;
+	left: -1em;
+}
+
+/* == MATH ============================================== */
+
+math-display {
+	margin: 1em 0 1em 0;
+}
+
+math-inline {
+	/* empty */
+}
+
+/* == EMBEDDED FILES ==================================== */
+
+.embed {
+	position: relative;
+	padding: 0.5em 0.5em 0.5em 0;
+	border: 1px solid #d0d0d0;
+	border-radius: 6px;
+	transition: 0.2s;
+}
+
+.embed input {
+	position: absolute;
+	top: -0.5em;
+	right: 2em;
+	border: 1px solid dodgerblue;
+	color: dodgerblue;
+	border-radius: 4px;
+	font-family: var(--code-font);
+
+	display: none;
+}
+
+.embed:focus-within {
+	border: 1px solid dodgerblue;
+}
+
+.embed:focus-within input {
+	display: block;
+	animation: anim-embed-focus-input;
+	animation-duration: 0.2s;
+}
+
+@keyframes anim-embed-focus-input {
+	from {
+		border-color: rgba(dodgerblue, 0);
+		color: #00880000;
+	}
+	to {
+		border-color: rgba(dodgerblue, 1);
+		color: rgba(dodgerblue, 1);
+	}
+}
+
+/* -- Adjustments to Embedded Elements ------------------ */
+
+.embed p:first-of-type {
+	margin-top: 0;
+}
+.embed p:last-of-type {
+	margin-bottom: 0;
+}
+
+.embed h1 {
+	margin-top: 0;
+}
+
+/* == REGION ============================================ */
+
+.region {
+	position: relative;
+	padding: 0.5em 0.5em 0.5em 0;
+	border: 1px solid #d0d0d0;
+	border-radius: 6px;
+	transition: 0.2s;
+}
+
+.region::before {
+	content: attr(data-region);
+	position: absolute;
+	top: -0.5em;
+	right: 2em;
+	border: 1px solid dodgerblue;
+	color: dodgerblue;
+	background-color: white;
+	padding: 1px;
+	border-radius: 4px;
+	font-family: var(--code-font);
+}
+
+.region:focus-within {
+	border: 1px solid dodgerblue;
+}
+
+.region:focus-within::before {
+	display: block;
+	animation: anim-embed-focus-input;
+	animation-duration: 0.2s;
+}
+
+/* -- Adjustments to Embedded Elements ------------------ */
+
+.region p:first-of-type {
+	margin-top: 0;
+}
+.region p:last-of-type {
+	margin-bottom: 0;
+}
+
+.region h1 {
+	margin-top: 0;
+}
+
+/* == YAML METADATA EDITOR ============================== */
+
+.meta-editor {
+	padding: 1em 0;
+	margin: 0 0.5em 1em 0.5em;
+	font-family: var(--code-font);
+	color: var(--color-text-fainter);
+	border-bottom: 1px dashed var(--color-text-fainter);
+}
+
+.meta-editor .ProseMirror-focused {
+	color: var(--color-text);
+}
+
+.meta-editor .ProseMirror-focused dd {
+	border-color: var(--color-text-fainter);
+}
+.meta-editor .ProseMirror-focused dt {
+	border-color: var(--color-text-fainter);
+}
+
+.meta-editor dl {
+	display: grid;
+	grid-auto-flow: row;
+	grid-template-columns: auto 5fr;
+	grid-template-rows: 1fr;
+	column-gap: 1em;
+
+	margin: 0;
+	font-size: 0.8em;
+
+	overflow: hidden;
+}
+
+.meta-editor dt {
+	font-weight: bold;
+	min-width: 4em;
+	max-width: 20vw;
+}
+
+.meta-editor dt, .meta-editor dd {
+	margin: 0;
+	padding: 1px;
+	border-width: 0 1px 1px 1px;
+	border-style: dotted;
+	border-color: transparent;
+}
+
+.meta-editor dt:first-of-type, .meta-editor dd:first-of-type {
+	border-width: 1px;
+}

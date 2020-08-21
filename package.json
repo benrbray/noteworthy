@@ -110,6 +110,7 @@
     "@types/prosemirror-transform": "^1.1.1",
     "@types/prosemirror-view": "^1.15.0",
     "babel-preset-solid": "^0.18.14",
+    "copy-webpack-plugin": "^6.0.3",
     "electron": "^9.1.1",
     "electron-builder": "^22.7.0",
     "electron-webpack": "^2.8.2",

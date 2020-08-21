@@ -15,10 +15,12 @@
 
 	/** UI Colors **/
 	--color-bg: #fefefe;
-	--color-bg-1: white;
-	--color-bg-2: #ddd;    /* for code_blocks */
+	--color-bg-1: #f3f3f3; /* e.g. sidebar */
+	--color-bg-2: #ddd;    /* e.g. code_blocks */
+	--color-bg-3: #d0d0d0;    /* e.g. folder */
+	--color-bg-highlight: #a4c2f9;    /* e.g. active file */
 	
-	--color-text: #111;
+	--color-text: #202020;
 	--color-text-faint: #666;
 	--color-text-fainter: #aaa;
 
@@ -51,114 +53,11 @@ body {
 	margin: 0;
 }
 
-/* links */
-a { color: var(--color-link); text-decoration: none; }
-
-li p {
-	margin: 0;
-}
-
-/* -- Lists --------------------------------------------- */
-
-ul {
-	padding-left: 2em;;
-	position: relative;
-	list-style-type: none;
-	line-height: var(--line-height-list);
-}
-
-/* List Bullet */
-li::before {
-	content: "\2022";
-	display: inline-block;
-	position: absolute;
-	left: 0;
-	width: 1em;
-	margin-left: -1em;
-}
-li[data-bullet]::before {
-	content: attr(data-bullet);
-	font-weight: bold;
-}
-ul[data-bullet="*"] > li:not(data-bullet)::before { content: "\2022"; }
-ul[data-bullet="-"] > li:not(data-bullet)::before { content: "\2212"; }
-ul[data-bullet="+"] > li:not(data-bullet)::before { content: "+"; }
-li[data-bullet="*"]::before { content: "\2022"; }
-li[data-bullet="-"]::before { content: "\2212"; }
-
-/* Semantic List Items */
-ul[data-bullet="+"] > li:not(data-bullet) { color: var(--color-good);     }
-ul[data-bullet="-"] > li:not(data-bullet) { color: var(--color-bad);      }
-ul[data-bullet="?"] > li:not(data-bullet) { color: var(--color-question); }
-li[data-bullet="+"] { color: var(--color-good);     }
-li[data-bullet="-"] { color: var(--color-bad);      }
-li[data-bullet="?"] { color: var(--color-question); }
-
-
-em.ul {
-	font-style: normal;
-	text-decoration: underline;
-}
-
-/* blockquote */
-blockquote {
-	border-left: 0.6em solid #eee;
-	color: var(--color-text-faint);
-}
-
-img {
-	display: block;
-	margin: 1em 0 1em 0;
-	max-width: 100%;
-	max-height: 70vh;
-}
-
-/* wikilinks */
-.wikilink { font-family: var(--code-font); font-size: 0.95em; color: var(--color-wikilink); }
-.wikilink::before { content: "[["; color: var(--color-inline-delims); letter-spacing: -0.1em}
-.wikilink::after  { content: "]]"; color: var(--color-inline-delims); letter-spacing: -0.1em}
-
-/* tags */
-.tag { font-family: var(--font-main); color: steelblue; }
-.tag::before { content: "#"; font-family: var(--code-font);}
-
-/* citation */
-.citation { font-family: var(--code-font); font-size: 0.95em; color: seagreen; }
-.citation::before { content: "@["; color: var(--color-inline-delims); letter-spacing: -0.1em; font-family: var(--code-font);}
-.citation::after  { content: "]";  color: var(--color-inline-delims); letter-spacing: -0.1em; font-family: var(--code-font);}
-
-dfn, .definition {
-	color: var(--color-definition);
-	font-weight: bold;
-}
-
-/* task lists */
-li.task-list-item {
-	list-style-type: none;
-	left: -1em;
-}
-
-li.task-list-item input[type='checkbox'] {
-	position: relative;
-	left: -1em;
-}
-
-
-/* active when CTRL key pressed */
-.user-ctrl a               { cursor: pointer; }
-.user-ctrl .tag            { cursor: pointer; }
-.user-ctrl .wikilink       { cursor: pointer; }
-.user-ctrl .citation       { cursor: pointer; }
-.user-ctrl a:hover         { text-decoration: underline; }
-.user-ctrl .tag:hover      { text-decoration: underline; }
-.user-ctrl .wikilink:hover { text-decoration: underline; }
-.user-ctrl .citation:hover { text-decoration: underline; }
-
 /* -- Scrollbar ----------------------------------------- */
 
 div::-webkit-scrollbar {
 	width: 6px;
-	background-color: white;
+	background-color: var(--color-bg);
 }
 
 div::-webkit-scrollbar-thumb {
@@ -222,30 +121,12 @@ div:hover::-webkit-scrollbar-thumb {
 
 #sidebar {
 	grid-area: sidebar;
-	background-color: #f3f3f3;
+	background-color: var(--color-bg-1);
 	overflow-x: hidden;
 }
 
 #app {
 	color: var(--color-text);
-}
-
-#app h1::before { content: "# ";      color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
-#app h2::before { content: "## ";     color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
-#app h3::before { content: "### ";    color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
-#app h4::before { content: "#### ";   color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
-#app h5::before { content: "##### ";  color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
-#app h6::before { content: "###### "; color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
-
-#app p {
-	margin-left: 0.5em;
-	font-size: 18px;
-	font-family: var(--font-main);
-	text-align: justify;
-}
-
-#app li p {
-	text-align: left;
 }
 
 /* ==== SIDEBAR ========================================= */
@@ -278,7 +159,7 @@ div:hover::-webkit-scrollbar-thumb {
 	flex-grow: 1;
 	text-align: center;
 	background-color: rgba(0,0,0,0.2);
-	color: #303030;
+	color: var(--color-text-faint);
 }
 
 #sidebar .tabs .codicon {
@@ -387,9 +268,8 @@ div:hover::-webkit-scrollbar-thumb {
 }
 
 .folder {
-	color: #616161;
-	font-weight: bold;
-	background-color: rgba(0,0,0,0.2);
+	color: var(--color-text-faint);
+	background-color: var(--color-bg-3);
 	padding: 0.1em 0.5em;
 	user-select: none;
 	white-space: nowrap;
@@ -406,7 +286,7 @@ div:hover::-webkit-scrollbar-thumb {
 }
 
 .file {
-	color: #616161;
+	color: var(--color-text-faint);
 	padding: 0.2em 0.7em;
 	user-select: none;
 	white-space: nowrap;
@@ -420,7 +300,8 @@ div:hover::-webkit-scrollbar-thumb {
 }
 
 .file.active, file.active:hover {
-	background-color: #a4c2f9;
+	color: var(--color-text);
+	background-color: var(--color-bg-highlight);
 }
 
 /* -- TAB: Tag Search ----------------------------------- */
@@ -472,221 +353,10 @@ div:hover::-webkit-scrollbar-thumb {
 	color: #999;
 }
 
-
-/* == EMBEDDED FILES ==================================== */
-
-.embed {
-	position: relative;
-	padding: 0.5em 0.5em 0.5em 0;
-	border: 1px solid #d0d0d0;
-	border-radius: 6px;
-	transition: 0.2s;
-}
-
-.embed input {
-	position: absolute;
-	top: -0.5em;
-	right: 2em;
-	border: 1px solid dodgerblue;
-	color: dodgerblue;
-	border-radius: 4px;
-	font-family: var(--code-font);
-
-	display: none;
-}
-
-.embed:focus-within {
-	border: 1px solid dodgerblue;
-}
-
-.embed:focus-within input {
-	display: block;
-	animation: anim-embed-focus-input;
-	animation-duration: 0.2s;
-}
-
-@keyframes anim-embed-focus-input {
-	from {
-		border-color: rgba(dodgerblue, 0);
-		color: #00880000;
-	}
-	to {
-		border-color: rgba(dodgerblue, 1);
-		color: rgba(dodgerblue, 1);
-	}
-}
-
-/* -- Adjustments to Embedded Elements ------------------ */
-
-.embed p:first-of-type {
-	margin-top: 0;
-}
-.embed p:last-of-type {
-	margin-bottom: 0;
-}
-
-.embed h1 {
-	margin-top: 0;
-}
-
-/* == REGION ============================================ */
-
-.region {
-	position: relative;
-	padding: 0.5em 0.5em 0.5em 0;
-	border: 1px solid #d0d0d0;
-	border-radius: 6px;
-	transition: 0.2s;
-}
-
-.region::before {
-	content: attr(data-region);
-	position: absolute;
-	top: -0.5em;
-	right: 2em;
-	border: 1px solid dodgerblue;
-	color: dodgerblue;
-	background-color: white;
-	padding: 1px;
-	border-radius: 4px;
-	font-family: var(--code-font);
-}
-
-.region:focus-within {
-	border: 1px solid dodgerblue;
-}
-
-.region:focus-within::before {
-	display: block;
-	animation: anim-embed-focus-input;
-	animation-duration: 0.2s;
-}
-
-/* -- Adjustments to Embedded Elements ------------------ */
-
-.region p:first-of-type {
-	margin-top: 0;
-}
-.region p:last-of-type {
-	margin-bottom: 0;
-}
-
-.region h1 {
-	margin-top: 0;
-}
-
-/* == YAML METADATA EDITOR ============================== */
-
-.meta-editor {
-	padding: 1em 0;
-	margin: 0 0.5em 1em 0.5em;
-	font-family: var(--code-font);
-	color: var(--color-text-fainter);
-	border-bottom: 1px dashed var(--color-text-fainter);
-}
-
-.meta-editor .ProseMirror-focused {
-	color: black;
-}
-
-.meta-editor .ProseMirror-focused dd {
-	border-color: var(--color-text-fainter);
-}
-.meta-editor .ProseMirror-focused dt {
-	border-color: var(--color-text-fainter);
-}
-
-.meta-editor dl {
-	display: grid;
-	grid-auto-flow: row;
-	grid-template-columns: auto 5fr;
-	grid-template-rows: 1fr;
-	column-gap: 1em;
-
-	margin: 0;
-	font-size: 0.8em;
-
-	overflow: hidden;
-}
-
-.meta-editor dt {
-	font-weight: bold;
-	min-width: 4em;
-	max-width: 20vw;
-}
-
-.meta-editor dt, .meta-editor dd {
-	margin: 0;
-	padding: 1px;
-	border-width: 0 1px 1px 1px;
-	border-style: dotted;
-	border-color: transparent;
-}
-
-.meta-editor dt:first-of-type, .meta-editor dd:first-of-type {
-	border-width: 1px;
-}
-
-
 /* == PROSEMIRROR ======================================= */
 
-shouting { display: inline; text-transform: uppercase; font-weight: bold; }
-
-note, notegroup { display: block; border: 1px solid silver; border-radius: 3px; padding: 3px 6px; margin: 5px 0; }
-  notegroup { border-color: #66f }
-
 .ProseMirror {
-	counter-reset: prosemirror-footnote;
 	outline: none;
-}
-footnote {
-	display: inline-block;
-	position: relative;
-	cursor: pointer;
-}
-footnote::after {
-	content: counter(prosemirror-footnote);
-	vertical-align: super;
-	font-size: 75%;
-	counter-increment: prosemirror-footnote;
-}
-.ProseMirror-hideselection .footnote-tooltip *::selection { background-color: transparent; }
-.ProseMirror-hideselection .footnote-tooltip *::-moz-selection { background-color: transparent; }
-.footnote-tooltip {
-	cursor: auto;
-	position: absolute;
-	left: -30px;
-	top: calc(100% + 10px);
-	background: silver;
-	padding: 3px;
-	border-radius: 2px;
-	width: 500px;
-}
-.footnote-tooltip::before {
-	border: 5px solid silver;
-	border-top-width: 0px;
-	border-left-color: transparent;
-	border-right-color: transparent;
-	position: absolute;
-	top: -5px;
-	left: 27px;
-	content: " ";
-	height: 0;
-	width: 0;
-}
-
-code {
-	display: block;
-	padding: 0.5em;
-	background-color: var(--color-bg-2);
-	font-family: "Consolas", "Ubuntu Mono", monospace;
-	font-size: 0.9em;
-	text-align: left;
-}
-
-p code {
-	display: inline;
-	padding: 0;
 }
 
 /* == IPYNB ============================================= */

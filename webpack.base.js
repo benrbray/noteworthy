@@ -2,6 +2,7 @@
 // (https://github.com/notable/notable/blob/54646c1fb64fbcf3cc0857a2791cfb6a6ae48313/webpack.base.js)
 
 const TSConfigPathsPlugin = require("tsconfig-paths-webpack-plugin");
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const path = require("path");
 const webpack = require("webpack");
 const merge = require("webpack-merge");
@@ -42,6 +43,11 @@ function base(options){
 				new webpack.DefinePlugin ({
 					'Environment.isDevelopment': JSON.stringify ( process.env.NODE_ENV !== 'production' )
 				}),
+				new CopyWebpackPlugin({
+					patterns: [
+						{ from: 'static' }
+					]
+				}),
 				PluginSkeletonOptimization
 			],
 			devtool: "source-map"
@@ -58,27 +64,29 @@ function base(options){
 
 		// create separate rule for tsx files
 		/** @todo (7/17/20) does this merge have any unintended consequences? */
-		result = merge(result, { module : { rules : [ {
-			test: /\.tsx$/,
-			exclude: [/node_modules/],
-			use: {
-				loader: "babel-loader",
-					options: merge(tsxRule.options, {
-					babelrc: false,
-					presets: [
-						[ '@babel/preset-env', { 
-							"targets": { "electron": "9.0.2", }
-						} ],
-						'solid',
-						'@babel/preset-typescript'
-					],
-					plugins: ["@babel/plugin-proposal-optional-chaining"],
-					cacheDirectory: true,
-					cacheCompression: !IS_DEVELOP,
-					compact: !IS_DEVELOP,
-				}),
+		result = merge(result, { module : { rules : [
+			{
+				test: /\.tsx$/,
+				exclude: [/node_modules/],
+				use: {
+					loader: "babel-loader",
+						options: merge(tsxRule.options, {
+						babelrc: false,
+						presets: [
+							[ '@babel/preset-env', { 
+								"targets": { "electron": "9.0.2", }
+							} ],
+							'solid',
+							'@babel/preset-typescript'
+						],
+						plugins: ["@babel/plugin-proposal-optional-chaining"],
+						cacheDirectory: true,
+						cacheCompression: !IS_DEVELOP,
+						compact: !IS_DEVELOP,
+					}),
+				}
 			}
-		}]}});
+		]}});
 		
 		return result;
 	}

@@ -9,6 +9,7 @@ import { IPossiblyUntitledFile, IFileWithContents, IUntitledFile, IFileMeta, IDi
 import { invokerFor } from "@common/ipc";
 import { to } from "@common/util/to";
 import { IpcEvents } from "@common/events";
+import { getStatic } from "@common/static";
 
 // editor importsimport { ProseMirrorEditor } from "./editors/editor-prosemirror";
 import { ProseMirrorEditor } from "./editors/editor-prosemirror";
@@ -26,7 +27,6 @@ import { TagSearch } from "./ui/tag-search";
 import { render } from "solid-js/dom";
 import { State as SolidState, SetStateFunction, createState, createEffect, createSignal, Suspense, Switch, Match, For } from "solid-js";
 import { CalendarTab } from "./ui/calendarTab";
-//import { MonacoEditor } from "./editors/editor-monaco";
 
 ////////////////////////////////////////////////////////////
 
@@ -200,7 +200,6 @@ class Renderer {
 
 			const AppContent = () => {
 				return (<div id="content">
-					<div spellcheck={false} id="editor"></div>
 				</div>);
 			}
 
@@ -222,10 +221,27 @@ class Renderer {
 		let mainElt:HTMLElement = document.getElementById("main") as HTMLElement;
 		render(() => <App/>, mainElt);
 
+		// create shadow dom
+		let contentElt = document.getElementById("content") as HTMLElement;
+		//let shadowElt = contentElt.attachShadow({mode: "open"});
+
+		// create editor
+		let editorElt = document.createElement("div");
+		editorElt.setAttribute("id", "editor");
+		editorElt.setAttribute("spellcheck", "false");
+		contentElt.appendChild(editorElt);
+
+		// css
+		let cssPath = getStatic('themes/theme-default-light.css');
+		let styleElt = document.createElement("link");
+		styleElt.setAttribute("rel", "stylesheet");
+		styleElt.setAttribute("href", cssPath);
+		document.head.appendChild(styleElt);
+
 		// dom elements
 		this._ui = {
 			titleElt : document.getElementById("title") as HTMLDivElement,
-			editorElt : document.getElementById("editor") as HTMLDivElement,
+			editorElt : editorElt
 		}
 	}
 
