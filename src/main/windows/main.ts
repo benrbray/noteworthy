@@ -51,6 +51,30 @@ export default class Main extends Route {
 					{
 						type: "separator"
 					},
+					{	label: "Export File...",
+						submenu: [
+							{ label: "PDF" },
+							{ label: "HTML" },
+							{ label: "HTML (without styles)" },
+							{ type: "separator" },
+							{ label: "LaTeX" },
+							{ label: "Word" },
+							{ label: "OpenOffice" },
+							{ label: "RTF" },
+							{ label: "epub" },
+							{ type: "separator" },
+							{ label: "Export Options..." },
+						]
+					},
+					{	label: "Export Workspace...",
+						submenu: [
+							{ label: "HTML" },
+							{ label: "HTML (without styles)" },
+							{ label: "LaTeX" },
+							{ type: "separator" },
+							{ label: "Export Options..." },
+						]
+					},
 					{
 						label: "Exit",
 						click: () => { }
@@ -67,11 +91,23 @@ export default class Main extends Route {
 					{ role: "pasteAndMatchStyle" },
 					{ role: "delete" },
 					{ type: "separator" },
+					{ label: "Copy as Markdown" },
+					{ label: "Copy as Text" },
+					{ label: "Copy as HTML" },
+					{ type: "separator" },
 					{ role: "selectAll" },
 				]
-			}, {
-				label: "View",
+			},{	label: "Paragraph",
 				submenu: [
+					{ label: "TODO" },
+				]
+			},{ label: "View",
+				submenu: [
+					{ label: "Toggle Sidebar" },
+					{ label: "Document Outline" },
+					{ label: "File Tree View" },
+					{ label: "File List View" },
+					{ type: "separator" },
 					{ role: "reload" },
 					{ role: "forceReload" },
 					{ role: "toggleDevTools" },
@@ -80,10 +116,13 @@ export default class Main extends Route {
 					{ role: "zoomIn" },
 					{ role: "zoomOut" },
 					{ type: "separator" },
+					{ label: "Toggle Side Panel" },
+					{ label: "Focus Mode" },
+					{ label: "Typewriter Mode" },
+					{ type: "separator" },
 					{ role: "togglefullscreen" }
 				]
-			},{
-				label: "Window",
+			},{ label: "Window",
 				submenu: [
 					{ role: "minimize" },
 					{
@@ -92,12 +131,22 @@ export default class Main extends Route {
 					},
 					{ role: "zoom", visible: is.macos }
 				]
-			}, {
-				label: "Help",
+			},{ label: "Help",
 				submenu: [
 					{
-						label: "About",
+						label: "About Noteworthy",
 						click: () => console.log("about")
+					},{
+						label: "View Documentation",
+						click: () => console.error("unhandled menu option!")
+					},
+					{ type: "separator" },
+					{
+						label: "Report a Problem...",
+						click: () => console.error("unhandled menu option!")
+					},{
+						label: "Submit Feature Request...",
+						click: () => console.error("unhandled menu option!")
 					}
 				]
 			}
