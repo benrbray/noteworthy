@@ -1,27 +1,34 @@
 :root {
 	--font-editor: var(--serif-font);
+	--color-bg: #f0f0f0;
+	--font-size: 1.0rem;
+}
+
+#editor {
+	margin: 0 auto;
+	max-width: 42em;
 }
 
 /* == Basic Element Styles ============================== */
 
-#editor h1, #editor h2, #editor h3, #editor h4, #editor h5, #editor h6 {
+h1, h2, h3, h4, h5, h6 {
 	margin-left: 0.5rem;
 }
 
 /* headings */
-#editor h1:hover::after { content: " h1"; position: absolute; right: 0; color: var(--color-heading-level); font-family: var(--code-font); }
-#editor h2:hover::after { content: " h2"; position: absolute; right: 0; color: var(--color-heading-level); font-family: var(--code-font); }
-#editor h3:hover::after { content: " h3"; position: absolute; right: 0; color: var(--color-heading-level); font-family: var(--code-font); }
-#editor h4:hover::after { content: " h4"; position: absolute; right: 0; color: var(--color-heading-level); font-family: var(--code-font); }
-#editor h5:hover::after { content: " h5"; position: absolute; right: 0; color: var(--color-heading-level); font-family: var(--code-font); }
-#editor h6:hover::after { content: " h6"; position: absolute; right: 0; color: var(--color-heading-level); font-family: var(--code-font); }
+h1:hover::after { content: " h1"; position: absolute; right: 0; color: var(--color-heading-level); font-family: var(--code-font); }
+h2:hover::after { content: " h2"; position: absolute; right: 0; color: var(--color-heading-level); font-family: var(--code-font); }
+h3:hover::after { content: " h3"; position: absolute; right: 0; color: var(--color-heading-level); font-family: var(--code-font); }
+h4:hover::after { content: " h4"; position: absolute; right: 0; color: var(--color-heading-level); font-family: var(--code-font); }
+h5:hover::after { content: " h5"; position: absolute; right: 0; color: var(--color-heading-level); font-family: var(--code-font); }
+h6:hover::after { content: " h6"; position: absolute; right: 0; color: var(--color-heading-level); font-family: var(--code-font); }
 
-#editor p {
+p {
 	text-align: justify;
 }
 
 /* blockquote */
-#editor blockquote {
+blockquote {
 	border-left: 0.6em solid #eee;
 	color: var(--color-text-faint);
 }
