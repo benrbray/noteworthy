@@ -1,11 +1,13 @@
 import { Event, ipcMain as ipc, shell } from 'electron';
 import Route from './route';
+import NoteworthyApp from '@main/app';
 
 ////////////////////////////////////////////////////////////
 
 export default class Main extends Route {
 	
-	constructor(name="main"){
+	/** @todo (9/13/20) what is name="main" for? */
+	constructor(name="main", private _app:NoteworthyApp){
 		super(name);
 	}
 
@@ -72,7 +74,7 @@ export default class Main extends Route {
 		if (global.isQuitting) { return; }
 		// otherwise, we need to decide whether it's OK to quit
 		event.preventDefault();
-		global.ipc.handle("lifecycle", "requestAppQuit");
+		this._app.handle("lifecycle", "requestAppQuit");
 	}
 
 	__focus = () => {

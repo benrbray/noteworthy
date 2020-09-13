@@ -9,7 +9,7 @@ import { EventEmitter } from "events";
 // project imports
 import Main from "./windows/main";
 import Window from "./windows/window";
-import { MainIpc_FileHandlers, MainIpc_TagHandlers, MainIpc_DialogHandlers, MainIpc_LifecycleHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, MainIpcHandlers, MainIpcChannel, MainIpcEvents } from "./MainIPC";
+import { MainIpc_FileHandlers, MainIpc_TagHandlers, MainIpc_DialogHandlers, MainIpc_LifecycleHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, MainIpcHandlers, MainIpcChannel } from "./MainIPC";
 import FSAL from "./fsal/fsal";
 import * as FSALDir from "./fsal/fsal-dir";
 import { CrossRefPlugin } from "./plugins/crossref-plugin";
@@ -106,44 +106,6 @@ export default class NoteworthyApp extends EventEmitter {
 			console.log(`MainIPC :: handling event :: ${channel}, ${key}`);
 			return this.handle(channel, key, data);
 		});
-
-		global.ipc = {
-			/**
-			 * Executes a command in the main process.
-			 * @param cmd The command to be sent
-			 * @param arg An optional object with data.
-			 */
-			handle: async <T extends MainIpcChannel>(channel:T, cmd: FunctionPropertyNames<MainIpcHandlers[T]>, arg?: any) => {
-				return this.handle(channel, cmd, arg);
-			},
-			/**
-			 * Sends an arbitrary command to the renderer.
-			 * @param cmd The command to be sent
-			 * @param arg An optional object with data.
-			 */
-			send: (cmd: RendererIpcEvents, arg?: any): void => { 
-				if(this._renderProxy !== null){
-					this._renderProxy[cmd](arg);
-				} else {
-					throw new Error("app :: no renderer to send events to!")
-				}
-			},
-			/**
-			 * Sends a message to the renderer and displays it as a notification.
-			 * @param  {String} msg The message to be sent.
-			 * @return {void}       Does not return.
-			 */
-			notify: (msg:string):void => { this.handle("dialog", "showNotification", msg); },
-			/**
-			 * Sends an error to the renderer process that should be displayed using
-			 * a dedicated dialog window (is used, e.g., during export when Pandoc
-			 * throws potentially a lot of useful information for fixing problems in
-			 * the source files).
-			 * @param  {Object} msg        The error object
-			 * @return {void}            Does not return.
-			 */
-			notifyError: (msg:any): void => { this.handle("dialog", "showError", msg); }
-		}
 	}
 
 	initFSAL(){
@@ -190,7 +152,7 @@ export default class NoteworthyApp extends EventEmitter {
 			/** @todo handle window exists? */
 		}
 		console.log("app :: load")
-		this.window = new Main();
+		this.window = new Main("main", this);
 		this.window.init();
 
 		this._renderProxy = invokerFor<RendererIpcHandlers>(
@@ -408,12 +370,26 @@ export default class NoteworthyApp extends EventEmitter {
 
 	// EVENTS //////////////////////////////////////////////
 
-	//async handle<S extends MainIpcHandlerChannel, T extends MainIpcHandlers[S]>(channel:S, name: T, data: Parameters<MainIpcHandlers[S][T]>[0]) {
+	/** @todo (9/13/20) ideally we would write something like this:
+	 *     
+	 *      async handle<S extends MainIpcChannel, T extends MainIpcEvents[S]>
+	 *     
+	 *   where MainIpcEvents is a mapped type
+	 *       
+	 *       export type MainIpcEvents = {
+	 *           [K in (keyof MainIpcHandlers)] : FunctionPropertyNames<MainIpcHandlers[K]>
+	 *       }
+	 *   
+	 *   this would let us modify the notion of "what constitutes an event name" 
+	 *   without having to manually update the signature of handle().
+	 *   
+	 *   However, this won't typecheck!  We need correlated record types yet again!!!
+	 */
 	async handle<S extends MainIpcChannel, T extends FunctionPropertyNames<MainIpcHandlers[S]>>(
 			channel:S,
 			name: T,
 			/** @todo now we only take the FIRST parameter of each handler -- should we take them all? */
-			data: Parameters<MainIpcHandlers[S][T]>[0]
+			data?: Parameters<MainIpcHandlers[S][T]>[0]
 	) {
 		/** @remark (6/25/20) cannot properly type-check this call
 		 *  without support for "correlated record types", see e.g.

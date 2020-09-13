@@ -28,34 +28,6 @@ interface IAppManager {
 	getFile: (fileDesc:IFileDesc)=>IFileWithContents;
 }
 
-interface IIPCManager {
-	/**
-	 * Sends an arbitrary message to the renderer.
-	 * @param cmd The command to be sent
-	 * @param arg An optional object with data.
-	 */
-	send: (cmd: import("src/renderer/RendererIPC").RendererIpcEvents, arg?: Object) => void,
-	/**
-	 * Sends an arbitrary message to the renderer.
-	 * @param cmd The command to be sent
-	 * @param arg An optional object with data.
-	 */
-	handle: <T extends import("src/main/MainIPC").MainIpcChannel>(channel:T, cmd: import("src/common/ipc").FunctionPropertyNames<import("src/main/MainIPC").MainIpcHandlers[T]>, arg?: Object) => void;
-	/**
-	 * Sends a message to the renderer and displays it as a notification.
-	 * @param msg The message to be sent.
-	 */
-	notify: (msg:string) => void,
-	/**
-	 * Sends an error to the renderer process that should be displayed using
-	 * a dedicated dialog window (is used, e.g., during export when Pandoc
-	 * throws potentially a lot of useful information for fixing problems in
-	 * the source files).
-	 * @param  msg The error object
-	 */
-	notifyError: (msg:Object) => void;
-}
-
 interface IWatchdog {
 	addPath: (p:string) => void;
 	ignoreNext: (event, path:string) => void;
@@ -64,6 +36,7 @@ interface IWatchdog {
 	off: (event, callback: ((...args: any[]) => void)) => void;
 }
 
+/** @todo (9/13/20) remove as many globals as possible */
 declare namespace NodeJS {
 	interface Global {
 		isQuitting?: boolean;
@@ -71,7 +44,6 @@ declare namespace NodeJS {
 		tags:ITagManager;
 		application:IAppManager;
 		watchdog:IWatchdog;
-		ipc:IIPCManager;
 	}
 }
 

@@ -17,17 +17,18 @@ import Settings from "@common/settings";
 
 ////////////////////////////////////////////////////////////
 
-function makeFileMenu(): MenuItemConstructorOptions {
+function makeFileMenu(app:NoteworthyApp): MenuItemConstructorOptions {
+	/** @todo (9/13/20) don't keep `app` arg in closures!! */
 	return {
 		label: "File",
 		submenu: [
 			{
 				label: "Open Folder...",
-				click: () => { global.ipc.handle("dialog", "dialogFolderOpen"); }
+				click: () => { app.handle("dialog", "dialogFolderOpen"); }
 			},
 			{
 				label: "Open File...",
-				click: () => { global.ipc.handle("dialog", "dialogFileOpen"); }
+				click: () => { app.handle("dialog", "dialogFileOpen"); }
 			},
 			{
 				label: "Close All",
@@ -38,11 +39,17 @@ function makeFileMenu(): MenuItemConstructorOptions {
 			},
 			{
 				label: "Save",
-				click: () => { global.ipc.send("menuFileSave") }
+				click: () => {
+					if(!app._renderProxy){ console.error("no proxy!"); return; }
+					app._renderProxy.menuFileSave()
+				}
 			},
 			{
 				label: "Save As...",
-				click: () => { global.ipc.send("menuFileSaveAs"); }
+				click: () => {
+					if(!app._renderProxy){ console.error("no proxy!"); return; }
+					app._renderProxy.menuFileSaveAs()
+				}
 			},
 			{
 				type: "separator"
@@ -171,14 +178,14 @@ async function makeThemeMenu(app:NoteworthyApp): Promise<MenuItemConstructorOpti
 	};
 }
 
-function makeWindowMenu(): MenuItemConstructorOptions {
+function makeWindowMenu(app:NoteworthyApp): MenuItemConstructorOptions {
 	return { 
 		label: "Window",
 		submenu: [
 			{ role: "minimize" },
 			{
 				label: "Close",
-				click: () => { global.ipc.handle("lifecycle", "requestAppQuit") }
+				click: () => { app.handle("lifecycle", "requestAppQuit") }
 			},
 			{ role: "zoom", visible: is.macos }
 		]
@@ -210,12 +217,12 @@ function makeHelpMenu(): MenuItemConstructorOptions {
 
 export async function makeAppMenuTemplate(app:NoteworthyApp): Promise<MenuItemConstructorOptions[]> {
 	return [
-		makeFileMenu(),
+		makeFileMenu(app),
 		makeEditMenu(),
 		makeParagraphMenu(),
 		makeViewMenu(),
 		await makeThemeMenu(app),
-		makeWindowMenu(),
+		makeWindowMenu(app),
 		makeHelpMenu()
 	];
 }
