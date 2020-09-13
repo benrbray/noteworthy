@@ -22,6 +22,8 @@ import { RendererIpcHandlers } from "@renderer/RendererIPC";
 import { makeAppMenuTemplate } from "./menus/app-menu";
 import { promises as fs } from "fs";
 import Settings, { ThemeId } from "@common/settings";
+import { WorkspaceService, WorkspaceEvent } from "./workspace/workspace-service";
+import { CrossRefService } from "./plugins/crossref-service";
 
 // defined by electron-webpack
 declare const __static:string;
@@ -35,22 +37,31 @@ export default class NoteworthyApp extends EventEmitter {
 	_renderProxy: null | RendererIpcHandlers;
 	/** handlers for events RECEIVED from the render process */
 	_eventHandlers: MainIpcHandlers;
-	/** file system abstraction layer */
-	_fsal:FSAL;
 	/** supports working from a single root directory */
 	private _workspace: null | Workspace;
 
-	constructor(){
+	constructor(
+		/** file system abstraction layer */
+		private _fsal:FSAL,
+		private _workspaceService:WorkspaceService,
+		private _crossRefService:CrossRefService
+	){
 		super();
-
 		this._renderProxy = null;
 
 		this._eventHandlers = this.makeHandlers();
-		this._fsal = new FSAL();
 		this._workspace = null;
 
 		// bind event handlers
 		this.handleChokidarEvent = this.handleChokidarEvent.bind(this);
+
+
+		/** @todo (9/13/20) type-checked workspace events */
+		this._workspaceService.on(WorkspaceEvent.FILETREE_CHANGED,
+			(fileTree: IDirEntryMeta[]) => {
+				this._renderProxy?.fileTreeChanged(fileTree);
+			}
+		);
 
 		this.init();
 		this.attachEvents();
@@ -70,13 +81,13 @@ export default class NoteworthyApp extends EventEmitter {
 	makeHandlers(): MainIpcHandlers {
 		// handlers with no dependencies
 		let lifecycleHandlers = new MainIpc_LifecycleHandlers(this);
-		let fileHandlers = new MainIpc_FileHandlers(this);
+		let fileHandlers = new MainIpc_FileHandlers(this, this._fsal, this._workspaceService);
 		let themeHandlers = new MainIpc_ThemeHandlers(this);
 		let shellHandlers = new MainIpc_ShellHandlers(this);
 
 		// handlers with a single dependency
-		let dialogHandlers = new MainIpc_DialogHandlers(this, fileHandlers);
-		let tagHandlers = new MainIpc_TagHandlers(this, fileHandlers);
+		let dialogHandlers = new MainIpc_DialogHandlers(this, this._workspaceService, fileHandlers);
+		let tagHandlers = new MainIpc_TagHandlers(this, this._workspaceService, this._crossRefService, fileHandlers);
 
 		return {
 			lifecycle: lifecycleHandlers,
@@ -91,14 +102,8 @@ export default class NoteworthyApp extends EventEmitter {
 	init(){
 		// services
 		this.initIPC();
-		this.initFSAL();
-
 		// providers
 		this.initThemes();
-
-		// menus
-		this.initContextMenu();
-		this.initMenu();
 	}
 
 	initIPC(){
@@ -108,25 +113,12 @@ export default class NoteworthyApp extends EventEmitter {
 		});
 	}
 
-	initFSAL(){
-		this._fsal.init();
-	}
-
 	initThemes(){
 		// ensure theme folder exists
 		let themeFolder = this.getThemeFolder();
 		fs.mkdir(themeFolder)
 			.then(()=>  { console.log("app :: theme folder created at", themeFolder);        })
 			.catch(()=> { console.log("app :: theme folder already exists at", themeFolder); });
-	}
-
-	initContextMenu(){}
-	
-	async initMenu(){
-		console.log("app :: initMenu()")
-		const appMenuTemplate = await makeAppMenuTemplate(this);
-		const appMenu = Menu.buildFromTemplate(appMenuTemplate);
-		Menu.setApplicationMenu(appMenu);
 	}
 
 	async initDebug(){}
@@ -141,8 +133,11 @@ export default class NoteworthyApp extends EventEmitter {
 		// announce globally that we're actually quitting!
 		global.isQuitting = true;
 		// clean up
+		/** @todo (9/13/20) these are global services, 
+		 *    is it actually appropriate to destroy them here?
+		 */
 		this.detach__beforeQuit();
-		this.closeWorkspace()
+		this._workspaceService.closeWorkspace()
 		this._fsal.destroy();
 		app.quit();
 	}
@@ -160,94 +155,6 @@ export default class NoteworthyApp extends EventEmitter {
 			IpcEvents.RENDERER_INVOKE, // channel
 			"main->render"             // log prefix
 		);
-	}
-
-	// == Workspaces ==================================== //
-
-	getWorkspaceDir(): (IDirectory | null) {
-		return this._workspace && this._workspace.dir;
-	}
-
-	async setWorkspaceDir(dirPath:string):Promise<boolean>{
-		console.log("app :: setWorkspaceDir() ::", dirPath);
-		// close active workspace
-		this.closeWorkspace();
-		
-		// define plugins
-		let plugins: WorkspacePlugin[] = [
-			new CrossRefPlugin(this)
-		];
-
-		// get directory info
-		/** @todo (9/12/20) replace static call with "FsalService" object
-		 * > might help to make dependencies more clear
-		 * > more mockable
-		 */
-		let dir:IDirectory = await FSALDir.parseDir(dirPath);
-
-		// load (possibly stale) workspace metadata from file
-		/** @todo (9/12/20) replace static call with "WorkspaceService" object
-		 * > might help to make dependencies more clear
-		 * > more mockable
-		 */
-		this._workspace = await Workspace.fromDir(dir, plugins, true);
-		if (!this._workspace) {
-			console.error("fsal :: unknown error opening workspace")
-			return false;
-		}
-
-		// watch workspace directory
-		this._fsal.watch(dir.path);
-
-		// check for changes between current file list and saved metadata,
-		// and process added/changed/deleted files if needed
-		let result = await this._workspace?.update();
-
-		// emit change event
-		this._renderProxy?.fileTreeChanged(this.getFileTree());
-		
-		return true === result;
-	}
-
-	get workspace():Workspace|null {
-		return this._workspace;
-	}
-
-	async closeWorkspace(persist:boolean = true): Promise<boolean> {
-		if(!this._workspace){ return true; }
-		this._fsal.unwatch(this._workspace.dir.path);
-		this._fsal.unloadAll();
-		this._workspace.close(persist);
-		this._workspace = null;
-		return true;
-	}
-
-	/**
-	 * Convert a workspace-relative path to an absolute path.
-	 * @returns An absolute path, or NULL if no workspace exists.
-	 */
-	resolveWorkspaceRelativePath(relPath: string): string | null {
-		let workspacePath = this.getWorkspaceDir()?.path;
-		if (!workspacePath) { return null; }
-
-		/** @todo (6/27/20) error if the resulting abs path
-		 * is not inside the workspace (e.g. if relPath="../../..")
-		 */
-		relPath = pathlib.normalize(relPath);
-		return pathlib.join(workspacePath, relPath);
-	}
-
-	// == Files ========================================= //
-
-	getFileByHash(hash: string): (IFileMeta | null) {
-		if (!this._workspace) { return null; }
-		return this._workspace.getFileByHash(hash);
-	}
-
-	getFileTree(): IDirEntryMeta[] {
-		// handle empty workspace
-		if (!this._workspace) { return []; }
-		return this._workspace.getFileTree();
 	}
 
 	// == File Types ==================================== //
@@ -272,27 +179,6 @@ export default class NoteworthyApp extends EventEmitter {
 	}
 
 	// == Tags ========================================== //
-
-	/**
-	 * @returns NULL when the plugin is not available, otherwise
-	 *    a list of hashes for files which define this tag
-	 * @todo (6/28/20) how to separate plugin code from app code?
-	 */
-	getDefsForTag(tag:string):string[]|null {
-		if(!this._workspace) { return []; }
-		let crossRefPlugin = this._workspace.getPluginByName("crossref_plugin");
-		return crossRefPlugin && crossRefPlugin.getDefsForTag(tag);
-	}
-	/**
-	 * @returns NULL when the plugin is not available, otherwise
-	 *    a list of hashes for files which define this tag
-	 * @todo (6/28/20) how to separate plugin code from app code?
-	 */
-	getTagMentions(tag:string):string[]|null {
-		if(!this._workspace) { return []; }
-		let crossRefPlugin = this._workspace.getPluginByName("crossref_plugin");
-		return crossRefPlugin && crossRefPlugin.getTagMentions(tag);
-	}
 
 	// == Themes ======================================== //
 
@@ -406,7 +292,7 @@ export default class NoteworthyApp extends EventEmitter {
 		/** @todo (6/19/20) what to do about file changes when no workspace active? */
 		await this._workspace?.handleChangeDetected(event, info);
 		// file tree changed
-		await this._renderProxy?.fileTreeChanged(this.getFileTree());
+		await this._renderProxy?.fileTreeChanged(this._workspaceService.getFileTree());
 	}
 
 	attachEvents(){
@@ -464,7 +350,8 @@ export default class NoteworthyApp extends EventEmitter {
 
 	__windowAllClosed = () => {
 		console.log("app :: __windowAllClosed");
-		if(is.macos){ return this.initMenu(); };
+		/** @todo (9/13/20) why is this here? */
+		//if(is.macos){ return this.initMenu(); };
 		this.quit();
 	}
 

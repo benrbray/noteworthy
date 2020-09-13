@@ -84,17 +84,14 @@ export function isXrefProvider(resource:unknown):resource is ICrossRefProvider {
 export class CrossRefPlugin implements WorkspacePlugin {
 
 	plugin_name:string = "crossref_plugin";
-	
-	_app:NoteworthyApp;
 
 	// plugin data
 	_doc2tags: DefaultMap<string, Set<string>>;
 	_tag2docs: DefaultMap<string, Set<string>>;
 	_tag2defs: DefaultMap<string, Set<string>>;
 
-	constructor(main:NoteworthyApp){
+	constructor(){
 		console.log(`xref-plugin :: constructor()`);
-		this._app = main;
 
 		// crossref lookups
 		this._doc2tags = new DefaultMap(() => new Set());

@@ -10,6 +10,9 @@ import NoteworthyApp from "./app"
 import { DialogSaveDiscardOptions } from "@common/dialog";
 import { to } from "@common/util/to";
 import { filterNonVoid } from "@common/util/non-void";
+import { WorkspaceService } from "./workspace/workspace-service";
+import FSAL from "./fsal/fsal";
+import { CrossRefService } from "./plugins/crossref-service";
 
 ////////////////////////////////////////////////////////////
 
@@ -43,15 +46,19 @@ export class MainIpc_LifecycleHandlers {
 //// FILE SYSTEM ///////////////////////////////////////////
 
 export class MainIpc_FileHandlers {
-	constructor(private _app:NoteworthyApp){ }
+	constructor(
+		private _app:NoteworthyApp,
+		private _fsal:FSAL,
+		private _workspaceService:WorkspaceService
+	){ }
 
 	// -- Request File Create --------------------------- //
 
 	async requestFileCreate(path:string, contents:string=""):Promise<IFileMeta|null> {
 		/** @todo (6/26/20) check if path in workspace? */
-		return this._app._fsal.createFile(path, contents)
+		return this._fsal.createFile(path, contents)
 			.then(
-				() => { return this._app.workspace?.updatePath(path)||null; },
+				() => { return this._workspaceService.workspace?.updatePath(path)||null; },
 				(reason) => { console.error("error creating file", reason); return null; }
 			)
 	}
@@ -78,8 +85,9 @@ export class MainIpc_FileHandlers {
 
 		// load from hash
 		let fileMeta: IFileMeta | null;
-		if (hash === undefined || !(fileMeta = this._app.getFileByHash(hash))) {
+		if (hash === undefined || !(fileMeta = this._workspaceService.getFileByHash(hash))) {
 			/** @todo (6/20/20) load from arbitrary path */
+			console.log(hash, hash && this._workspaceService.getFileByHash(hash));
 			throw new Error("file loading from arbitrary path not implemented");
 		}
 
@@ -107,7 +115,11 @@ export class MainIpc_FileHandlers {
 
 export class MainIpc_DialogHandlers {
 	/** @todo (9/13/20) break app into multiple parts so we don't need to consume the whole thing */
-	constructor(private _app:NoteworthyApp, private _fileHandlers:MainIpc_FileHandlers){ }
+	constructor(
+		private _app:NoteworthyApp,
+		private _workspaceService:WorkspaceService,
+		private _fileHandlers:MainIpc_FileHandlers
+	){ }
 
 	// -- Show Notification ----------------------------- //
 
@@ -134,7 +146,7 @@ export class MainIpc_DialogHandlers {
 		);
 		if (!dirPaths || !dirPaths.length) return;
 
-		this._app.setWorkspaceDir(dirPaths[0]);
+		this._workspaceService.setWorkspaceDir(dirPaths[0]);
 	}
 
 	// -- Request File Open ----------------------------- //
@@ -209,17 +221,22 @@ export class MainIpc_ThemeHandlers {
 
 export class MainIpc_TagHandlers {
 	/** @todo (9/13/20) break app into multiple parts so we don't need to consume the whole thing */
-	constructor(private _app:NoteworthyApp, private _fileHandlers:MainIpc_FileHandlers){ }
+	constructor(
+		private _app:NoteworthyApp,
+		private _workspaceService:WorkspaceService,
+		private _crossRefService:CrossRefService,
+		private _fileHandlers:MainIpc_FileHandlers
+	){ }
 	
 	async tagSearch(query:string):Promise<IFileMeta[]> {
-		const hashes:string[]|null = this._app.getTagMentions(query);
+		const hashes:string[]|null = this._crossRefService.getTagMentions(query);
 		if(hashes === null){ return []; }
-		return filterNonVoid( hashes.map(hash => (this._app.getFileByHash(hash))) );
+		return filterNonVoid( hashes.map(hash => (this._workspaceService.getFileByHash(hash))) );
 	}
 
 	async getHashForTag(data: { tag: string, create: boolean, directoryHint?:string }):Promise<string|null> {
 		// get files which define this tag
-		let defs: string[] | null = this._app.getDefsForTag(data.tag);
+		let defs: string[] | null = this._crossRefService.getDefsForTag(data.tag);
 		let fileHash: string;
 
 		if (defs == null) {
@@ -247,7 +264,7 @@ export class MainIpc_TagHandlers {
 			 */
 			let filePath: string | null;
 			if(data.directoryHint){ filePath = pathlib.join(data.directoryHint, fileName) }
-			else {                  filePath = this._app.resolveWorkspaceRelativePath(fileName); }
+			else {                  filePath = this._workspaceService.resolveWorkspaceRelativePath(fileName); }
 
 			if (!filePath) {
 				console.error("MainIPC :: could not create file for tag, no active workspace");
@@ -277,7 +294,7 @@ export class MainIpc_TagHandlers {
 	async getFileForTag(data: { tag: string, create: boolean }):Promise<IFileMeta|null> {
 		let fileHash = await this.getHashForTag(data);
 		if (!fileHash) return null;
-		return this._app.getFileByHash(fileHash);
+		return this._workspaceService.getFileByHash(fileHash);
 	}
 
 	async requestTagOpen(data:{tag: string, create:boolean, directoryHint?:string}):Promise<void> {
