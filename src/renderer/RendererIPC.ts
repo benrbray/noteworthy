@@ -1,6 +1,5 @@
 import Renderer from "./render";
 import { IPossiblyUntitledFile, IDirEntryMeta } from "@common/fileio";
-import { getStatic } from "@common/static";
 
 ////////////////////////////////////////////////////////////
 

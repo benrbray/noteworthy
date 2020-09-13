@@ -18,7 +18,7 @@ import { Workspace } from "./workspace/workspace";
 import { invokerFor, FunctionPropertyNames } from "@common/ipc";
 import { IDirectory, IFileMeta, IDirEntryMeta } from "@common/fileio";
 import { FsalEvents, AppEvents, ChokidarEvents, IpcEvents } from "@common/events";
-import { RendererIpcEvents, RendererIpcHandlers } from "@renderer/RendererIPC";
+import { RendererIpcHandlers } from "@renderer/RendererIPC";
 import { makeAppMenuTemplate } from "./menus/app-menu";
 import { promises as fs } from "fs";
 import Settings, { ThemeId } from "@common/settings";
@@ -474,7 +474,7 @@ export default class NoteworthyApp extends EventEmitter {
 		this.load();
 	}
 
-	__beforeQuit = (event:Event) => {
+	__beforeQuit = () => {
 		console.log("app :: __beforeQuit")
 		if (!this.window || !this.window.window) { return; }
 		// TODO: this line comes from Notable, but it seems to

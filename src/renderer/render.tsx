@@ -1,15 +1,14 @@
 // node imports
 import * as pathlib from "path";
-import { ipcRenderer, IpcRendererEvent } from "electron";
+import { ipcRenderer } from "electron";
 
 // project imports
 import { MainIpcHandlers, MainIpc_LifecycleHandlers, MainIpc_FileHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, MainIpc_DialogHandlers, MainIpc_TagHandlers } from "@main/MainIPC";
 import { RendererIpcEvents, RendererIpcHandlers } from "./RendererIPC";
-import { IPossiblyUntitledFile, IFileWithContents, IUntitledFile, IFileMeta, IDirEntryMeta } from "@common/fileio";
+import { IPossiblyUntitledFile, IDirEntryMeta } from "@common/fileio";
 import { invokerFor } from "@common/ipc";
 import { to } from "@common/util/to";
 import { IpcEvents } from "@common/events";
-import { getStatic } from "@common/static";
 
 // editor importsimport { ProseMirrorEditor } from "./editors/editor-prosemirror";
 import { ProseMirrorEditor } from "./editors/editor-prosemirror";
@@ -25,7 +24,7 @@ import { TagSearch } from "./ui/tag-search";
 
 // solid js imports
 import { render } from "solid-js/dom";
-import { State as SolidState, SetStateFunction, createState, createEffect, createSignal, Suspense, Switch, Match, For } from "solid-js";
+import { State as SolidState, SetStateFunction, createState, Suspense, Switch, Match, For } from "solid-js";
 import { CalendarTab } from "./ui/calendarTab";
 
 ////////////////////////////////////////////////////////////
