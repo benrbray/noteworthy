@@ -302,6 +302,8 @@ export class MainIpc_ShellHandlers {
 	}
 }
 
+////////////////////////////////////////////////////////////
+
 export interface MainIpcHandlers {
 	lifecycle: MainIpc_LifecycleHandlers;
 	file:      MainIpc_FileHandlers;
