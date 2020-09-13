@@ -22,7 +22,6 @@ class Window {
 	init(){
 		this.initWindow();
 		this.initDebug();
-		this.initMenu();
 
 		this.load();
 		this.events();
@@ -56,7 +55,6 @@ class Window {
 		/** @todo get rid of lodash */
 		options = _.merge(dimensions, {
 			frame: true, //!is.macos,
-			backgroundColor: (Settings.get('theme') === 'light') ? '#F7F7F7' : '#0F0F0F', //TODO: This won't scale with custom themes
 			show: false,
 			title: "Noteworthy", //pkg.productName,
 			//titleBarStyle: 'hiddenInset',
@@ -77,7 +75,6 @@ class Window {
 		this.window.removeAllListeners();
 	}
 
-	initMenu(){ }
 	load(){ }
 
 	// EVENTS //////////////////////////////////////////////
@@ -139,7 +136,6 @@ class Window {
 
 	__focused = () => {
 		this._didFocus = true;
-		this.initMenu();
 	}
 }
 

@@ -218,6 +218,7 @@ export class Workspace implements IDisposable {
 		if (index > -1) { this._plugins.splice(index, 1); }
 	}
 
+	/** @todo fix typings for plugin by name? */
 	getPluginByName(name:"crossref_plugin"):CrossRefPlugin|null;
 	getPluginByName(name:string):WorkspacePlugin|null {
 		/** @todo (6/28/20) use an ordered dict to store plugins instead? */

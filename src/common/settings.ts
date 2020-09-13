@@ -6,26 +6,17 @@ import { darkMode } from 'electron-util';
 
 /* SETTINGS */
 
-const Settings = new Store({
+/** @todo (9/12/20) dark mode (see `darkMode.isEnabled`) */
+export type ThemeId = { type: "default", id:string } | { type: "custom", path:string };
+
+type NoteworthySettings = {
+	theme: ThemeId
+}
+
+const Settings = new Store<NoteworthySettings>({
 	name: '.noteworthy',
-	cwd: os.homedir(),
 	defaults: {
-		cwd: undefined,
-		monaco: {
-			editorOptions: {
-				minimap: {
-					enabled: false
-				},
-				lineNumbers: 'off',
-				wordWrap: 'bounded'
-			}
-		},
-		sorting: {
-			by: 'title',
-			type: 'ascending'
-		},
-		theme: darkMode.isEnabled ? 'dark' : 'light',
-		tutorial: false // Did we import the tutorial yet?
+		theme: { type: "default", id: "default-light" }
 	}
 });
 

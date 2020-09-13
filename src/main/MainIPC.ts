@@ -188,6 +188,12 @@ export class MainIpcHandlers {
 		if(file) { this._app._renderProxy?.fileDidOpen(file); }
 	}
 
+	//// THEMES ////////////////////////////////////////////
+
+	async requestThemeRefresh() {
+		this._app.setTheme();
+	}
+
 	//// TAGS //////////////////////////////////////////////
 
 	// -- Request External Link Open -------------------- //

@@ -14,11 +14,10 @@ class Route extends Window {
 	load() {
 		console.log("route :: load", __dirname)
 		const route = this.name;
-		const theme = Settings.get('theme');
 
 		if (Environment.isDevelopment) {
 			const { protocol, hostname, port } = Environment.wds;
-			this.window.loadURL(`${protocol}://${hostname}:${port}?route=${route}&theme=${theme}`);
+			this.window.loadURL(`${protocol}://${hostname}:${port}?route=${route}`);
 		} else {
 			this.window.loadURL(formatURL({
 				pathname: path.join(__dirname, 'index.html'),
@@ -26,7 +25,6 @@ class Route extends Window {
 				slashes: true,
 				query: {
 					route,
-					theme
 				}
 			}));
 		}

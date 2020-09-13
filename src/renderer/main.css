@@ -9,6 +9,7 @@
 	/** Font Usage **/
 	--font-ui: var(--sans-font);
 	--font-editor: var(--sans-font);
+	--font-size: 1.2rem;
 
 	--line-height: 1.2em;
 	--line-height-list: var(--line-height);

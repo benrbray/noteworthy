@@ -27,16 +27,6 @@
 	--color-heading-level: #616e79;
 }
 
-/* ==== SIDEBAR ========================================= */
-
-
-
-/* ==== EDITOR ========================================== */
-
-#editor {
-	color: var(--color-text);
-}
-
 /* == Basic Element Styles ============================== */
 
 /* headings */
@@ -48,46 +38,13 @@
 #editor h6::before { content: "###### "; color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
 
 #editor p {
-	margin-left: 0.5em;
-	font-size: 18px;
-	font-family: var(--font-main);
 	text-align: justify;
-}
-
-/* links */
-#editor a { color: var(--color-link); text-decoration: none; }
-
-/* underline */
-#editor em.ul {
-	font-style: normal;
-	text-decoration: underline;
 }
 
 /* blockquote */
 #editor blockquote {
 	border-left: 0.6em solid #eee;
 	color: var(--color-text-faint);
-}
-
-/* definition */
-#editor dfn, #editor .definition {
-	color: var(--color-definition);
-	font-weight: bold;
-}
-
-/* code block */
-#editor code {
-	padding: 0.5em;
-	background-color: var(--color-bg-2);
-	font-family: "Consolas", "Ubuntu Mono", monospace;
-	font-size: 0.9em;
-	text-align: left;
-}
-
-/* inline code */
-#editor p code {
-	display: inline;
-	padding: 0;
 }
 
 /* -- wikilinks, tags, citations ------------------------ */
@@ -98,7 +55,7 @@
 .wikilink::after  { content: "]]"; color: var(--color-inline-delims); letter-spacing: -0.1em}
 
 /* tags */
-.tag { font-family: var(--font-main); color: steelblue; }
+.tag { font-family: var(--font-editor); color: steelblue; }
 .tag::before { content: "#"; font-family: var(--code-font);}
 
 /* citation */

@@ -2,7 +2,7 @@
 import * as pathlib from "path";
 
 // electron imports
-import { app, ipcMain, Event, IpcMainInvokeEvent } from "electron";
+import { app, ipcMain, Event, IpcMainInvokeEvent, Menu } from "electron";
 import { enforceMacOSAppLocation, is } from 'electron-util';
 import { EventEmitter } from "events";
 
@@ -19,6 +19,13 @@ import { senderFor, invokerFor } from "@common/ipc";
 import { IDirectory, IFileMeta, IDirEntryMeta } from "@common/fileio";
 import { FsalEvents, AppEvents, ChokidarEvents, IpcEvents } from "@common/events";
 import { RendererIpcEvents, RendererIpcHandlers } from "@renderer/RendererIPC";
+import { makeAppMenuTemplate } from "./menus/app-menu";
+import { promises as fs } from "fs";
+import Settings, { ThemeId } from "@common/settings";
+import { getStatic } from "@common/static";
+
+// defined by electron-webpack
+declare const __static:string;
 
 ////////////////////////////////////////////////////////////
 
@@ -55,6 +62,9 @@ export default class NoteworthyApp extends EventEmitter {
 		// services
 		this.initIPC();
 		this.initFSAL();
+
+		// providers
+		this.initThemes();
 
 		// menus
 		this.initContextMenu();
@@ -108,8 +118,23 @@ export default class NoteworthyApp extends EventEmitter {
 		this._fsal.init();
 	}
 
+	initThemes(){
+		// ensure theme folder exists
+		let themeFolder = this.getThemeFolder();
+		fs.mkdir(themeFolder)
+			.then(()=>  { console.log("app :: theme folder created at", themeFolder);        })
+			.catch(()=> { console.log("app :: theme folder already exists at", themeFolder); });
+	}
+
 	initContextMenu(){}
-	initMenu(){}
+	
+	async initMenu(){
+		console.log("app :: initMenu()")
+		const appMenuTemplate = await makeAppMenuTemplate(this);
+		const appMenu = Menu.buildFromTemplate(appMenuTemplate);
+		Menu.setApplicationMenu(appMenu);
+	}
+
 	async initDebug(){}
 
 	// == Quitting ====================================== //
@@ -136,12 +161,6 @@ export default class NoteworthyApp extends EventEmitter {
 		this.window = new Main();
 		this.window.init();
 
-		// deprecated 
-		// this._renderProxy = senderFor<RendererIpcHandlers>(
-		// 	this.window.window.webContents,
-		// 	"mainCommand", "main->render"
-		// );
-
 		this._renderProxy = invokerFor<RendererIpcHandlers>(
 			this.window,
 			IpcEvents.RENDERER_INVOKE, "main->render"
@@ -158,16 +177,24 @@ export default class NoteworthyApp extends EventEmitter {
 		console.log("app :: setWorkspaceDir() ::", dirPath);
 		// close active workspace
 		this.closeWorkspace();
-
-		// get directory info
-		let dir:IDirectory = await FSALDir.parseDir(dirPath);
 		
 		// define plugins
 		let plugins: WorkspacePlugin[] = [
 			new CrossRefPlugin(this)
 		];
 
+		// get directory info
+		/** @todo (9/12/20) replace static call with "FsalService" object
+		 * > might help to make dependencies more clear
+		 * > more mockable
+		 */
+		let dir:IDirectory = await FSALDir.parseDir(dirPath);
+
 		// load (possibly stale) workspace metadata from file
+		/** @todo (9/12/20) replace static call with "WorkspaceService" object
+		 * > might help to make dependencies more clear
+		 * > more mockable
+		 */
 		this._workspace = await Workspace.fromDir(dir, plugins, true);
 		if (!this._workspace) {
 			console.error("fsal :: unknown error opening workspace")
@@ -270,6 +297,80 @@ export default class NoteworthyApp extends EventEmitter {
 		if(!this._workspace) { return []; }
 		let crossRefPlugin = this._workspace.getPluginByName("crossref_plugin");
 		return crossRefPlugin && crossRefPlugin.getTagMentions(tag);
+	}
+
+	// == Themes ======================================== //
+
+	async setTheme(theme:ThemeId|null = null) {
+		// use current theme if none provided
+		if(theme == null){ theme = Settings.get("theme"); }
+
+		// default vs custom themes
+		if(theme.type == "default"){
+			// find default theme
+			/** @todo (9/12/20) this should be done elsewhere, refactor theme stuff into its own file */
+			let themeCssPath:string = "";
+			switch(theme.id){
+				case "default-dark"  : themeCssPath = pathlib.resolve(__static, 'themes/theme-default-dark.css');  break;
+				case "default-light" : themeCssPath = pathlib.resolve(__static, 'themes/theme-default-light.css'); break;
+				case "typewriter-light" : themeCssPath = pathlib.resolve(__static, 'themes/theme-typewriter-light.css'); break;
+				case "academic-light" : themeCssPath = pathlib.resolve(__static, 'themes/theme-academic-light.css'); break;
+				default: console.error(`theme '${theme.id}' not found`); return;
+			}
+
+			// read and apply theme
+			let cssString:string = await fs.readFile(themeCssPath, { encoding : 'utf8' });
+			this._renderProxy?.applyThemeCss(cssString);
+
+			// save theme to user settings
+			Settings.set("theme", theme);
+		} else if(theme.type == "custom"){
+			// read and apply theme
+			let cssString:string = await fs.readFile(theme.path, { encoding : 'utf8' });
+			this._renderProxy?.applyThemeCss(cssString);
+			// save theme to user settings
+			Settings.set("theme", theme);
+		}
+	}
+
+	getThemeFolder(): string {
+		/** @todo (9/12/20)
+		 * userData folder is different in develop vs production,
+		 * still need to test that this works in production
+		 */
+		return pathlib.join(app.getPath("userData"), "themes");
+	}
+
+	async getThemes() {
+		return {
+			"default" : [
+				{ title: "Default Light", id: "default-light" },
+				{ title: "Default Dark",  id: "default-dark" },
+				{ title: "Typewriter Light",  id: "typewriter-light" },
+				{ title: "Academic Light",  id: "academic-light" },
+			],
+			"custom" : await this.getCustomThemes()
+		};
+	}
+
+	async getCustomThemes(): Promise<{ title:string, path:string }[]> {
+		// attempt to read themes folder, but fail gracefully when it does not exist
+		let themeFolder = this.getThemeFolder();
+
+		let filePaths:string[] = [];
+		try { 
+			filePaths = await fs.readdir(themeFolder);
+		} catch(err){
+			console.error("themes folder does not exist\n", err);
+		}
+
+		// filter .css files
+		return filePaths
+			.filter(fileName => (pathlib.extname(fileName)==".css"))
+			.map(fileName => {
+				let path = pathlib.join(themeFolder, fileName);
+				return ({ title: fileName, path: path })
+			});
 	}
 
 	// EVENTS //////////////////////////////////////////////

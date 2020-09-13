@@ -1,4 +1,8 @@
-
+/* tab-size */
+#editor {
+	color: var(--color-text);
+	tab-size: 4;
+}
 
 /* image */
 #editor img {
@@ -8,14 +12,46 @@
 	max-height: 70vh;
 }
 
-/* tab-size */
-#editor {
-	tab-size: 4;
+#editor p {
+	margin-left: 0.5em;
+	font-family: var(--font-editor);
+	font-size: var(--font-size);
 }
 
 /* code */
-#editor pre      { display: block; }
+#editor pre      { font-family: var(--code-font); display: block; }
+#editor code     { font-family: var(--code-font); background-color: var(--color-bg-2); }
 #editor pre code { display: block; }
+
+/* inline code */
+#editor p code {
+	display: inline;
+	padding: 0;
+}
+
+/* code block */
+#editor code {
+	padding: 0.5em;
+	background-color: var(--color-bg-2);
+	font-family: "Consolas", "Ubuntu Mono", monospace;
+	font-size: 0.9em;
+	text-align: left;
+}
+
+/* definition */
+#editor dfn, #editor .definition {
+	color: var(--color-definition);
+	font-weight: bold;
+}
+
+/* links */
+#editor a { color: var(--color-link); text-decoration: none; }
+
+/* underline */
+#editor em.ul {
+	font-style: normal;
+	text-decoration: underline;
+}
 
 /* == Style Modifications when CTRL is Pressed ========== */
 

@@ -1,3 +1,7 @@
+:root {
+	--font-editor: var(--code-font);
+}
+
 /* == Basic Element Styles ============================== */
 
 /* headings */
@@ -8,10 +12,6 @@
 #editor h5::before { content: "##### ";  color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
 #editor h6::before { content: "###### "; color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
 
-#editor p {
-	text-align: justify;
-}
-
 /* blockquote */
 #editor blockquote {
 	border-left: 0.6em solid #eee;
@@ -21,7 +21,7 @@
 /* -- wikilinks, tags, citations ------------------------ */
 
 /* wikilinks */
-.wikilink { font-family: var(--code-font); font-size: 0.95em; color: var(--color-wikilink); }
+.wikilink { font-family: var(--code-font); color: var(--color-wikilink); }
 .wikilink::before { content: "[["; color: var(--color-inline-delims); letter-spacing: -0.1em}
 .wikilink::after  { content: "]]"; color: var(--color-inline-delims); letter-spacing: -0.1em}
 
@@ -30,6 +30,6 @@
 .tag::before { content: "#"; font-family: var(--code-font);}
 
 /* citation */
-.citation { font-family: var(--code-font); font-size: 0.95em; color: seagreen; }
+.citation { font-family: var(--code-font); color: seagreen; }
 .citation::before { content: "@["; color: var(--color-inline-delims); letter-spacing: -0.1em; font-family: var(--code-font);}
 .citation::after  { content: "]";  color: var(--color-inline-delims); letter-spacing: -0.1em; font-family: var(--code-font);}

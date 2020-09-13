@@ -34,6 +34,7 @@ interface IRendererState {
 	activeTab: number,
 	activeFile: null|IPossiblyUntitledFile;
 	fileTree: [IFolderMarker, IDirEntryMeta[]][];
+	themeCss: string;
 }
 
 class Renderer {
@@ -62,6 +63,7 @@ class Renderer {
 		this._mainProxy = invokerFor<MainIpcHandlers>(ipcRenderer, "command", "render->main");
 		this._eventHandlers = new RendererIpcHandlers(this);
 
+		/** @todo (9/12/20) this is here for debug purposes only */
 		(window as any).renderer = this;
 
 		/** @todo (6/9/20) propery set modTime/creationTime */
@@ -112,6 +114,7 @@ class Renderer {
 				activeTab: 0,
 				activeFile: null,
 				fileTree:[],
+				themeCss: ""
 			});
 			this._react = { state, setState }
 
@@ -211,15 +214,23 @@ class Renderer {
 				);
 			}
 
-			return (<div id="app">
-				<AppSidebar />
-				<AppContent />
-				<AppFooter />
-			</div>)
+			return (<>
+				<style>{state.themeCss}</style>
+				<div id="app">
+					<AppSidebar />
+					<AppContent />
+					<AppFooter />
+				</div>
+			</>)
 		}
 
 		let mainElt:HTMLElement = document.getElementById("main") as HTMLElement;
 		render(() => <App/>, mainElt);
+
+		/** @todo (9/12/20) the line below requests the CSS only after the UI
+		 * has started rendering.  this is not a great solution, can we do better?
+		 */
+		this._mainProxy.requestThemeRefresh();
 
 		// create shadow dom
 		let contentElt = document.getElementById("content") as HTMLElement;
@@ -230,13 +241,6 @@ class Renderer {
 		editorElt.setAttribute("id", "editor");
 		editorElt.setAttribute("spellcheck", "false");
 		contentElt.appendChild(editorElt);
-
-		// css
-		let cssPath = getStatic('themes/theme-default-light.css');
-		let styleElt = document.createElement("link");
-		styleElt.setAttribute("rel", "stylesheet");
-		styleElt.setAttribute("href", cssPath);
-		document.head.appendChild(styleElt);
 
 		// dom elements
 		this._ui = {
@@ -262,6 +266,10 @@ class Renderer {
 
 	handle<T extends RendererIpcEvents>(name: T, data: Parameters<RendererIpcHandlers[T]>[0]) {
 		return this._eventHandlers[name](data as any);
+	}
+
+	applyThemeCss(cssString:string){
+		this._react?.setState({ themeCss : cssString });
 	}
 
 	async setCurrentFile(file: IPossiblyUntitledFile): Promise<void> {

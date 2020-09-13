@@ -1,5 +1,6 @@
 import Renderer from "./render";
 import { IPossiblyUntitledFile, IDirEntryMeta } from "@common/fileio";
+import { getStatic } from "@common/static";
 
 ////////////////////////////////////////////////////////////
 
@@ -47,6 +48,16 @@ export class RendererIpcHandlers {
 	async requestClose(): Promise<void> {
 		/** @todo (7/12/20) close multiple open files? */
 		return this.requestFileClose();
+	}
+
+	/**
+	 * @todo (9/12/20) Where should static path vs absolute path be resolved?  This is hacky.
+	 * @param data.themeCssPath Path to a theme.css file.
+	 * @param data.isStaticPath When FALSE, expect an absolute path.
+	 *    When TRUE, will resolve the relative path with `getStatic()`
+	 */
+	async applyThemeCss(cssString:string){
+		this._renderer.applyThemeCss(cssString);
 	}
 }
 
