@@ -9,20 +9,19 @@ import { EventEmitter } from "events";
 // project imports
 import Main from "./windows/main";
 import Window from "./windows/window";
-import { MainIpcEvents, MainIpcHandlers } from "./MainIPC";
+import { MainIpc_FileHandlers, MainIpc_TagHandlers, MainIpc_DialogHandlers, MainIpc_LifecycleHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, MainIpcHandlers, MainIpcChannel, MainIpcEvents } from "./MainIPC";
 import FSAL from "./fsal/fsal";
 import * as FSALDir from "./fsal/fsal-dir";
 import { CrossRefPlugin } from "./plugins/crossref-plugin";
 import { WorkspacePlugin } from "./plugins/plugin";
 import { Workspace } from "./workspace/workspace";
-import { senderFor, invokerFor } from "@common/ipc";
+import { invokerFor, FunctionPropertyNames } from "@common/ipc";
 import { IDirectory, IFileMeta, IDirEntryMeta } from "@common/fileio";
 import { FsalEvents, AppEvents, ChokidarEvents, IpcEvents } from "@common/events";
 import { RendererIpcEvents, RendererIpcHandlers } from "@renderer/RendererIPC";
 import { makeAppMenuTemplate } from "./menus/app-menu";
 import { promises as fs } from "fs";
 import Settings, { ThemeId } from "@common/settings";
-import { getStatic } from "@common/static";
 
 // defined by electron-webpack
 declare const __static:string;
@@ -35,7 +34,7 @@ export default class NoteworthyApp extends EventEmitter {
 	/** proxy for SENDING events to the render process */
 	_renderProxy: null | RendererIpcHandlers;
 	/** handlers for events RECEIVED from the render process */
-	_eventHandlers:MainIpcHandlers;
+	_eventHandlers: MainIpcHandlers;
 	/** file system abstraction layer */
 	_fsal:FSAL;
 	/** supports working from a single root directory */
@@ -45,7 +44,8 @@ export default class NoteworthyApp extends EventEmitter {
 		super();
 
 		this._renderProxy = null;
-		this._eventHandlers = new MainIpcHandlers(this);
+
+		this._eventHandlers = this.makeHandlers();
 		this._fsal = new FSAL();
 		this._workspace = null;
 
@@ -57,6 +57,36 @@ export default class NoteworthyApp extends EventEmitter {
 	}
 
 	// INITIALIZATION //////////////////////////////////////
+
+	/**
+	 * Here, we perform a kind of manual dependency injection.
+	 * 
+	 * In a larger codebase, a dependency injection framework
+	 * might be appropriate, but our dependence structure is
+	 * simple enough for us to manage dependencies manually.
+	 *
+	 * @todo (9/13/20) re-visit ipc dependency injection
+	 */
+	makeHandlers(): MainIpcHandlers {
+		// handlers with no dependencies
+		let lifecycleHandlers = new MainIpc_LifecycleHandlers(this);
+		let fileHandlers = new MainIpc_FileHandlers(this);
+		let themeHandlers = new MainIpc_ThemeHandlers(this);
+		let shellHandlers = new MainIpc_ShellHandlers(this);
+
+		// handlers with a single dependency
+		let dialogHandlers = new MainIpc_DialogHandlers(this, fileHandlers);
+		let tagHandlers = new MainIpc_TagHandlers(this, fileHandlers);
+
+		return {
+			lifecycle: lifecycleHandlers,
+			file:      fileHandlers,
+			theme:     themeHandlers,
+			shell:     shellHandlers,
+			dialog:    dialogHandlers,
+			tag:       tagHandlers
+		}
+	}
 
 	init(){
 		// services
@@ -72,9 +102,9 @@ export default class NoteworthyApp extends EventEmitter {
 	}
 
 	initIPC(){
-		ipcMain.handle("command", (evt: IpcMainInvokeEvent, key: MainIpcEvents, data: any) => {
-			console.log(`MainIPC :: handling event :: ${key}`);
-			return this.handle(key, data);
+		ipcMain.handle("command", <T extends MainIpcChannel>(evt: IpcMainInvokeEvent, channel: T, key: FunctionPropertyNames<MainIpcHandlers[T]>, data: any) => {
+			console.log(`MainIPC :: handling event :: ${channel}, ${key}`);
+			return this.handle(channel, key, data);
 		});
 
 		global.ipc = {
@@ -83,7 +113,9 @@ export default class NoteworthyApp extends EventEmitter {
 			 * @param cmd The command to be sent
 			 * @param arg An optional object with data.
 			 */
-			handle: async (cmd: MainIpcEvents, arg?: any) => { return this.handle(cmd, arg); },
+			handle: async <T extends MainIpcChannel>(channel:T, cmd: FunctionPropertyNames<MainIpcHandlers[T]>, arg?: any) => {
+				return this.handle(channel, cmd, arg);
+			},
 			/**
 			 * Sends an arbitrary command to the renderer.
 			 * @param cmd The command to be sent
@@ -101,7 +133,7 @@ export default class NoteworthyApp extends EventEmitter {
 			 * @param  {String} msg The message to be sent.
 			 * @return {void}       Does not return.
 			 */
-			notify: (msg:string):void => { this.handle("showNotification", msg); },
+			notify: (msg:string):void => { this.handle("dialog", "showNotification", msg); },
 			/**
 			 * Sends an error to the renderer process that should be displayed using
 			 * a dedicated dialog window (is used, e.g., during export when Pandoc
@@ -110,7 +142,7 @@ export default class NoteworthyApp extends EventEmitter {
 			 * @param  {Object} msg        The error object
 			 * @return {void}            Does not return.
 			 */
-			notifyError: (msg:any): void => { this.handle("showError", msg); }
+			notifyError: (msg:any): void => { this.handle("dialog", "showError", msg); }
 		}
 	}
 
@@ -162,8 +194,9 @@ export default class NoteworthyApp extends EventEmitter {
 		this.window.init();
 
 		this._renderProxy = invokerFor<RendererIpcHandlers>(
-			this.window,
-			IpcEvents.RENDERER_INVOKE, "main->render"
+			this.window,               // object to proxy
+			IpcEvents.RENDERER_INVOKE, // channel
+			"main->render"             // log prefix
 		);
 	}
 
@@ -375,12 +408,18 @@ export default class NoteworthyApp extends EventEmitter {
 
 	// EVENTS //////////////////////////////////////////////
 
-	async handle<T extends MainIpcEvents>(name: T, data: Parameters<MainIpcHandlers[T]>[0]) {
+	//async handle<S extends MainIpcHandlerChannel, T extends MainIpcHandlers[S]>(channel:S, name: T, data: Parameters<MainIpcHandlers[S][T]>[0]) {
+	async handle<S extends MainIpcChannel, T extends FunctionPropertyNames<MainIpcHandlers[S]>>(
+			channel:S,
+			name: T,
+			/** @todo now we only take the FIRST parameter of each handler -- should we take them all? */
+			data: Parameters<MainIpcHandlers[S][T]>[0]
+	) {
 		/** @remark (6/25/20) cannot properly type-check this call
 		 *  without support for "correlated record types", see e.g.
 		 *  (https://github.com/Microsoft/TypeScript/issues/30581)
 		 */
-		return this._eventHandlers[name](data as any);
+		return this._eventHandlers[channel][name](data as any);
 	}
 
 	async handleChokidarEvent(event: ChokidarEvents, info: { path: string }): Promise<void> {

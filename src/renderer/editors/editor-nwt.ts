@@ -203,12 +203,12 @@ export class NwtEditor extends Editor<ProseEditorState> {
 					// wikilinks, tags, citations
 					if (mark = node.marks.find((mark: Mark) => markTypes.includes(mark.type.name))){
 						let tag = node.text;
-						if (tag) { this._mainProxy.requestTagOpen({tag, create:true}); }
+						if (tag) { this._mainProxy.tag.requestTagOpen({tag, create:true}); }
 					}
 					// links
 					else if(mark = nwtSchema.marks.link.isInSet(node.marks)){
 						let url:string = mark.attrs.href;
-						if (url) { this._mainProxy.requestExternalLinkOpen(url); }
+						if (url) { this._mainProxy.shell.requestExternalLinkOpen(url); }
 					}
 				}
 				return true;

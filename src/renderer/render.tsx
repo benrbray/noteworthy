@@ -3,7 +3,7 @@ import * as pathlib from "path";
 import { ipcRenderer, IpcRendererEvent } from "electron";
 
 // project imports
-import { MainIpcHandlers } from "@main/MainIPC";
+import { MainIpcHandlers, MainIpc_LifecycleHandlers, MainIpc_FileHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, MainIpc_DialogHandlers, MainIpc_TagHandlers } from "@main/MainIPC";
 import { RendererIpcEvents, RendererIpcHandlers } from "./RendererIPC";
 import { IPossiblyUntitledFile, IFileWithContents, IUntitledFile, IFileMeta, IDirEntryMeta } from "@common/fileio";
 import { invokerFor } from "@common/ipc";
@@ -60,7 +60,17 @@ class Renderer {
 
 	constructor() {
 		// initialize objects
-		this._mainProxy = invokerFor<MainIpcHandlers>(ipcRenderer, "command", "render->main");
+		const channel = "command";
+		const logPrefix = "render->main";
+		this._mainProxy = {
+			lifecycle: invokerFor<MainIpc_LifecycleHandlers>(ipcRenderer, channel, logPrefix, "lifecycle"),
+			file:      invokerFor<MainIpc_FileHandlers>     (ipcRenderer, channel, logPrefix, "file"),
+			theme:     invokerFor<MainIpc_ThemeHandlers>    (ipcRenderer, channel, logPrefix, "theme"),
+			shell:     invokerFor<MainIpc_ShellHandlers>    (ipcRenderer, channel, logPrefix, "shell"),
+			dialog:    invokerFor<MainIpc_DialogHandlers>   (ipcRenderer, channel, logPrefix, "dialog"),
+			tag:       invokerFor<MainIpc_TagHandlers>      (ipcRenderer, channel, logPrefix, "tag")
+		}
+
 		this._eventHandlers = new RendererIpcHandlers(this);
 
 		/** @todo (9/12/20) this is here for debug purposes only */
@@ -84,7 +94,9 @@ class Renderer {
 		console.log("render :: init()");
 
 		// handle events from main
+		/** @todo (9/13/20) is this event channel used anywhere? */
 		ipcRenderer.on("mainCommand", (evt, key: RendererIpcEvents, data: any) => {
+			console.log("RenderIPC :: mainCommand", key, data);
 			this.handle(key, data);
 		});
 
@@ -153,12 +165,12 @@ class Renderer {
 				if(fileHash === null){ return; }
 				
 				console.log("explorer :: clicked", fileHash);
-				this._mainProxy.requestFileOpen({ hash: fileHash });
+				this._mainProxy.file.requestFileOpen({ hash: fileHash });
 			}
 
 			const search = async (query:string) => {
 				console.log("searching...", query);
-				let result = await this._mainProxy.tagSearch(query);
+				let result = await this._mainProxy.tag.tagSearch(query);
 				return result;
 			}
 
@@ -230,7 +242,7 @@ class Renderer {
 		/** @todo (9/12/20) the line below requests the CSS only after the UI
 		 * has started rendering.  this is not a great solution, can we do better?
 		 */
-		this._mainProxy.requestThemeRefresh();
+		this._mainProxy.theme.requestThemeRefresh();
 
 		// create shadow dom
 		let contentElt = document.getElementById("content") as HTMLElement;

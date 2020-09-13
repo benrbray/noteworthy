@@ -40,7 +40,7 @@ interface IIPCManager {
 	 * @param cmd The command to be sent
 	 * @param arg An optional object with data.
 	 */
-	handle: (cmd: import("src/main/MainIPC").MainIpcEvents, arg?: Object) => void,
+	handle: <T extends import("src/main/MainIPC").MainIpcChannel>(channel:T, cmd: import("src/common/ipc").FunctionPropertyNames<import("src/main/MainIPC").MainIpcHandlers[T]>, arg?: Object) => void;
 	/**
 	 * Sends a message to the renderer and displays it as a notification.
 	 * @param msg The message to be sent.

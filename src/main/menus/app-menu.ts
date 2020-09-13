@@ -23,11 +23,11 @@ function makeFileMenu(): MenuItemConstructorOptions {
 		submenu: [
 			{
 				label: "Open Folder...",
-				click: () => { global.ipc.handle("dialogFolderOpen"); }
+				click: () => { global.ipc.handle("dialog", "dialogFolderOpen"); }
 			},
 			{
 				label: "Open File...",
-				click: () => { global.ipc.handle("dialogFileOpen"); }
+				click: () => { global.ipc.handle("dialog", "dialogFileOpen"); }
 			},
 			{
 				label: "Close All",
@@ -178,7 +178,7 @@ function makeWindowMenu(): MenuItemConstructorOptions {
 			{ role: "minimize" },
 			{
 				label: "Close",
-				click: () => { global.ipc.handle("requestAppQuit") }
+				click: () => { global.ipc.handle("lifecycle", "requestAppQuit") }
 			},
 			{ role: "zoom", visible: is.macos }
 		]

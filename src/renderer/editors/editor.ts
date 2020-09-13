@@ -84,10 +84,10 @@ export abstract class Editor<TDocumentModel=any> {
 
 		// perform save
 		if (saveas || this._currentFile.path == null) {
-			let [err] = await to(this._mainProxy.dialogFileSaveAs(this._currentFile));
+			let [err] = await to(this._mainProxy.dialog.dialogFileSaveAs(this._currentFile));
 			if(err) { return Promise.reject(err); }
 		} else {
-			let [err] = await to(this._mainProxy.requestFileSave(this._currentFile));
+			let [err] = await to(this._mainProxy.file.requestFileSave(this._currentFile));
 			if(err) { return Promise.reject(err); }
 		}
 
@@ -103,7 +103,7 @@ export abstract class Editor<TDocumentModel=any> {
 		// check for unsaved changes
 		if(this._currentFile && this._unsavedChanges){
 			// prompt user for a desired action
-			let [err, choice] = await to(this._mainProxy.askSaveDiscardChanges(this._currentFile.path || "<untitled>"));
+			let [err, choice] = await to(this._mainProxy.dialog.askSaveDiscardChanges(this._currentFile.path || "<untitled>"));
 			if(err) { return Promise.reject(err); }
 
 			// handle user action

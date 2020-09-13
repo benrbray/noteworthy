@@ -11,32 +11,54 @@
 
 export type FunctionPropertyNames<T> = { [K in keyof T]: K extends string ? (T[K] extends Function ? K : never) : never }[keyof T];
 
-interface Sendable<E extends Electron.Event> {
-	send:(channel: string, ...args: any[]) => void;
-};
+/* -- Invoker ------------------------------------------- */
+
 interface Invokable {
 	invoke: (channel: string, ...args: any[]) => void;
 };
 
-/* -- Invoker ------------------------------------------- */
-
 /**
  * Creates a Proxy which redirects any methods (of type T)
  * through the invoke() function of the given invokable 
- * argument, allowing for type-checked ipc events!
+ * argument, allowing for type-checked ipc events!  
+ * 
+ * Set up to allow us to write type-safe event code like:
+ *
+ *     interface H { addPerson(name:string, age:int) }
+ *     let proxy:H = invokerFor<H>("CHANNEL", logPrefix, "EXTRA")
+ *     
+ *     proxy.addPerson("Andy", 51)
+ *     proxy.addPerson("Beth", 28)
+ *
+ * which will be the same as the following manual invocations:
+ * 
+ *     ipc.invoke("CHANNEL", "EXTRA", "addPerson", "Andy", 51)
+ *     ipc.invoke("CHANNEL", "EXTRA", "addPerson", "Beth", 28)
+ *
+ * @param ipc An invokeable object to be wrapped by the proxy.
+ * @param channel The first argument to ipc.invoke(), representing an event channel.
+ * @param logPrefix Prefix to use when logging invocations.
+ * @param args The remaining arguments will be passed as arguments to invoke(),
+ *    and will appear before any arguments passed to a method called on the proxy.
+ *    This behavior is useful when we need to "route" messages through a hierarchy
+ *    on the receiving side.
  */
-export function invokerFor<T extends object>(ipc: Invokable, channel:string="command", logPrefix?:string): T {
+export function invokerFor<T extends object>(ipc: Invokable, channel:string="command", logPrefix:string, ...const_args:unknown[]): T {
 	return new Proxy({ ipc }, {
-		get(target, prop: FunctionPropertyNames<T>, receiver: any) {
-			return async (data: any) => {
-				if(logPrefix!==undefined){ console.log(`${logPrefix} :: invoke event :: ${prop}`) }
-				return target.ipc.invoke(channel, prop, data);
+		get(target, prop: FunctionPropertyNames<T>) {
+			return async (data: unknown) => {
+				console.log(`[${logPrefix}] :: invoke event :: prop=${prop}, channel=${channel}, const_args=${const_args}`);
+				return target.ipc.invoke(channel, ...const_args, prop, data);
 			}
 		}
 	});
 }
 
 /* -- Sender -------------------------------------------- */
+
+interface Sendable<E extends Electron.Event> {
+	send:(channel: string, ...args: any[]) => void;
+};
 
 /**
  * @deprecated in favor of `invokerFor` above, since `senderFor`

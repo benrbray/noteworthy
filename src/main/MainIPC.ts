@@ -17,103 +17,13 @@ import { filterNonVoid } from "@common/util/non-void";
 type FunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? K : never }[keyof T];
 type FunctionProperties<T> = Pick<T, FunctionPropertyNames<T>>;
 
-////////////////////////////////////////////////////////////
+//// LIFECYCLE /////////////////////////////////////////////
 
-export class MainIpcHandlers {
-	private _app: NoteworthyApp;
+export class MainIpc_LifecycleHandlers {
+	/** @todo (9/13/20) break app into multiple parts so we don't need to consume the whole thing */
+	constructor(private _app:NoteworthyApp){ }
 
-	constructor(app: NoteworthyApp) {
-		this._app = app;
-	}
-
-	//// DIALOGS ///////////////////////////////////////////
-
-	// -- Show Notification ----------------------------- //
-
-	showNotification(msg: string) {
-		/** @todo (6/26/20) implement notifications */
-	}
-
-	showError(msg: string) {
-		/** @todo (6/26/20) implement error notifications */
-	}
-
-	// -- Request Folder Open --------------------------- //
-
-	dialogFolderOpen() {
-		if (!this._app.window) { return; }
-
-		// open file dialog
-		const dirPaths: string[] | undefined = dialog.showOpenDialogSync(
-			this._app.window.window,
-			{
-				properties: ['openDirectory', 'createDirectory'],
-				//filters: FILE_FILTERS
-			}
-		);
-		if (!dirPaths || !dirPaths.length) return;
-
-		this._app.setWorkspaceDir(dirPaths[0]);
-	}
-
-	// -- Request File Open ----------------------------- //
-
-	dialogFileOpen() {
-		if (!this._app.window) { return; }
-
-		// open file dialog
-		const filePaths: string[] | undefined = dialog.showOpenDialogSync(
-			this._app.window.window,
-			{
-				properties: ['openFile'],
-				//filters: FILE_FILTERS
-			}
-		);
-		// if no path selected, do nothing
-		if (!filePaths || !filePaths.length) return;
-
-		// load file from path
-		this.requestFileOpen({ path: filePaths[0] })
-	}
-
-	// -- Dialog File Save As --------------------------- //
-
-	async dialogFileSaveAs(file: IPossiblyUntitledFile): Promise<string | null> {
-		if (!this._app.window) { return null; }
-
-		const newFilePath: string | undefined = dialog.showSaveDialogSync(
-			//TODO: better default "save as" path?
-			this._app.window.window,
-			{
-				defaultPath: file.path || "",
-				//filters: FILE_FILTERS
-			}
-		);
-		if (!newFilePath) return null;
-		saveFile(newFilePath, file.contents);
-
-		// send new file path to renderer
-		this._app._renderProxy?.fileDidSave({ saveas: true, path: newFilePath});
-		return newFilePath;
-	}
-
-	// -- Ask Save/Discard Changes ---------------------- //
-
-	/** @todo (7/12/20) better return type? extract array type? **/
-	async askSaveDiscardChanges(filePath: string): Promise<typeof DialogSaveDiscardOptions[number]> {
-		if (!this._app.window) { throw new Error("no window open! cannot open dialog!"); }
-		let response = await dialog.showMessageBox(this._app.window.window, {
-			type: "warning",
-			title: "Warning: Unsaved Changes",
-			message: `File (${filePath}) contains unsaved changes.`,
-			buttons: Array.from(DialogSaveDiscardOptions),
-			defaultId: DialogSaveDiscardOptions.indexOf("Save"),
-			cancelId: DialogSaveDiscardOptions.indexOf("Cancel"),
-		})
-		return DialogSaveDiscardOptions[response.response];
-	}
-
-	//// APPLICATION ///////////////////////////////////////
+	// -- Quit ------------------------------------------ //
 
 	async requestAppQuit():Promise<void>{
 		/** @todo (7/12/20) handle multiple windows? multiple files open? */
@@ -128,8 +38,12 @@ export class MainIpcHandlers {
 		// close app
 		this._app.quit();
 	}
+}
 
-	//// FILES /////////////////////////////////////////////
+//// FILE SYSTEM ///////////////////////////////////////////
+
+export class MainIpc_FileHandlers {
+	constructor(private _app:NoteworthyApp){ }
 
 	// -- Request File Create --------------------------- //
 
@@ -187,23 +101,116 @@ export class MainIpcHandlers {
 		let file = await this.requestFileContents(fileInfo);
 		if(file) { this._app._renderProxy?.fileDidOpen(file); }
 	}
+}
 
-	//// THEMES ////////////////////////////////////////////
+//// DIALOG ////////////////////////////////////////////////
+
+export class MainIpc_DialogHandlers {
+	/** @todo (9/13/20) break app into multiple parts so we don't need to consume the whole thing */
+	constructor(private _app:NoteworthyApp, private _fileHandlers:MainIpc_FileHandlers){ }
+
+	// -- Show Notification ----------------------------- //
+
+	showNotification(msg: string) {
+		/** @todo (6/26/20) implement notifications */
+	}
+
+	showError(msg: string) {
+		/** @todo (6/26/20) implement error notifications */
+	}
+
+	// -- Request Folder Open --------------------------- //
+
+	dialogFolderOpen() {
+		if (!this._app.window) { return; }
+
+		// open file dialog
+		const dirPaths: string[] | undefined = dialog.showOpenDialogSync(
+			this._app.window.window,
+			{
+				properties: ['openDirectory', 'createDirectory'],
+				//filters: FILE_FILTERS
+			}
+		);
+		if (!dirPaths || !dirPaths.length) return;
+
+		this._app.setWorkspaceDir(dirPaths[0]);
+	}
+
+	// -- Request File Open ----------------------------- //
+
+	dialogFileOpen() {
+		if (!this._app.window) { return; }
+
+		// open file dialog
+		const filePaths: string[] | undefined = dialog.showOpenDialogSync(
+			this._app.window.window,
+			{
+				properties: ['openFile'],
+				//filters: FILE_FILTERS
+			}
+		);
+		// if no path selected, do nothing
+		if (!filePaths || !filePaths.length) return;
+
+		// load file from path
+		this._fileHandlers.requestFileOpen({ path: filePaths[0] })
+	}
+
+	// -- Dialog File Save As --------------------------- //
+
+	async dialogFileSaveAs(file: IPossiblyUntitledFile): Promise<string | null> {
+		if (!this._app.window) { return null; }
+
+		const newFilePath: string | undefined = dialog.showSaveDialogSync(
+			//TODO: better default "save as" path?
+			this._app.window.window,
+			{
+				defaultPath: file.path || "",
+				//filters: FILE_FILTERS
+			}
+		);
+		if (!newFilePath) return null;
+		saveFile(newFilePath, file.contents);
+
+		// send new file path to renderer
+		this._app._renderProxy?.fileDidSave({ saveas: true, path: newFilePath});
+		return newFilePath;
+	}
+
+	// -- Ask Save/Discard Changes ---------------------- //
+
+	/** @todo (7/12/20) better return type? extract array type? **/
+	async askSaveDiscardChanges(filePath: string): Promise<typeof DialogSaveDiscardOptions[number]> {
+		if (!this._app.window) { throw new Error("no window open! cannot open dialog!"); }
+		let response = await dialog.showMessageBox(this._app.window.window, {
+			type: "warning",
+			title: "Warning: Unsaved Changes",
+			message: `File (${filePath}) contains unsaved changes.`,
+			buttons: Array.from(DialogSaveDiscardOptions),
+			defaultId: DialogSaveDiscardOptions.indexOf("Save"),
+			cancelId: DialogSaveDiscardOptions.indexOf("Cancel"),
+		})
+		return DialogSaveDiscardOptions[response.response];
+	}
+}
+
+////////////////////////////////////////////////////////////
+
+
+export class MainIpc_ThemeHandlers {
+	/** @todo (9/13/20) break app into multiple parts so we don't need to consume the whole thing */
+	constructor(private _app:NoteworthyApp){ }
 
 	async requestThemeRefresh() {
 		this._app.setTheme();
 	}
+}
 
-	//// TAGS //////////////////////////////////////////////
-
-	// -- Request External Link Open -------------------- //
-
-	async requestExternalLinkOpen(url: string) {
-		shell.openExternal(url, { activate: true });
-	}
-
-	// -- Request Tag Open ------------------------------ //
-
+export class MainIpc_TagHandlers {
+	/** @todo (9/13/20) break app into multiple parts so we don't need to consume the whole thing */
+	constructor(private _app:NoteworthyApp, private _fileHandlers:MainIpc_FileHandlers){ }
+	
 	async tagSearch(query:string):Promise<IFileMeta[]> {
 		const hashes:string[]|null = this._app.getTagMentions(query);
 		if(hashes === null){ return []; }
@@ -249,7 +256,7 @@ export class MainIpcHandlers {
 
 			// create file
 			let fileContents: string = this._app.getDefaultFileContents(".md", fileName)
-			let file: IFileMeta | null = await this.requestFileCreate(filePath, fileContents);
+			let file: IFileMeta | null = await this._fileHandlers.requestFileCreate(filePath, fileContents);
 			if (!file) {
 				console.error("MainIPC :: unknown error creating file for tag");
 				return null;
@@ -280,8 +287,32 @@ export class MainIpcHandlers {
 		let fileHash = await this.getHashForTag(data);
 		if(!fileHash) return;
 		// load file from hash
-		this.requestFileOpen({ hash: fileHash });
+		this._fileHandlers.requestFileOpen({ hash: fileHash });
 	}
 }
 
-export type MainIpcEvents = keyof MainIpcHandlers;
+//// SHELL /////////////////////////////////////////////////
+
+export class MainIpc_ShellHandlers {
+	/** @todo (9/13/20) break app into multiple parts so we don't need to consume the whole thing */
+	constructor(private _app: NoteworthyApp) { }
+
+	async requestExternalLinkOpen(url: string) {
+		shell.openExternal(url, { activate: true });
+	}
+}
+
+export interface MainIpcHandlers {
+	lifecycle: MainIpc_LifecycleHandlers;
+	file:      MainIpc_FileHandlers;
+	theme:     MainIpc_ThemeHandlers;
+	shell:     MainIpc_ShellHandlers;
+	dialog:    MainIpc_DialogHandlers;
+	tag:       MainIpc_TagHandlers;
+};
+
+export type MainIpcChannel = keyof MainIpcHandlers;
+
+export type MainIpcEvents = {
+	[K in MainIpcChannel] : FunctionPropertyNames<MainIpcHandlers[K]>
+}

@@ -311,13 +311,13 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 					if (mark = node.marks.find((mark: Mark) => markTypes.includes(mark.type.name))){
 						let tag = node.text;
 						let directoryHint = this._currentFile?.dirPath;
-						if (tag) { this._mainProxy.requestTagOpen({tag, create:true, directoryHint}); }
+						if (tag) { this._mainProxy.tag.requestTagOpen({tag, create:true, directoryHint}); }
 						return true;
 					}
 					// links
 					else if(mark = markdownSchema.marks.link.isInSet(node.marks)){
 						let url:string = mark.attrs.href;
-						if (url) { this._mainProxy.requestExternalLinkOpen(url); }
+						if (url) { this._mainProxy.shell.requestExternalLinkOpen(url); }
 						return true;
 					}
 				}

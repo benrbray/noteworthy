@@ -72,7 +72,7 @@ export default class Main extends Route {
 		if (global.isQuitting) { return; }
 		// otherwise, we need to decide whether it's OK to quit
 		event.preventDefault();
-		global.ipc.handle("requestAppQuit");
+		global.ipc.handle("lifecycle", "requestAppQuit");
 	}
 
 	__focus = () => {

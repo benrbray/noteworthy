@@ -106,13 +106,13 @@ export class EmbedView implements NodeView {
 	}
 
 	async getFile(fileName:string):Promise<IFileWithContents|null>{
-		return this._mainProxy.getHashForTag({ tag: fileName, create: true })
+		return this._mainProxy.tag.getHashForTag({ tag: fileName, create: true })
 			.then(hash => {
 				if (!hash) {
 					console.error(`no hash found for tag '${fileName}'!`);
 					return null;
 				}
-				return this._mainProxy.requestFileContents({ hash })
+				return this._mainProxy.file.requestFileContents({ hash })
 			});
 	}
 

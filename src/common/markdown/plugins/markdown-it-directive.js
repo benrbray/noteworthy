@@ -256,7 +256,6 @@ function parseDirective(state, src, pos, max, allowSpaceBetween) {
 }
 
 function inlineDirectiveRule(state, silent) {
-	console.log("inlineDirectiveRule");
 	const md = state.md, src = state.src;
 
 	const max = state.posMax;
