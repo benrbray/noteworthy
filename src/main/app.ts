@@ -30,8 +30,6 @@ export default class NoteworthyApp extends EventEmitter {
 	_renderProxy: null | RendererIpcHandlers;
 	/** handlers for events RECEIVED from the render process */
 	_eventHandlers: MainIpcHandlers;
-	/** supports working from a single root directory */
-	private _workspace: null | Workspace;
 
 	constructor(
 		/** file system abstraction layer */
@@ -44,7 +42,6 @@ export default class NoteworthyApp extends EventEmitter {
 		this._renderProxy = null;
 
 		this._eventHandlers = this.makeHandlers();
-		this._workspace = null;
 
 		// bind event handlers
 		this.handleChokidarEvent = this.handleChokidarEvent.bind(this);
@@ -214,7 +211,7 @@ export default class NoteworthyApp extends EventEmitter {
 		if (event == ChokidarEvents.ERROR) { throw new Error(`app :: chokidar error :: ${info}`); }
 		/** @todo (6/19/20) what to do about file changes outside workspace? */
 		/** @todo (6/19/20) what to do about file changes when no workspace active? */
-		await this._workspace?.handleChangeDetected(event, info);
+		await this._workspaceService.workspace?.handleChangeDetected(event, info);
 		// file tree changed
 		await this._renderProxy?.fileTreeChanged(this._workspaceService.getFileTree());
 	}
