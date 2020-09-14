@@ -9,6 +9,7 @@ import { Workspace } from "./workspace";
 // node.js imports
 import * as pathlib from "path";
 import { EventEmitter } from "events";
+import { FsalEvents, ChokidarEvents } from "@common/events";
 
 ////////////////////////////////////////////////////////////
 
@@ -24,6 +25,10 @@ export class WorkspaceService extends EventEmitter {
 
 		// on startup, there is no workspace open
 		this._workspace = null;
+
+		// events
+		this.handleChokidarEvent = this.handleChokidarEvent.bind(this);
+		this._fsal.on(FsalEvents.CHOKIDAR_EVENT, this.handleChokidarEvent);
 	}
 
 	// == Directory ===================================== //
@@ -84,6 +89,17 @@ export class WorkspaceService extends EventEmitter {
 		this._workspace.close(persist);
 		this._workspace = null;
 		return true;
+	}
+
+	async handleChokidarEvent(event: ChokidarEvents, info: { path: string }): Promise<void> {
+		console.log(`workspace-service :: chokidar-event :: ${event}`, info.path);
+		// handle errors
+		if (event == ChokidarEvents.ERROR) { throw new Error(`app :: chokidar error :: ${info}`); }
+		/** @todo (6/19/20) what to do about file changes outside workspace? */
+		/** @todo (6/19/20) what to do about file changes when no workspace active? */
+		await this.workspace?.handleChangeDetected(event, info);
+		// file tree changed
+		this.emit(WorkspaceEvent.FILETREE_CHANGED, this.getFileTree());
 	}
 
 	// == Files / Paths ================================= //

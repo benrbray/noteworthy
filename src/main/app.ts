@@ -42,21 +42,8 @@ export default class NoteworthyApp extends EventEmitter {
 
 		// bind event handlers
 		this._eventHandlers = this.makeHandlers();
-		this.handleChokidarEvent = this.handleChokidarEvent.bind(this);
-
-
-		/** @todo (9/13/20) type-checked workspace events */
-		this._workspaceService.on(WorkspaceEvent.FILETREE_CHANGED,
-			(fileTree: IDirEntryMeta[]) => {
-				this._renderProxy?.fileTreeChanged(fileTree);
-			}
-		);
-
-		this._themeService.on(ThemeEvent.THEME_CHANGED,
-			(cssString:string) => {
-				this._renderProxy?.applyThemeCss(cssString);
-			}
-		);
+		this.handleFileTreeChanged = this.handleFileTreeChanged.bind(this);
+		this.handleThemeChanged = this.handleThemeChanged.bind(this);
 
 		this.init();
 		this.attachEvents();
@@ -72,14 +59,13 @@ export default class NoteworthyApp extends EventEmitter {
 	}
 
 
-	/**
+	/** @todo (9/13/20) re-visit ipc dependency injection
+	 *
 	 * Here, we perform a kind of manual dependency injection.
 	 * 
 	 * In a larger codebase, a dependency injection framework
 	 * might be appropriate, but our dependence structure is
 	 * simple enough for us to manage dependencies manually.
-	 *
-	 * @todo (9/13/20) re-visit ipc dependency injection
 	 */
 	makeHandlers(): MainIpcHandlers {
 		// handlers with no dependencies
@@ -149,6 +135,7 @@ export default class NoteworthyApp extends EventEmitter {
 		 * (user should be able to e.g. specify a different editor type
 		 * than the default for .md files)
 		 */
+		 /** @todo (9/14/20) this function does not belong in NoteworthyApp */
 		if(fileExt == ".md" || fileExt == ".txt"){
 			let name = pathlib.basename(fileName, fileExt);
 			return `# ${name}`;
@@ -187,24 +174,25 @@ export default class NoteworthyApp extends EventEmitter {
 		return this._eventHandlers[channel][name](data as any);
 	}
 
-	async handleChokidarEvent(event: ChokidarEvents, info: { path: string }): Promise<void> {
-		console.log(`app :: chokidar-event :: ${event}`, info.path);
-		// handle errors
-		if (event == ChokidarEvents.ERROR) { throw new Error(`app :: chokidar error :: ${info}`); }
-		/** @todo (6/19/20) what to do about file changes outside workspace? */
-		/** @todo (6/19/20) what to do about file changes when no workspace active? */
-		await this._workspaceService.workspace?.handleChangeDetected(event, info);
-		// file tree changed
-		await this._renderProxy?.fileTreeChanged(this._workspaceService.getFileTree());
+	async handleFileTreeChanged(fileTree: IDirEntryMeta[]): Promise<void> {
+		await this._renderProxy?.fileTreeChanged(fileTree);
+	}
+
+	async handleThemeChanged(cssString:string): Promise<void> {
+		await this._renderProxy?.applyThemeCss(cssString);
 	}
 
 	attachEvents(){
 		this.attachWindowEvents();
-		this._fsal.on(FsalEvents.CHOKIDAR_EVENT, this.handleChokidarEvent);
+		
+		/** @todo (9/13/20) type-checked workspace events */
+		this._workspaceService.on(WorkspaceEvent.FILETREE_CHANGED, this.handleFileTreeChanged );
+		this._themeService.on(ThemeEvent.THEME_CHANGED, this.handleThemeChanged);
 	}
 
 	detachEvents(){
-		this._fsal.off(FsalEvents.CHOKIDAR_EVENT, this.handleChokidarEvent);
+		this._workspaceService.off(WorkspaceEvent.FILETREE_CHANGED, this.handleFileTreeChanged);
+		this._themeService.off(ThemeEvent.THEME_CHANGED, this.handleThemeChanged);
 		this.detachWindowEvents();
 	}
 
