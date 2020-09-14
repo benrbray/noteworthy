@@ -138,4 +138,10 @@ export default class FSALWatchdog extends EventEmitter {
 		this._process.unwatch(p);
 		return this;
 	}
+
+	unwatchAll(){
+		for(let p in this._paths){
+			this.unwatch(p);
+		}
+	}
 }

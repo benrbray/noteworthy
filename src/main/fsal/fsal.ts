@@ -14,19 +14,12 @@ export default class FSAL extends EventEmitter {
 	private _watchdog:FSALWatchdog;
 	private _globalWatchdog:FSALWatchdog;
 
-	// open files
-	private _state: {
-		/** the full filetree */
-		fileTree: IDirEntry[];
-	}
-
 	// == CONSTRUCTOR =================================== //
 
 	constructor(){
 		super();
 		this._watchdog = new FSALWatchdog(/*ignoreDotfiles=*/true);
 		this._globalWatchdog = new FSALWatchdog(/*ignoreDotfiles=*/false);
-		this._state = { fileTree: [] }
 
 		// bind event listeners
 		this.handleChokidarEvent = this.handleChokidarEvent.bind(this);
@@ -87,12 +80,9 @@ export default class FSAL extends EventEmitter {
 	// == FILE / DIR UNLOADING ========================== //
 
 	unloadAll():void {
-		for(let p of Object.keys(this._state.fileTree)){
-			this._watchdog.unwatch(p);
-		}
-
-		this._state.fileTree = [];
-		this.emit(FsalEvents.STATE_CHANGED, 'filetree')
+		this._watchdog.unwatchAll();
+		this._globalWatchdog.unwatchAll();
+		this.emit(FsalEvents.STATE_CHANGED, 'filetree');
 	}
 
 	// == WORKSPACE ===================================== //
