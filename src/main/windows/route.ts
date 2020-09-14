@@ -4,7 +4,7 @@
 import * as path from 'path';
 import { format as formatURL } from 'url';
 import Environment from '@common/environment';
-import Settings from '@common/settings';
+import { Settings } from '@common/settings';
 import Window from './window';
 
 /* ROUTE */

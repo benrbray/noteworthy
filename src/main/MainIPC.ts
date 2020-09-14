@@ -13,6 +13,7 @@ import { filterNonVoid } from "@common/util/non-void";
 import { WorkspaceService } from "./workspace/workspace-service";
 import FSAL from "./fsal/fsal";
 import { CrossRefService } from "./plugins/crossref-service";
+import { ThemeService } from "./theme/theme-service";
 
 ////////////////////////////////////////////////////////////
 
@@ -212,10 +213,10 @@ export class MainIpc_DialogHandlers {
 
 export class MainIpc_ThemeHandlers {
 	/** @todo (9/13/20) break app into multiple parts so we don't need to consume the whole thing */
-	constructor(private _app:NoteworthyApp){ }
+	constructor(private _themeService:ThemeService){ }
 
 	async requestThemeRefresh() {
-		this._app.setTheme();
+		this._themeService.setTheme();
 	}
 }
 

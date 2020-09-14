@@ -3,7 +3,7 @@ import {BrowserWindow, BrowserWindowConstructorOptions, ipcMain, IpcMainEvent} f
 import windowStateKeeper from 'electron-window-state';
 //import pkg from '@root/package.json';
 import Environment from '@common/environment';
-import Settings from '@common/settings';
+import { Settings } from '@common/settings';
 import { randomId } from '@common/util/random';
 
 class Window {

@@ -4,6 +4,7 @@ import { makeAppMenuTemplate } from "./menus/app-menu";
 import { Menu } from "electron";
 import { WorkspaceService } from "./workspace/workspace-service";
 import { CrossRefService } from "./plugins/crossref-service";
+import { ThemeService } from "./theme/theme-service";
 
 //// GLOBAL SERVICES ///////////////////////////////////////
 
@@ -13,9 +14,10 @@ fsal.init();
 
 /** Workspace Service */
 const workspaceService = new WorkspaceService(fsal);
-
 /** Tag Service */
 const crossRefService = new CrossRefService(workspaceService);
+/** Theme Service */
+const themeService = new ThemeService();
 
 //// APPLICATION ///////////////////////////////////////////
 
@@ -23,26 +25,15 @@ const crossRefService = new CrossRefService(workspaceService);
 let app = new NoteworthyApp(
 	fsal,
 	workspaceService,
-	crossRefService
+	crossRefService,
+	themeService
 );
 
 // application menu
 async function createAppMenu() {
-	const appMenuTemplate = await makeAppMenuTemplate(app);
+	const appMenuTemplate = await makeAppMenuTemplate(app, themeService);
 	const appMenu = Menu.buildFromTemplate(appMenuTemplate);
 	Menu.setApplicationMenu(appMenu);
 }
 
 createAppMenu();
-
-
-/** @todo (9/12/20) Curtis' suggestion for refactoring App / MainIPC */
-
-// make services....
-
-// let workspaceService = new (...);
-// let tagService = new (...);
-
-// make things that depend on services...
-
-// let mainIpcHandlers = new MainIpcHandlers(workspaceService, tagService)

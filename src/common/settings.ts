@@ -1,25 +1,20 @@
-/* IMPORT */
-
-import * as os from 'os';
+// electron imports
 import Store from 'electron-store';
 import { darkMode } from 'electron-util';
 
-/* SETTINGS */
+// project imports
+import { ThemeId } from '@main/theme/theme-service';
+
+////////////////////////////////////////////////////////////
 
 /** @todo (9/12/20) dark mode (see `darkMode.isEnabled`) */
-export type ThemeId = { type: "default", id:string } | { type: "custom", path:string };
-
-type NoteworthySettings = {
+export type NoteworthySettings = {
 	theme: ThemeId
 }
 
-const Settings = new Store<NoteworthySettings>({
+export const Settings = new Store<NoteworthySettings>({
 	name: '.noteworthy',
 	defaults: {
 		theme: { type: "default", id: "default-light" }
 	}
 });
-
-/* EXPORT */
-
-export default Settings;

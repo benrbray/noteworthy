@@ -17,12 +17,9 @@ import { IDirEntryMeta } from "@common/fileio";
 import { FsalEvents, AppEvents, ChokidarEvents, IpcEvents } from "@common/events";
 import { RendererIpcHandlers } from "@renderer/RendererIPC";
 import { promises as fs } from "fs";
-import Settings, { ThemeId } from "@common/settings";
 import { WorkspaceService, WorkspaceEvent } from "./workspace/workspace-service";
 import { CrossRefService } from "./plugins/crossref-service";
-
-// defined by electron-webpack
-declare const __static:string;
+import { ThemeService, ThemeEvent } from "./theme/theme-service";
 
 ////////////////////////////////////////////////////////////
 
@@ -40,7 +37,8 @@ export default class NoteworthyApp extends EventEmitter {
 		/** file system abstraction layer */
 		private _fsal:FSAL,
 		private _workspaceService:WorkspaceService,
-		private _crossRefService:CrossRefService
+		private _crossRefService:CrossRefService,
+		private _themeService:ThemeService
 	){
 		super();
 		this._renderProxy = null;
@@ -56,6 +54,12 @@ export default class NoteworthyApp extends EventEmitter {
 		this._workspaceService.on(WorkspaceEvent.FILETREE_CHANGED,
 			(fileTree: IDirEntryMeta[]) => {
 				this._renderProxy?.fileTreeChanged(fileTree);
+			}
+		);
+
+		this._themeService.on(ThemeEvent.THEME_CHANGED,
+			(cssString:string) => {
+				this._renderProxy?.applyThemeCss(cssString);
 			}
 		);
 
@@ -78,12 +82,12 @@ export default class NoteworthyApp extends EventEmitter {
 		// handlers with no dependencies
 		let lifecycleHandlers = new MainIpc_LifecycleHandlers(this);
 		let fileHandlers = new MainIpc_FileHandlers(this, this._fsal, this._workspaceService);
-		let themeHandlers = new MainIpc_ThemeHandlers(this);
 		let shellHandlers = new MainIpc_ShellHandlers(this);
 
 		// handlers with a single dependency
 		let dialogHandlers = new MainIpc_DialogHandlers(this, this._workspaceService, fileHandlers);
 		let tagHandlers = new MainIpc_TagHandlers(this, this._workspaceService, this._crossRefService, fileHandlers);
+		let themeHandlers = new MainIpc_ThemeHandlers(this._themeService);
 
 		return {
 			lifecycle: lifecycleHandlers,
@@ -111,7 +115,7 @@ export default class NoteworthyApp extends EventEmitter {
 
 	initThemes(){
 		// ensure theme folder exists
-		let themeFolder = this.getThemeFolder();
+		let themeFolder = this._themeService.getThemeFolder();
 		fs.mkdir(themeFolder)
 			.then(()=>  { console.log("app :: theme folder created at", themeFolder);        })
 			.catch(()=> { console.log("app :: theme folder already exists at", themeFolder); });
@@ -172,82 +176,6 @@ export default class NoteworthyApp extends EventEmitter {
 		} else {
 			return "";
 		}
-	}
-
-	// == Tags ========================================== //
-
-	// == Themes ======================================== //
-
-	async setTheme(theme:ThemeId|null = null) {
-		// use current theme if none provided
-		if(theme == null){ theme = Settings.get("theme"); }
-
-		// default vs custom themes
-		if(theme.type == "default"){
-			// find default theme
-			/** @todo (9/12/20) this should be done elsewhere, refactor theme stuff into its own file */
-			let themeCssPath:string = "";
-			switch(theme.id){
-				case "default-dark"  : themeCssPath = pathlib.resolve(__static, 'themes/theme-default-dark.css');  break;
-				case "default-light" : themeCssPath = pathlib.resolve(__static, 'themes/theme-default-light.css'); break;
-				case "typewriter-light" : themeCssPath = pathlib.resolve(__static, 'themes/theme-typewriter-light.css'); break;
-				case "academic-light" : themeCssPath = pathlib.resolve(__static, 'themes/theme-academic-light.css'); break;
-				default: console.error(`theme '${theme.id}' not found`); return;
-			}
-
-			// read and apply theme
-			let cssString:string = await fs.readFile(themeCssPath, { encoding : 'utf8' });
-			this._renderProxy?.applyThemeCss(cssString);
-
-			// save theme to user settings
-			Settings.set("theme", theme);
-		} else if(theme.type == "custom"){
-			// read and apply theme
-			let cssString:string = await fs.readFile(theme.path, { encoding : 'utf8' });
-			this._renderProxy?.applyThemeCss(cssString);
-			// save theme to user settings
-			Settings.set("theme", theme);
-		}
-	}
-
-	getThemeFolder(): string {
-		/** @todo (9/12/20)
-		 * userData folder is different in develop vs production,
-		 * still need to test that this works in production
-		 */
-		return pathlib.join(app.getPath("userData"), "themes");
-	}
-
-	async getThemes() {
-		return {
-			"default" : [
-				{ title: "Default Light", id: "default-light" },
-				{ title: "Default Dark",  id: "default-dark" },
-				{ title: "Typewriter Light",  id: "typewriter-light" },
-				{ title: "Academic Light",  id: "academic-light" },
-			],
-			"custom" : await this.getCustomThemes()
-		};
-	}
-
-	async getCustomThemes(): Promise<{ title:string, path:string }[]> {
-		// attempt to read themes folder, but fail gracefully when it does not exist
-		let themeFolder = this.getThemeFolder();
-
-		let filePaths:string[] = [];
-		try { 
-			filePaths = await fs.readdir(themeFolder);
-		} catch(err){
-			console.error("themes folder does not exist\n", err);
-		}
-
-		// filter .css files
-		return filePaths
-			.filter(fileName => (pathlib.extname(fileName)==".css"))
-			.map(fileName => {
-				let path = pathlib.join(themeFolder, fileName);
-				return ({ title: fileName, path: path })
-			});
 	}
 
 	// EVENTS //////////////////////////////////////////////

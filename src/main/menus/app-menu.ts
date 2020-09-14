@@ -13,7 +13,8 @@ import { MenuItemConstructorOptions } from "electron";
 import { is } from "electron-util";
 import NoteworthyApp from "@main/app";
 import { shell } from "electron";
-import Settings from "@common/settings";
+import { Settings } from "@common/settings";
+import { ThemeService } from "@main/theme/theme-service";
 
 ////////////////////////////////////////////////////////////
 
@@ -143,24 +144,24 @@ function makeViewMenu(): MenuItemConstructorOptions {
 	};
 }
 
-async function makeThemeMenu(app:NoteworthyApp): Promise<MenuItemConstructorOptions> {
+async function makeThemeMenu(themeService:ThemeService): Promise<MenuItemConstructorOptions> {
 	// fetch themes
-	let themes = await app.getThemes();
+	let themes = await themeService.getThemes();
 
 	let defaultThemeSubmenu: MenuItemConstructorOptions[] = themes.default.map(theme => ({
 		label: theme.title,
-		click: () => { app.setTheme({ type: "default", id: theme.id }); }
+		click: () => { themeService.setTheme({ type: "default", id: theme.id }); }
 	}));
 
 	let customThemeSubmenu: MenuItemConstructorOptions[] = themes.custom.map(theme => ({
 		label: theme.title,
-		click: () => { app.setTheme({ type: "custom", path: theme.path }); }
+		click: () => { themeService.setTheme({ type: "custom", path: theme.path }); }
 	}));
 
 	let submenu: MenuItemConstructorOptions[] = [
 		{
 			label: "Open Themes Folder...",
-			click: () => { shell.openPath(app.getThemeFolder()); }
+			click: () => { shell.openPath(themeService.getThemeFolder()); }
 		},
 		{ label: "Refresh Custom Themes" },
 		{ type: "separator" }
@@ -215,13 +216,13 @@ function makeHelpMenu(): MenuItemConstructorOptions {
 	};
 }
 
-export async function makeAppMenuTemplate(app:NoteworthyApp): Promise<MenuItemConstructorOptions[]> {
+export async function makeAppMenuTemplate(app:NoteworthyApp, themeService:ThemeService): Promise<MenuItemConstructorOptions[]> {
 	return [
 		makeFileMenu(app),
 		makeEditMenu(),
 		makeParagraphMenu(),
 		makeViewMenu(),
-		await makeThemeMenu(app),
+		await makeThemeMenu(themeService),
 		makeWindowMenu(app),
 		makeHelpMenu()
 	];
