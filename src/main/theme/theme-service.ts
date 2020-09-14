@@ -8,6 +8,8 @@ import { app } from "electron";
 import * as pathlib from "path";
 import { promises as fs } from "fs";
 import { EventEmitter } from "events";
+import FSAL from "@main/fsal/fsal";
+import { FsalEvents, ChokidarEvents } from "@common/events";
 
 // defined by electron-webpack
 declare const __static:string;
@@ -16,12 +18,44 @@ export enum ThemeEvent {
 	THEME_CHANGED = "theme-changed"
 }
 
+/** @todo (9/14/20) respond to darkMode.onChange events from eletron-util */
+
 ////////////////////////////////////////////////////////////
 
 export type ThemeId = { type: "default", id:string } | { type: "custom", path:string };
 
 export class ThemeService extends EventEmitter {
-	constructor(){ super(); }
+	constructor(private _fsal:FSAL){ 
+		super();
+		this.initThemeFolder();
+	}
+
+	// == Lifecycle ===================================== //
+
+	async initThemeFolder(){
+		// ensure theme folder exists
+		let themeFolder = this.getThemeFolder();
+		fs.mkdir(themeFolder)
+			.then(()=>  { console.log("app :: theme folder created at", themeFolder);        })
+			.catch(()=> { console.log("app :: theme folder already exists at", themeFolder); });
+
+		// watch for changes
+		this._fsal.watchGlobal(themeFolder);
+		this._fsal.on(FsalEvents.GLOBAL_CHOKIDAR_EVENT, (event:ChokidarEvents, info:{ path:string })=>{
+			console.log("theme-service :: chokidar event");
+			if(info.path.startsWith(themeFolder)){
+				console.log("theme-service :: Theme Folder Changed!");
+				this.refreshTheme();
+				/** @todo (9/14/20) refresh theme folder list and emit event which triggers re-creation of application menu */
+			}
+		});
+	}
+
+	// == Theme Configuration =========================== //
+
+	async refreshTheme(){
+		this.setTheme(null);
+	}
 
 	async setTheme(theme:ThemeId|null = null) {
 		// use current theme if none provided
@@ -30,7 +64,6 @@ export class ThemeService extends EventEmitter {
 		// default vs custom themes
 		if(theme.type == "default"){
 			// find default theme
-			/** @todo (9/12/20) this should be done elsewhere, refactor theme stuff into its own file */
 			let themeCssPath:string = "";
 			switch(theme.id){
 				case "default-dark"  : themeCssPath = pathlib.resolve(__static, 'themes/theme-default-dark.css');  break;

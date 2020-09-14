@@ -17,7 +17,7 @@ const workspaceService = new WorkspaceService(fsal);
 /** Tag Service */
 const crossRefService = new CrossRefService(workspaceService);
 /** Theme Service */
-const themeService = new ThemeService();
+const themeService = new ThemeService(fsal);
 
 //// APPLICATION ///////////////////////////////////////////
 

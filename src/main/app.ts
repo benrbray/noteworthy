@@ -11,7 +11,6 @@ import Main from "./windows/main";
 import Window from "./windows/window";
 import { MainIpc_FileHandlers, MainIpc_TagHandlers, MainIpc_DialogHandlers, MainIpc_LifecycleHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, MainIpcHandlers, MainIpcChannel } from "./MainIPC";
 import FSAL from "./fsal/fsal";
-import { Workspace } from "./workspace/workspace";
 import { invokerFor, FunctionPropertyNames } from "@common/ipc";
 import { IDirEntryMeta } from "@common/fileio";
 import { FsalEvents, AppEvents, ChokidarEvents, IpcEvents } from "@common/events";
@@ -41,9 +40,8 @@ export default class NoteworthyApp extends EventEmitter {
 		super();
 		this._renderProxy = null;
 
-		this._eventHandlers = this.makeHandlers();
-
 		// bind event handlers
+		this._eventHandlers = this.makeHandlers();
 		this.handleChokidarEvent = this.handleChokidarEvent.bind(this);
 
 
@@ -65,6 +63,14 @@ export default class NoteworthyApp extends EventEmitter {
 	}
 
 	// INITIALIZATION //////////////////////////////////////
+
+	init(){
+		ipcMain.handle("command", <T extends MainIpcChannel>(evt: IpcMainInvokeEvent, channel: T, key: FunctionPropertyNames<MainIpcHandlers[T]>, data: any) => {
+			console.log(`MainIPC :: handling event :: ${channel}, ${key}`);
+			return this.handle(channel, key, data);
+		});
+	}
+
 
 	/**
 	 * Here, we perform a kind of manual dependency injection.
@@ -95,30 +101,6 @@ export default class NoteworthyApp extends EventEmitter {
 			tag:       tagHandlers
 		}
 	}
-
-	init(){
-		// services
-		this.initIPC();
-		// providers
-		this.initThemes();
-	}
-
-	initIPC(){
-		ipcMain.handle("command", <T extends MainIpcChannel>(evt: IpcMainInvokeEvent, channel: T, key: FunctionPropertyNames<MainIpcHandlers[T]>, data: any) => {
-			console.log(`MainIPC :: handling event :: ${channel}, ${key}`);
-			return this.handle(channel, key, data);
-		});
-	}
-
-	initThemes(){
-		// ensure theme folder exists
-		let themeFolder = this._themeService.getThemeFolder();
-		fs.mkdir(themeFolder)
-			.then(()=>  { console.log("app :: theme folder created at", themeFolder);        })
-			.catch(()=> { console.log("app :: theme folder already exists at", themeFolder); });
-	}
-
-	async initDebug(){}
 
 	// == Quitting ====================================== //
 
@@ -298,7 +280,6 @@ export default class NoteworthyApp extends EventEmitter {
 
 	__ready = () => {
 		enforceMacOSAppLocation();
-		this.initDebug();
 		this.load();
 	}
 

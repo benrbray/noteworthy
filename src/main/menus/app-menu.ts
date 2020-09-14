@@ -206,6 +206,7 @@ function makeHelpMenu(): MenuItemConstructorOptions {
 			},
 			{ type: "separator" },
 			{
+				/** @todo (9/14/20) eletron-util openGitHubIssue https://github.com/sindresorhus/electron-util#opennewgithubissueoptions*/
 				label: "Report a Problem...",
 				click: () => console.error("unhandled menu option!")
 			},{

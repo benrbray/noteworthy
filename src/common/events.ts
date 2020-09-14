@@ -4,6 +4,7 @@ export enum FsalEvents {
 	FILETREE_CHANGED = "fsal-filetree-changed",
 	STATE_CHANGED = "fsal-state-changed",
 	CHOKIDAR_EVENT = "fsal-chokidar-event",
+	GLOBAL_CHOKIDAR_EVENT = "fsal-global-chokidar-event", /* @todo (9/13/20) this is temporary, should be removed */
 }
 
 export enum UserEvents {

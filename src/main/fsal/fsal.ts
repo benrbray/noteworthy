@@ -12,6 +12,7 @@ import FSALWatchdog from "./fsal-watcher";
 export default class FSAL extends EventEmitter {
 
 	private _watchdog:FSALWatchdog;
+	private _globalWatchdog:FSALWatchdog;
 
 	// open files
 	private _state: {
@@ -23,11 +24,13 @@ export default class FSAL extends EventEmitter {
 
 	constructor(){
 		super();
-		this._watchdog = new FSALWatchdog();
+		this._watchdog = new FSALWatchdog(/*ignoreDotfiles=*/true);
+		this._globalWatchdog = new FSALWatchdog(/*ignoreDotfiles=*/false);
 		this._state = { fileTree: [] }
 
 		// bind event listeners
 		this.handleChokidarEvent = this.handleChokidarEvent.bind(this);
+		this.handleGlobalChokidarEvent = this.handleGlobalChokidarEvent.bind(this);
 	}
 
 	// == LIFECYCLE ===================================== //
@@ -48,10 +51,12 @@ export default class FSAL extends EventEmitter {
 
 	attachEvents(){
 		this._watchdog.on(FsalEvents.CHOKIDAR_EVENT, this.handleChokidarEvent);
+		this._globalWatchdog.on(FsalEvents.CHOKIDAR_EVENT, this.handleGlobalChokidarEvent);
 	}
 
 	detachEvents(){
 		this._watchdog.off(FsalEvents.CHOKIDAR_EVENT, this.handleChokidarEvent);
+		this._globalWatchdog.off(FsalEvents.CHOKIDAR_EVENT, this.handleGlobalChokidarEvent);
 	}
 
 	async handleChokidarEvent(event:ChokidarEvents, info:{path:string}):Promise<void> {
@@ -67,6 +72,18 @@ export default class FSAL extends EventEmitter {
 		this.emit(FsalEvents.STATE_CHANGED, "filetree");
 	}
 
+	async handleGlobalChokidarEvent(event:ChokidarEvents, info:{path:string}):Promise<void> {
+		console.log(`fsal :: global-chokidar-event :: ${event}`, info.path);
+
+		// handle errors
+		if (event == ChokidarEvents.ERROR) {
+			throw new Error(`fsal :: chokidar error :: ${info}`);
+		}
+		
+		// emit events
+		this.emit(FsalEvents.GLOBAL_CHOKIDAR_EVENT, event, info);
+	}
+
 	// == FILE / DIR UNLOADING ========================== //
 
 	unloadAll():void {
@@ -80,8 +97,11 @@ export default class FSAL extends EventEmitter {
 
 	// == WORKSPACE ===================================== //
 
-	watch(p:string){ this._watchdog.watch(p); }
-	unwatch(p:string){ this._watchdog.unwatch(p); }
+	watch(p:string)   { this._watchdog.watch(p);   }
+	unwatch(p:string) { this._watchdog.unwatch(p); }
+
+	watchGlobal(p:string)   { this._globalWatchdog.watch(p);   }
+	unwatchGlobal(p:string) { this._globalWatchdog.unwatch(p); }
 
 	// == OPEN/CLOSE FILES ============================== //
 

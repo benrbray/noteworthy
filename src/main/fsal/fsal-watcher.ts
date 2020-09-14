@@ -8,11 +8,13 @@ export default class FSALWatchdog extends EventEmitter {
 
 	private _process:FSWatcher|null; // chokidar process
 	private _isBooting:boolean;
-	/** @todo (6/19/20) this should probably be a Set<string> */
 	private _paths:Set<string>
+	private _ignoreDotfiles:boolean;
 
-	constructor(){
+	constructor(ignoreDotfiles:boolean=true){
 		super();
+
+		this._ignoreDotfiles = ignoreDotfiles;
 
 		this._process = null;
 		this._paths = new Set<string>();
@@ -29,17 +31,33 @@ export default class FSALWatchdog extends EventEmitter {
 		if(this._paths.size < 1 || this.isBooting()){ return; }
 		this._isBooting = true;
 
+		/** @todo (9/13/20)
+		 * Had to disable .dotfile ignore because user config 
+		 * folder is ~/.config/noteworth on some systems.
+		 * 
+		 * Real solution requires multiple chokidar instances:
+		 *    > global instance for ad hoc file watching
+		 *    > per-workspace instance, 
+		 *
+		 * FSAL should also have an option to emit events ONLY
+		 * when a listener-specified folder has changed.
+		 *
+		 * E.g. the ThemeService should only receive events
+		 * when the theme folder has changed!  Right now it receives
+		 * all chokidar events.
+		 */
+
 		// chokidar's ignored-setting is compatible to anymatch, so we can
 		// pass an array containing the standard dotted directory-indicators,
 		// directories that should be ignored and a function that returns true
 		// for all files that are _not_ in the filetypes list (whitelisting)
 		// Further reading: https://github.com/micromatch/anymatch
-		let ignoreDirs: (RegExp|string)[] = [
-			/(^|[/\\])\../,
+		let ignoreDirs: (RegExp|string)[] = this._ignoreDotfiles?[
+			///(^|[/\\])\../,
 			'**/.noteworthy/**',
 			'**/.git/**',
 			'**/.vscode/**'
-		];
+		]:[];
 		
 		this._process = chokidar.watch( (p?p:[]), {
 			ignored: ignoreDirs,
