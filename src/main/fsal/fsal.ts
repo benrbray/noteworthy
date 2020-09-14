@@ -95,6 +95,7 @@ export default class FSAL extends EventEmitter {
 
 	// == OPEN/CLOSE FILES ============================== //
 
+	/** @todo (9/14/20) this probably doesn't belong inside FSAL */
 	async createFile(path: string, contents: string = ""): Promise<void> {
 		// normalize path (in an attempt to prevent different hashes for the same path)
 		path = pathlib.normalize(path);

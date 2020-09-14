@@ -2,8 +2,7 @@ import { WorkspaceService } from "@main/workspace/workspace-service";
 
 ////////////////////////////////////////////////////////////
 
-/**
- * @todo (9/13/20) This should probably be merged into either
+/** @todo (9/13/20) This should probably be merged into either
  * the WorkspaceService or the CrossRefPlugin, but it was put
  * here to avoid major changes to how tags work while
  * refactoring IPC code.
@@ -17,7 +16,6 @@ export class CrossRefService {
 	/**
 	 * @returns NULL when the plugin is not available, otherwise
 	 *    a list of hashes for files which define this tag
-	 * @todo (6/28/20) how to separate plugin code from app code?
 	 */
 	getDefsForTag(tag:string):string[]|null {
 		if(!this._workspaceService.workspace) { return []; }
@@ -27,7 +25,6 @@ export class CrossRefService {
 	/**
 	 * @returns NULL when the plugin is not available, otherwise
 	 *    a list of hashes for files which define this tag
-	 * @todo (6/28/20) how to separate plugin code from app code?
 	 */
 	getTagMentions(tag:string):string[]|null {
 		if(!this._workspaceService.workspace) { return []; }

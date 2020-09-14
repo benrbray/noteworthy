@@ -273,6 +273,7 @@ export class MainIpc_TagHandlers {
 			}
 
 			// create file
+			/** @todo (9/14/20) default file creation should probably be handled by the WorkspaceService */
 			let fileContents: string = this._app.getDefaultFileContents(".md", fileName)
 			let file: IFileMeta | null = await this._fileHandlers.requestFileCreate(filePath, fileContents);
 			if (!file) {
