@@ -45,13 +45,17 @@ export class ThemeService extends EventEmitter {
 			console.log("theme-service :: chokidar event");
 			if(info.path.startsWith(themeFolder)){
 				console.log("theme-service :: Theme Folder Changed!");
-				this.refreshTheme();
-				/** @todo (9/14/20) refresh theme folder list and emit event which triggers re-creation of application menu */
+				this.refreshCustomThemes();
 			}
 		});
 	}
 
 	// == Theme Configuration =========================== //
+
+	async refreshCustomThemes(){
+		/** @todo (9/14/20) refresh theme folder list and emit event which triggers re-creation of application menu */
+		this.refreshTheme();
+	}
 
 	async refreshTheme(){
 		this.setTheme(null);

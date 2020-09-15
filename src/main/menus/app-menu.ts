@@ -163,7 +163,9 @@ async function makeThemeMenu(themeService:ThemeService): Promise<MenuItemConstru
 			label: "Open Themes Folder...",
 			click: () => { shell.openPath(themeService.getThemeFolder()); }
 		},
-		{ label: "Refresh Custom Themes" },
+		{
+			label: "Refresh Custom Themes",
+			click: () => { themeService.refreshCustomThemes(); } },
 		{ type: "separator" }
 	];
 
