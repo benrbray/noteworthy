@@ -28,7 +28,7 @@ export const FileExplorer = (props:IFileExplorerProps) => {
 				<For each={files} fallback={<div>Empty Folder</div>}>
 				{(entry)=>(
 				<div
-					class={(entry.hash == props.activeHash) ? "file active" : "file"}
+					class={(entry.hash == props.activeHash) ? "list-item file active" : "list-item file"}
 					title={entry.path}
 					data-filehash={entry.hash}
 					onClick={props.handleClick}

@@ -21,7 +21,7 @@ export const TagSearch = (props:ITagSearchProps) => {
 				<Suspense fallback={<LoadingSpinner />}>
 					<For each={searchResults.files}>
 					{ entry => (
-						<div class="file" data-filehash={entry.hash} onClick={props.handleClick}>{entry.name}</div>
+						<div class="list-item" data-filehash={entry.hash} onClick={props.handleClick}>{entry.name}</div>
 					)}
 					</For>
 				</Suspense>

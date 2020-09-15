@@ -176,6 +176,11 @@ div:hover::-webkit-scrollbar-thumb {
 	background-color: rgba(0,0,0,0.1);
 }
 
+#sidebar .tab-contents {
+	max-height: 100%;
+	overflow-y: overlay;
+}
+
 #sidebar .list-item {
 	color: var(--color-text-faint);
 	padding: 0.2em 0.7em;
@@ -278,11 +283,7 @@ div:hover::-webkit-scrollbar-thumb {
 
 /* -- File Explorer ------------------------------------- */
 
-.tab-contents {
-	max-height: 100%;
-	overflow-y: overlay;
-}
-
+/* Folders */
 .folder[data-collapsed=true]::before {
 	content: ">";
 }
@@ -309,21 +310,10 @@ div:hover::-webkit-scrollbar-thumb {
 	vertical-align: middle;
 }
 
-.file {
-	color: var(--color-text-faint);
-	padding: 0.2em 0.7em;
-	user-select: none;
-	white-space: nowrap;
-	overflow-x: hidden;
-	text-overflow: ellipsis;
-	font-size: 0.9em;
-}
-
-.file:hover {
-	background-color: rgba(0,0,0,0.1);
-}
-
-.file.active, file.active:hover {
+/* Files */
+#sidebar .file { white-space: nowrap; }
+#sidebar .file:hover { text-decoration: none; }
+#sidebar .file.active, #sidebar .file.active:hover {
 	color: var(--color-text);
 	background-color: var(--color-bg-highlight);
 }
@@ -373,15 +363,11 @@ div:hover::-webkit-scrollbar-thumb {
 	border-radius: 0.2em;
 }
 
-.calendar td.g {
-	color: #999;
-}
+.calendar td.g { color: #999; }
 
 /* == PROSEMIRROR ======================================= */
 
-.ProseMirror {
-	outline: none;
-}
+.ProseMirror { outline: none; }
 
 /* == IPYNB ============================================= */
 
