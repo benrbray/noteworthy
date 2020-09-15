@@ -3,7 +3,7 @@ import * as pathlib from "path";
 import { ipcRenderer } from "electron";
 
 // project imports
-import { MainIpcHandlers, MainIpc_LifecycleHandlers, MainIpc_FileHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, MainIpc_DialogHandlers, MainIpc_TagHandlers } from "@main/MainIPC";
+import { MainIpcHandlers, MainIpc_LifecycleHandlers, MainIpc_FileHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, MainIpc_DialogHandlers, MainIpc_TagHandlers, MainIpc_OutlineHandlers } from "@main/MainIPC";
 import { RendererIpcEvents, RendererIpcHandlers } from "./RendererIPC";
 import { IPossiblyUntitledFile, IDirEntryMeta } from "@common/fileio";
 import { invokerFor } from "@common/ipc";
@@ -26,6 +26,8 @@ import { TagSearch } from "./ui/tag-search";
 import { render } from "solid-js/dom";
 import { State as SolidState, SetStateFunction, createState, Suspense, Switch, Match, For } from "solid-js";
 import { CalendarTab } from "./ui/calendarTab";
+import { OutlineTab } from "./ui/outlineTab";
+import { IOutline } from "@main/plugins/outline-plugin";
 
 ////////////////////////////////////////////////////////////
 
@@ -67,7 +69,8 @@ class Renderer {
 			theme:     invokerFor<MainIpc_ThemeHandlers>    (ipcRenderer, channel, logPrefix, "theme"),
 			shell:     invokerFor<MainIpc_ShellHandlers>    (ipcRenderer, channel, logPrefix, "shell"),
 			dialog:    invokerFor<MainIpc_DialogHandlers>   (ipcRenderer, channel, logPrefix, "dialog"),
-			tag:       invokerFor<MainIpc_TagHandlers>      (ipcRenderer, channel, logPrefix, "tag")
+			tag:       invokerFor<MainIpc_TagHandlers>      (ipcRenderer, channel, logPrefix, "tag"),
+			outline:   invokerFor<MainIpc_OutlineHandlers>      (ipcRenderer, channel, logPrefix, "outline")
 		}
 
 		this._eventHandlers = new RendererIpcHandlers(this);
@@ -138,16 +141,26 @@ class Renderer {
 				}
 			}
 
+			const getOutline = async (): Promise<IOutline|null> => {
+				console.log("getOutline");
+				let hash = activeHash();
+				if(!hash){ return null; }
+				console.log("getOutline :: hash=", hash);
+				let outline = await this._mainProxy.outline.requestOutlineForHash(hash);
+				console.log("outline found", outline);
+				return outline;
+			}
+
 			const Loading = () => {
 				return (<div>loading...</div>);
 			}
 
 			const tabLabels = [
-				{ codicon: "codicon-folder-opened" },
-				{ codicon: "codicon-book" },
-				{ codicon: "codicon-symbol-numeric" },
-				{ codicon: "codicon-symbol-color" },
-				{ codicon: "codicon-calendar" },
+				{ title: "Workspace", codicon: "codicon-folder-opened" },
+				{ title: "Outline",   codicon: "codicon-book" },
+				{ title: "Tags",      codicon: "codicon-symbol-numeric" },
+				{ title: "Themes",    codicon: "codicon-symbol-color" },
+				{ title: "Calendar",  codicon: "codicon-calendar" },
 			];
 
 			const handleClick = (evt:MouseEvent) => {
@@ -183,7 +196,7 @@ class Renderer {
 								<FileExplorer activeHash={activeHash()} fileTree={state.fileTree} handleClick={handleClick}/>
 							</Match>
 							<Match when={state.activeTab == 1}>
-								<div id="tab_outline">outline</div>
+								<OutlineTab getOutline={getOutline} />
 							</Match>
 							<Match when={state.activeTab == 2}>
 								<TagSearch getSearchResults={search} handleClick={handleClick} />
@@ -202,7 +215,7 @@ class Renderer {
 						{ (tab,idx) => {
 							let active = ()=>(state.activeTab == idx());
 							return (
-								<a class={`tab ${active()?"active":""}`} onClick={()=>setState({ activeTab: idx()})}>
+								<a class={`tab ${active()?"active":""}`} title={tab.title} onClick={()=>setState({ activeTab: idx()})}>
 									<span class={`codicon ${tab.codicon}`}></span>
 								</a>
 							)}

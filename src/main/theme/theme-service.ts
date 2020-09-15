@@ -70,6 +70,7 @@ export class ThemeService extends EventEmitter {
 			// find default theme
 			let themeCssPath:string = "";
 			switch(theme.id){
+				/** @todo (9/14/20) these should be defined elsewhere */
 				case "default-dark"  : themeCssPath = pathlib.resolve(__static, 'themes/theme-default-dark.css');  break;
 				case "default-light" : themeCssPath = pathlib.resolve(__static, 'themes/theme-default-light.css'); break;
 				case "typewriter-light" : themeCssPath = pathlib.resolve(__static, 'themes/theme-typewriter-light.css'); break;

@@ -14,6 +14,7 @@ import { WorkspaceService } from "./workspace/workspace-service";
 import FSAL from "./fsal/fsal";
 import { CrossRefService } from "./plugins/crossref-service";
 import { ThemeService } from "./theme/theme-service";
+import { OutlineService } from "./plugins/outline-service";
 
 ////////////////////////////////////////////////////////////
 
@@ -310,11 +311,22 @@ export class MainIpc_TagHandlers {
 	}
 }
 
+//// OUTLINE ///////////////////////////////////////////////
+
+export class MainIpc_OutlineHandlers {
+	constructor(
+		private _outlineService:OutlineService
+	) { }
+
+	async requestOutlineForHash(hash: string) {
+		return this._outlineService.getOutlineForHash(hash);
+	}
+}
+
 //// SHELL /////////////////////////////////////////////////
 
 export class MainIpc_ShellHandlers {
-	/** @todo (9/13/20) break app into multiple parts so we don't need to consume the whole thing */
-	constructor(private _app: NoteworthyApp) { }
+	constructor() { }
 
 	async requestExternalLinkOpen(url: string) {
 		shell.openExternal(url, { activate: true });
@@ -329,7 +341,12 @@ export interface MainIpcHandlers {
 	theme:     MainIpc_ThemeHandlers;
 	shell:     MainIpc_ShellHandlers;
 	dialog:    MainIpc_DialogHandlers;
+	// plugins
+	/** @todo Custom plugins won't be able to add their own
+	 * handlers to this file, so there needs to be a standard
+	 * way to request plugin data from the render process */
 	tag:       MainIpc_TagHandlers;
+	outline:   MainIpc_OutlineHandlers;
 };
 
 export type MainIpcChannel = keyof MainIpcHandlers;

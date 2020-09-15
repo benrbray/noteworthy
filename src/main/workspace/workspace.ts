@@ -13,6 +13,7 @@ import { CrossRefPlugin } from "@main/plugins/crossref-plugin";
 import * as FSALFile from "../fsal/fsal-file";
 import * as FSALDir from "../fsal/fsal-dir";
 import { loadFile } from "@common/doctypes/parse-doc";
+import { OutlinePlugin } from "@main/plugins/outline-plugin";
 
 ////////////////////////////////////////////////////////////
 
@@ -220,6 +221,7 @@ export class Workspace implements IDisposable {
 
 	/** @todo fix typings for plugin by name? */
 	getPluginByName(name:"crossref_plugin"):CrossRefPlugin|null;
+	getPluginByName(name:"outline_plugin"):OutlinePlugin|null;
 	getPluginByName(name:string):WorkspacePlugin|null {
 		/** @todo (6/28/20) use an ordered dict to store plugins instead? */
 		return this._plugins.find(plugin => (plugin.plugin_name == name)) || null;

@@ -5,6 +5,7 @@ import { Menu } from "electron";
 import { WorkspaceService } from "./workspace/workspace-service";
 import { CrossRefService } from "./plugins/crossref-service";
 import { ThemeService } from "./theme/theme-service";
+import { OutlineService } from "./plugins/outline-service";
 
 //// GLOBAL SERVICES ///////////////////////////////////////
 
@@ -16,6 +17,8 @@ fsal.init();
 const workspaceService = new WorkspaceService(fsal);
 /** Tag Service */
 const crossRefService = new CrossRefService(workspaceService);
+/** Outline Service */
+const outlineService = new OutlineService(workspaceService);
 /** Theme Service */
 const themeService = new ThemeService(fsal);
 
@@ -26,6 +29,7 @@ let app = new NoteworthyApp(
 	fsal,
 	workspaceService,
 	crossRefService,
+	outlineService,
 	themeService
 );
 

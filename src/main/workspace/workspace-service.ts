@@ -10,6 +10,7 @@ import { Workspace } from "./workspace";
 import * as pathlib from "path";
 import { EventEmitter } from "events";
 import { FsalEvents, ChokidarEvents } from "@common/events";
+import { OutlinePlugin } from "@main/plugins/outline-plugin";
 
 ////////////////////////////////////////////////////////////
 
@@ -44,7 +45,8 @@ export class WorkspaceService extends EventEmitter {
 		
 		// define plugins
 		let plugins: WorkspacePlugin[] = [
-			new CrossRefPlugin()
+			new CrossRefPlugin(),
+			new OutlinePlugin()
 		];
 
 		// get directory info

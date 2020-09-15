@@ -176,6 +176,29 @@ div:hover::-webkit-scrollbar-thumb {
 	background-color: rgba(0,0,0,0.1);
 }
 
+#sidebar .list-item {
+	color: var(--color-text-faint);
+	padding: 0.2em 0.7em;
+	user-select: none;
+	overflow-x: hidden;
+	text-overflow: ellipsis;
+	font-size: 0.9em;
+	cursor: pointer;
+}
+
+#sidebar .list-item[data-depth="0"] { padding-left: 0.5em; }
+#sidebar .list-item[data-depth="1"] { padding-left: 1.0em; }
+#sidebar .list-item[data-depth="2"] { padding-left: 1.5em; }
+#sidebar .list-item[data-depth="3"] { padding-left: 2.0em; }
+#sidebar .list-item[data-depth="4"] { padding-left: 2.5em; }
+#sidebar .list-item[data-depth="5"] { padding-left: 3.0em; }
+#sidebar .list-item[data-depth="6"] { padding-left: 3.5em; }
+
+#sidebar .list-item:hover {
+	background-color: rgba(0,0,0,0.1);
+	text-decoration: underline;
+}
+
 /* -- Loading Spinner ----------------------------------- */
 
 .lds-spinner {

@@ -5,12 +5,13 @@ import { Node as ProseNode, Mark } from "prosemirror-model";
 import { ICrossRefProvider } from "@main/plugins/crossref-plugin";
 import { markdownParser } from "@common/markdown";
 import { IDoc, DocMeta, ParserFor } from "./doctypes";
+import { IOutlineProvider, IOutline, IOutlineEntry } from "@main/plugins/outline-plugin";
 
 ////////////////////////////////////////////////////////////////////////////////
 
 interface IMarkdownDoc extends IDoc { }
 
-export class MarkdownDoc implements IMarkdownDoc, ICrossRefProvider {
+export class MarkdownDoc implements IMarkdownDoc, ICrossRefProvider, IOutlineProvider {
 	
 	constructor(private _doc:ProseNode){
 
@@ -28,6 +29,33 @@ export class MarkdownDoc implements IMarkdownDoc, ICrossRefProvider {
 		let doc = markdownParser.parse(serialized);
 		if(!doc){ return null; }
 		return new MarkdownDoc(doc);
+	}
+
+	// -- IOutlineProvider ------------------------------ //
+
+	public IS_OUTLINE_PROVIDER:true = true;
+
+	getOutline(): IOutlineEntry[] {
+		let entries:IOutlineEntry[] = [];
+
+		// find all headings
+		this._doc.descendants((node:ProseNode, pos:number, parent:ProseNode) => {
+			// search for headings only
+			if(!(node.type.name == "heading")){ return true; }
+
+			// headings contribute to outline
+			let level = node.attrs["level"];
+			entries.push({
+				depth    : (level===undefined ? 0 : (level-1)),
+				label    : node.textContent,
+				uniqueId : node.textContent, /** @todo ensure uniqueness */
+			});
+
+			// do not recurse within headings
+			return false;
+		})
+
+		return entries;
 	}
 
 	// -- ICrossRefProvider ----------------------------- //
