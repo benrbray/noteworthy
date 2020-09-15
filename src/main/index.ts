@@ -3,9 +3,8 @@ import FSAL from "./fsal/fsal";
 import { makeAppMenuTemplate } from "./menus/app-menu";
 import { Menu } from "electron";
 import { WorkspaceService } from "./workspace/workspace-service";
-import { CrossRefService } from "./plugins/crossref-service";
 import { ThemeService } from "./theme/theme-service";
-import { OutlineService } from "./plugins/outline-service";
+import { PluginService } from "./plugins/plugin-service";
 
 //// GLOBAL SERVICES ///////////////////////////////////////
 
@@ -15,10 +14,8 @@ fsal.init();
 
 /** Workspace Service */
 const workspaceService = new WorkspaceService(fsal);
-/** Tag Service */
-const crossRefService = new CrossRefService(workspaceService);
-/** Outline Service */
-const outlineService = new OutlineService(workspaceService);
+/** Plugin Service */
+const pluginService = new PluginService(workspaceService);
 /** Theme Service */
 const themeService = new ThemeService(fsal);
 
@@ -28,8 +25,7 @@ const themeService = new ThemeService(fsal);
 let app = new NoteworthyApp(
 	fsal,
 	workspaceService,
-	crossRefService,
-	outlineService,
+	pluginService,
 	themeService
 );
 

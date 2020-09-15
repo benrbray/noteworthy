@@ -5,16 +5,16 @@ import { dialog, shell } from "electron";
 import * as pathlib from "path";
 
 // noteworthy imports
-import { readFile, saveFile, IFileWithContents, IPossiblyUntitledFile, IDirEntryMeta, IFileMeta } from "@common/fileio";
+import FSAL from "./fsal/fsal";
 import NoteworthyApp from "./app"
+import { readFile, saveFile, IFileWithContents, IPossiblyUntitledFile, IDirEntryMeta, IFileMeta } from "@common/fileio";
 import { DialogSaveDiscardOptions } from "@common/dialog";
 import { to } from "@common/util/to";
 import { filterNonVoid } from "@common/util/non-void";
 import { WorkspaceService } from "./workspace/workspace-service";
-import FSAL from "./fsal/fsal";
-import { CrossRefService } from "./plugins/crossref-service";
 import { ThemeService } from "./theme/theme-service";
-import { OutlineService } from "./plugins/outline-service";
+import { PluginService } from "./plugins/plugin-service";
+import { IOutline } from "./plugins/outline-plugin";
 
 ////////////////////////////////////////////////////////////
 
@@ -226,19 +226,27 @@ export class MainIpc_TagHandlers {
 	constructor(
 		private _app:NoteworthyApp,
 		private _workspaceService:WorkspaceService,
-		private _crossRefService:CrossRefService,
+		private _pluginService:PluginService,
 		private _fileHandlers:MainIpc_FileHandlers
 	){ }
 	
 	async tagSearch(query:string):Promise<IFileMeta[]> {
-		const hashes:string[]|null = this._crossRefService.getTagMentions(query);
+		// get active plugin
+		let plugin = this._pluginService.getWorkspacePluginByName("crossref_plugin");
+		if(!plugin){ return []; }
+		// tag search
+		const hashes:string[]|null = plugin.getTagMentions(query);
 		if(hashes === null){ return []; }
 		return filterNonVoid( hashes.map(hash => (this._workspaceService.getFileByHash(hash))) );
 	}
 
 	async getHashForTag(data: { tag: string, create: boolean, directoryHint?:string }):Promise<string|null> {
+		// get active plugin
+		let plugin = this._pluginService.getWorkspacePluginByName("crossref_plugin");
+		if(!plugin){ return null; }
+
 		// get files which define this tag
-		let defs: string[] | null = this._crossRefService.getDefsForTag(data.tag);
+		let defs: string[] | null = plugin.getDefsForTag(data.tag);
 		let fileHash: string;
 
 		if (defs == null) {
@@ -315,11 +323,15 @@ export class MainIpc_TagHandlers {
 
 export class MainIpc_OutlineHandlers {
 	constructor(
-		private _outlineService:OutlineService
+		private _pluginService:PluginService
 	) { }
 
-	async requestOutlineForHash(hash: string) {
-		return this._outlineService.getOutlineForHash(hash);
+	async requestOutlineForHash(hash: string): Promise<IOutline | null> {
+		// get active plugin
+		let plugin = this._pluginService.getWorkspacePluginByName("outline_plugin");
+		if(!plugin){ return []; }
+		// get outline
+		return plugin.getOutlineForHash(hash);
 	}
 }
 
