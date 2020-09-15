@@ -15,7 +15,7 @@ export const TagSearch = (props:ITagSearchProps) => {
 	}
 
 	return (
-		<div id="tab_tags">
+		<div id="tab_tags" class="tab-contents">
 			<input onInput={onChange } />
 			<div id="tag_results">
 				<Suspense fallback={<LoadingSpinner />}>

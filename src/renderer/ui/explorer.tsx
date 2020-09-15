@@ -16,7 +16,7 @@ interface IFileExplorerProps {
 	handleClick:(evt:MouseEvent)=>void;
 }
 export const FileExplorer = (props:IFileExplorerProps) => {
-	return (<div id="tab_explorer"><For each={props.fileTree} fallback={<div>Empty!</div>}>
+	return (<div id="tab_explorer" class="tab-contents"><For each={props.fileTree} fallback={<div>Empty!</div>}>
 		{([folder, files])=>(<>
 			<div
 				class="folder"

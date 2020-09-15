@@ -15,7 +15,7 @@ export const OutlineTab = (props:IOutlineTabProps) => {
 	loadRes({ outline : props.getOutline() });
 
 	// render
-	return (<div id="tab_outline">
+	return (<div id="tab_outline" class="tab-contents">
 		<Suspense fallback={"waiting for outline..."}>
 			<For each={res.outline || []} fallback={<div>no outline!</div>}>
 			{(entry:IOutlineEntry)=>(

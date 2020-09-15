@@ -278,7 +278,7 @@ div:hover::-webkit-scrollbar-thumb {
 
 /* -- File Explorer ------------------------------------- */
 
-#tab_explorer {
+.tab-contents {
 	max-height: 100%;
 	overflow-y: overlay;
 }

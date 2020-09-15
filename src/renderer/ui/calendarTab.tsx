@@ -51,5 +51,5 @@ export const Calendar = (props:ICalendarProps) => {
 
 export const CalendarTab = () => {
 	let today = new Date(Date.now());
-	return (<div id="tab_calendar"><Calendar month={today.getMonth()} year={today.getFullYear()}/></div>)
+	return (<div id="tab_calendar" class="tab-contents"><Calendar month={today.getMonth()} year={today.getFullYear()}/></div>)
 }
