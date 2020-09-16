@@ -28,8 +28,15 @@
 /* inline code */
 #editor p code {
 	display: inline;
-	padding: 0.1em 0.2em;
+	padding: 0.1rem 0.2rem;
 }
+
+#editor h1 code { padding: 0.2rem; }
+#editor h2 code { padding: 0.2rem; }
+#editor h3 code { padding: 0.2rem; }
+#editor h4 code { padding: 0.2rem; }
+#editor h5 code { padding: 0.2rem; }
+#editor h6 code { padding: 0.2rem; }
 
 /* code block */
 #editor code {
