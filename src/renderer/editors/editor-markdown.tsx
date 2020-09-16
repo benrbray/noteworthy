@@ -289,8 +289,9 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 	}
 
 	cyclePopupEntries(direction:(1|-1)){
-		if(!this._popupIndex || !this._setPopupIndex){ return; }
-		this._setPopupIndex(this._popupIndex() + direction);
+		if(!this._popupIndex || !this._setPopupIndex || !this._popupData){ return; }
+		let length = this._popupData().data.length;
+		this._setPopupIndex(Math.min(length-1, Math.max(0, (this._popupIndex() + direction))));
 	}
 
 	getPopupSelected():ITagSearchResult|null {
