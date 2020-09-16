@@ -1,5 +1,6 @@
 /* tab-size */
 #editor {
+	position: relative;
 	color: var(--color-text);
 	tab-size: 4;
 }
@@ -16,6 +17,7 @@
 	margin-left: 0.5em;
 	font-family: var(--font-editor);
 	font-size: var(--font-size);
+	line-height: var(--line-height);
 }
 
 /* code */
@@ -26,7 +28,7 @@
 /* inline code */
 #editor p code {
 	display: inline;
-	padding: 0;
+	padding: 0.1em 0.2em;
 }
 
 /* code block */
@@ -128,12 +130,19 @@ li.task-list-item input[type='checkbox'] {
 
 /* == MATH ============================================== */
 
+.math-src                           { color: var(--color-math-src)   !important; }
+.math-src::before, .math-src::after { color: var(--color-text-faint) !important; }
+
 math-display {
 	margin: 1em 0 1em 0;
 }
 
 math-inline {
 	/* empty */
+}
+
+math-display.ProseMirror-selectednode {
+	background-color: var(--color-bg-1) !important;
 }
 
 /* == EMBEDDED FILES ==================================== */
@@ -289,3 +298,36 @@ math-inline {
 .meta-editor dt:first-of-type, .meta-editor dd:first-of-type {
 	border-width: 1px;
 }
+
+/* == SUGGESTION POPUP ================================== */
+
+.popup {
+	display: none;
+	z-index: 100;
+	position: absolute;
+	user-select: none;
+
+	overflow-x: none;
+	text-overflow: ellipsis;
+
+	border: 1px solid var(--color-outline-emphasis);
+	background-color: var(--color-bg-1);
+}
+
+.popup.visible { display: block; }
+
+/* -- Popup-Item ---------------------------------------- */
+.popup-item {
+	padding: 0 0.2rem;
+	cursor: pointer;
+	line-height: 1.2em;
+	font-family: var(--code-font);
+
+	overflow-x: none;
+	text-overflow: ellipsis;
+}
+
+.popup-item:hover    { background-color: var(--color-bg-hover);    }
+.popup-item.selected { background-color: var(--color-bg-selected); }
+
+.popup-item b { color: var(--color-text-fuzzy-match); }

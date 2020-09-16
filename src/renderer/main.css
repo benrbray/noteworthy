@@ -11,7 +11,7 @@
 	--font-editor: var(--sans-font);
 	--font-size: 1.2rem;
 
-	--line-height: 1.2em;
+	--line-height: 1.1em;
 	--line-height-list: var(--line-height);
 
 	/** UI Colors **/
@@ -19,11 +19,17 @@
 	--color-bg-1: #f3f3f3; /* e.g. sidebar */
 	--color-bg-2: #ddd;    /* e.g. code_blocks */
 	--color-bg-3: #d0d0d0;    /* e.g. folder */
+	
+	--color-bg-hover: #d0d0d0;          /* e.g. used to indicate that an item can be clicked/selected */
+	--color-bg-selected: white;      /* e.g. used to indicate than an item is currently selected   */
 	--color-bg-highlight: #a4c2f9;    /* e.g. active file */
 	
 	--color-text: #101010;
 	--color-text-faint: #666;
 	--color-text-fainter: #aaa;
+	--color-text-fuzzy-match: purple;
+
+	--color-outline-emphasis: rgb(88, 172, 179);
 
 	/** Semantic Colors **/
 	--color-good: green;
@@ -40,6 +46,7 @@
 	--color-definition: blue;
 	--color-inline-delims: #d0d0d0;
 	--color-heading-level: #e0e0e0;
+	--color-math-src: purple;
 }
 
 .window-title {
@@ -200,7 +207,7 @@ div:hover::-webkit-scrollbar-thumb {
 #sidebar .list-item[data-depth="6"] { padding-left: 3.5em; }
 
 #sidebar .list-item:hover {
-	background-color: rgba(0,0,0,0.1);
+	background-color: var(--color-bg-hover);
 	text-decoration: underline;
 }
 
@@ -394,10 +401,6 @@ cell_code {
 cell_markdown:focus-within {
 	outline: 3px solid black;
 	border: 1px solid blue;
-}
-
-math-display {
-	margin: 1em 0 1em 0;
 }
 
 /* == JOURNAL =========================================== */

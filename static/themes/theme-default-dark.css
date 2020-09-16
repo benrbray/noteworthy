@@ -3,12 +3,17 @@
 	--color-bg: #1a2932;
 	--color-bg-1: #0e1b22;    /* e.g. sidebar */
 	--color-bg-2: #0e1b22;    /* e.g. code_blocks */
-	--color-bg-3: #1a2932;    /* e.g. folder */
+	--color-bg-3: #21303a;    /* e.g. folder */
+
+	--color-bg-hover: #1a2932;
+	--color-bg-selected: #616e79;
 	--color-bg-highlight: #323b43;    /* e.g. active file */
 	
 	--color-text: #d0d5e0;
 	--color-text-faint: #616e79;
 	--color-text-fainter: #2f4a57;
+
+	--color-text-fuzzy-match: #fac863;
 
 	/** Semantic Colors **/
 	--color-good: #56a756;
@@ -25,6 +30,7 @@
 	--color-definition: blue;
 	--color-inline-delims: #616e79;
 	--color-heading-level: #616e79;
+	--color-math-src: #ad4fbd;
 }
 
 /* == Basic Element Styles ============================== */

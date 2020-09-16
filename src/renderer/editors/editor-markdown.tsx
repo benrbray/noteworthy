@@ -20,7 +20,10 @@ import { buildInputRules_markdown, buildKeymap_markdown } from "@common/pm-schem
 
 // solidjs
 import { render } from "solid-js/dom";
-import { createEffect, createSignal } from "solid-js";
+import { createEffect, createSignal, For } from "solid-js";
+
+// prosemirror-suggest
+import { suggest, Suggester, SuggestKeyBinding } from 'prosemirror-suggest';
 
 // views
 import { mathInputRules } from "@common/inputrules";
@@ -35,6 +38,8 @@ import { MarkdownDoc } from "@common/doctypes/markdown-doc";
 import { mathBackspace } from "@root/lib/prosemirror-math/src/plugins/math-backspace";
 import { EmbedView } from "@common/nwt/nwt-embed";
 import { mathPlugin } from "@root/lib/prosemirror-math/src/math-plugin";
+import { ITagSearchResult } from "@main/plugins/crossref-plugin";
+import { makeSuggestionPlugin } from "@renderer/ui/suggestions";
 
 ////////////////////////////////////////////////////////////
 
@@ -43,10 +48,13 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 
 	_proseEditorView: ProseEditorView | null;
 	_proseSchema: ProseSchema;
-	_editorElt: HTMLElement;
-	_metaElt: HTMLElement;
 	_keymap: ProsePlugin;
 	_initialized:boolean;
+
+	// DOM
+	_editorElt: HTMLElement;
+	_metaElt: HTMLElement;
+	_popupElt: HTMLElement;
 
 	// == Constructor =================================== //
 
@@ -64,6 +72,11 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		this._metaElt.setAttribute("id", "meta-editor");
 		this._metaElt.setAttribute("class", "meta-editor");
 		this._editorElt.appendChild(this._metaElt);
+
+		// create popup elt
+		this._popupElt = document.createElement("div");
+		this._popupElt.setAttribute("class", "popup");
+		this._editorElt.appendChild(this._popupElt);
 
 		function markActive(state:EditorState, type:MarkType) {
 			let { from, $from, to, empty } = state.selection
@@ -193,18 +206,96 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 	 */
 	createDefaultProseMirrorPlugins(){
 		return [
-			// note: keymap order matters!
-			keymap(buildKeymap_markdown(this._proseSchema)),
-			keymap(baseKeymap),
-			this._keymap,
+			mathSelectPlugin,
 			buildInputRules_markdown(this._proseSchema),
 			// math
 			mathPlugin,
 			mathInputRules,
-			mathSelectPlugin,
+			// suggestions
+			makeSuggestionPlugin(this),
+			// note: keymap order matters!
+			keymap(buildKeymap_markdown(this._proseSchema)),
+			keymap(baseKeymap),
+			this._keymap,
+			// other
 			history(),
 			gapCursor()
 		]
+	}
+	
+	// == Popup ========================================= //
+
+	// popup data
+	_popupData?: () => { data: ITagSearchResult[] };
+	_setPopupData?: (v: { data: ITagSearchResult[]; }) => { data: ITagSearchResult[]; };
+	// popup index
+	_popupIndex?: () => number;
+	_setPopupIndex?: (v: number) => number;
+
+	initPopup() {
+		let [popupData, setPopupData] = createSignal<{ data:ITagSearchResult[] }>({ data: [] });
+		let [popupIndex, setPopupIndex] = createSignal(0);
+		this._popupData = popupData;
+		this._setPopupData = setPopupData;
+		this._popupIndex = popupIndex;
+		this._setPopupIndex = setPopupIndex;
+		// set contents
+		const Popup = () => {
+			return (<div>
+				<For each={popupData().data} fallback={""}>
+					{(data, idx:()=>number) => (<div class={(idx()==popupIndex())?"popup-item selected":"popup-item"} innerHTML={data.resultEmphasized} />)}
+				</For>
+			</div>);
+		}
+		render(Popup, this._popupElt);
+	}
+
+
+	showPopupAtCursor(query:string) {
+		if(!this._proseEditorView){ return; }
+		this.showPopupAt(this._proseEditorView.state.selection.to, query);
+	}
+
+	async showPopupAt(pos:number, query:string) {
+		if(!this._proseEditorView){ return; }
+
+		let suggestions:ITagSearchResult[] = await this._mainProxy.tag.fuzzyTagSearch(query);
+
+		// get screen coords for ProseMirror pos
+		let coords = this._proseEditorView.coordsAtPos(pos);
+
+		if(this._setPopupData){
+			this._setPopupData({ data: suggestions });
+		}
+
+		// get editor pos
+		let rect = this._editorElt.getBoundingClientRect();
+		let win = this._editorElt.ownerDocument.defaultView;
+		let editorX = rect.left + (win?.pageXOffset || 0);
+		let editorY = rect.top + (win?.pageYOffset || 0);
+
+		let x = coords.left - editorX + 1;
+		let y = coords.bottom - editorY;
+
+		// show popup elt
+		let popupElt = this._popupElt;
+		popupElt.classList.add("visible");
+		popupElt.style.left = `${x | 0}px`;
+		popupElt.style.top = `${y | 0}px`;
+	}
+
+	hidePopup() {
+		this._popupElt.classList.remove("visible");
+	}
+
+	cyclePopupEntries(direction:(1|-1)){
+		if(!this._popupIndex || !this._setPopupIndex){ return; }
+		this._setPopupIndex(this._popupIndex() + direction);
+	}
+
+	getPopupSelected():ITagSearchResult|null {
+		if(!this._popupData || !this._popupIndex){ return null; }
+		return this._popupData().data[this._popupIndex()];
 	}
 
 	// == Lifecycle ===================================== //
@@ -215,6 +306,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		// initialization order matters
 		this.initProseEditor();
 		this.initYamlEditor();
+		this.initPopup();
 		// initialized
 		this._initialized = true;
 	}
@@ -360,6 +452,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		this._proseEditorView = null;
 		// destroy meta editor
 		this._metaElt.remove();
+		this._popupElt.remove();
 		// de-initialize
 		this._initialized = false;
 	}

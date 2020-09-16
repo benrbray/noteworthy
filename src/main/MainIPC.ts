@@ -15,6 +15,7 @@ import { WorkspaceService } from "./workspace/workspace-service";
 import { ThemeService } from "./theme/theme-service";
 import { PluginService } from "./plugins/plugin-service";
 import { IOutline } from "./plugins/outline-plugin";
+import { ITagSearchResult } from "./plugins/crossref-plugin";
 
 ////////////////////////////////////////////////////////////
 
@@ -238,6 +239,14 @@ export class MainIpc_TagHandlers {
 		const hashes:string[]|null = plugin.getTagMentions(query);
 		if(hashes === null){ return []; }
 		return filterNonVoid( hashes.map(hash => (this._workspaceService.getFileByHash(hash))) );
+	}
+
+	async fuzzyTagSearch(query:string):Promise<ITagSearchResult[]> {
+		// get active plugin
+		let plugin = this._pluginService.getWorkspacePluginByName("crossref_plugin");
+		if(!plugin){ return []; }
+		// tag search
+		return plugin.fuzzyTagSearch(query);
 	}
 
 	async getHashForTag(data: { tag: string, create: boolean, directoryHint?:string }):Promise<string|null> {

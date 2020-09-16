@@ -10,6 +10,9 @@ import { IWorkspaceDir, IFileMeta } from "@common/fileio";
 import { WorkspacePlugin } from "./plugin";
 import { IDoc } from "@common/doctypes/doctypes";
 
+// fuzzy search
+import fuzzysort from "fuzzysort";
+
 ////////////////////////////////////////////////////////////
 
 class DefaultMap<K,V> extends Map<K,V>{
@@ -77,6 +80,14 @@ export interface ICrossRefProvider {
 
 export function isXrefProvider(resource:unknown):resource is ICrossRefProvider {
 	return (resource as any).IS_XREF_PROVIDER === true;
+}
+
+// search results
+export interface ITagSearchResult {
+	/** Tag name **/
+	result: string,
+	/** Tag name, emphasized with HTML tags (<b>, etc.) to reflect alignment with a query. */
+	resultEmphasized: string
 }
 
 ////////////////////////////////////////////////////////////
@@ -273,6 +284,23 @@ export class CrossRefPlugin implements WorkspacePlugin {
 
 		// handle everything else
 		return content.trim().toLowerCase().replace(/[\s-:_]/, "-");
+	}
+
+	fuzzyTagSearch(query:string): ITagSearchResult[] {
+		let tags = Array.from(this._tag2docs.keys());
+		let results = fuzzysort.go(query, tags, {
+			allowTypo: true,
+			limit: 10,
+			threshold: -1000
+		});
+
+		return results.map((result) => {
+			let hl = fuzzysort.highlight(result, "<b>", "</b>");
+			return {
+				result: result.target,
+				resultEmphasized: hl || result.target
+			}
+		});
 	}
 
 	// == Persistence =================================== //

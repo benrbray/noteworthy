@@ -4,14 +4,16 @@ import Renderer from './render';
 import { Titlebar, Color } from "custom-electron-titlebar";
 import path from "path";
 
-// css
-import "./main.css";
-import "./editor.css";
-import "./codicon/codicon.css";
+// library css
+import "@lib/prosemirror-math/style/math.css";
 import "@root/node_modules/prosemirror-view/style/prosemirror.css";
 import "@root/node_modules/katex/dist/katex.min.css";
 import "@root/node_modules/prosemirror-gapcursor/style/gapcursor.css";
-import "@lib/prosemirror-math/style/math.css";
+import "./codicon/codicon.css";
+
+// project css
+import "./main.css";
+import "./editor.css";
 
 ////////////////////////////////////////////////////////////
 
