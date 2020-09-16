@@ -290,11 +290,6 @@ div:hover::-webkit-scrollbar-thumb {
 
 /* -- File Explorer ------------------------------------- */
 
-/* Folders */
-.folder[data-collapsed=true]::before {
-	content: ">";
-}
-
 .folder[data-collapsed=true] + .folder-contents {
 	display: none;
 }
