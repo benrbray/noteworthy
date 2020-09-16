@@ -13,6 +13,9 @@
 	--color-text-faint: #616e79;
 	--color-text-fainter: #2f4a57;
 
+	/** Search **/
+	--color-bg-textinput: #323b43;
+	--color-textinput: var(--color-text);
 	--color-text-fuzzy-match: #fac863;
 
 	/** Semantic Colors **/

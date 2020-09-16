@@ -19,6 +19,9 @@
 	--color-bg-1: #f3f3f3; /* e.g. sidebar */
 	--color-bg-2: #ddd;    /* e.g. code_blocks */
 	--color-bg-3: #d0d0d0;    /* e.g. folder */
+
+	--color-bg-textinput: #ccc;
+	--color-textinput: var(--color-text);
 	
 	--color-bg-hover: #d0d0d0;          /* e.g. used to indicate that an item can be clicked/selected */
 	--color-bg-selected: white;      /* e.g. used to indicate than an item is currently selected   */
@@ -185,6 +188,7 @@ div:hover::-webkit-scrollbar-thumb {
 
 #sidebar .tab-contents {
 	max-height: 100%;
+	overflow-x: hidden;
 	overflow-y: overlay;
 }
 
@@ -327,7 +331,14 @@ div:hover::-webkit-scrollbar-thumb {
 	outline: none;
 	border: none;
 	border-bottom: 3px solid #999;
+	width: 100%;
+	box-sizing: border-box;
+
+	background-color: var(--color-bg-textinput);
+	color: var(--color-textinput);
 }
+
+.search-result b { color: var(--color-text-fuzzy-match); }
 
 /* -- TAB: Calendar ------------------------------------- */
 

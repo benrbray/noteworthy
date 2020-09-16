@@ -28,6 +28,7 @@ import { State as SolidState, SetStateFunction, createState, Suspense, Switch, M
 import { CalendarTab } from "./ui/calendarTab";
 import { OutlineTab } from "./ui/outlineTab";
 import { IOutline } from "@main/plugins/outline-plugin";
+import { ITagSearchResult } from "@main/plugins/crossref-plugin";
 
 ////////////////////////////////////////////////////////////
 
@@ -163,7 +164,7 @@ class Renderer {
 				{ title: "Calendar",  codicon: "codicon-calendar" },
 			];
 
-			const handleClick = (evt:MouseEvent) => {
+			const handleFileClick = (evt:MouseEvent) => {
 				let target:HTMLElement = evt.currentTarget as HTMLElement;
 
 				/** @todo this is hacky, handle properly next time! */
@@ -180,9 +181,16 @@ class Renderer {
 				this._mainProxy.file.requestFileOpen({ hash: fileHash });
 			}
 
-			const search = async (query:string) => {
+			const handleTagClick = (evt:MouseEvent) => {
+				let target:HTMLElement = evt.currentTarget as HTMLElement;
+				let tag = target.getAttribute("data-tag");
+				if(tag === null){ return; }
+				this._mainProxy.tag.requestTagOpen({ tag, create: false });
+			}
+
+			const search = async (query:string): Promise<ITagSearchResult[]> => {
 				console.log("searching...", query);
-				let result = await this._mainProxy.tag.tagSearch(query);
+				let result = await this._mainProxy.tag.fuzzyTagSearch(query);
 				return result;
 			}
 
@@ -193,13 +201,16 @@ class Renderer {
 					<div class="content"><Suspense fallback={<Loading/>}>
 						<Switch>
 							<Match when={state.activeTab == 0}>
-								<FileExplorer activeHash={activeHash()} fileTree={state.fileTree} handleClick={handleClick}/>
+								<FileExplorer
+									activeHash={activeHash()}
+									fileTree={state.fileTree}
+									handleClick={handleFileClick} />
 							</Match>
 							<Match when={state.activeTab == 1}>
 								<OutlineTab getOutline={getOutline} />
 							</Match>
 							<Match when={state.activeTab == 2}>
-								<TagSearch getSearchResults={search} handleClick={handleClick} />
+								<TagSearch getSearchResults={search} handleClick={handleTagClick} />
 							</Match>
 							<Match when={state.activeTab == 3}>
 								<div id="tab_theme">themes</div>
