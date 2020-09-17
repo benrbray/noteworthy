@@ -62,7 +62,8 @@ class Window {
 				nodeIntegration: true,
 				webSecurity: true
 			},
-			icon: "assets/icon/nwt_large.png"
+			/** @todo (9/15/20) icon caused bug on prod build, re-enable later */
+			//icon: "assets/icon/nwt_large.png"
 		}, options);
 
 		const win = new BrowserWindow(options);
