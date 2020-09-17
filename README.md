@@ -22,9 +22,9 @@ Display Math:
 
 ## Screenshot
 
-> (screenshot taken 10 August 2020)
+> (screenshot taken 16 September 2020)
 
-![screenshot from 10 August 2020](img/noteworthy_10aug2020.png)
+![screenshot from 16 September 2020](img/noteworthy_16sept2020.png)
 
 ## Feature Comparison
 
