@@ -15,7 +15,7 @@ import { WorkspaceService } from "./workspace/workspace-service";
 import { ThemeService } from "./theme/theme-service";
 import { PluginService } from "./plugins/plugin-service";
 import { IOutline } from "./plugins/outline-plugin";
-import { ITagSearchResult } from "./plugins/crossref-plugin";
+import { ITagSearchResult, SearchResult, IFileSearchResult, IHashSearchResult, CrossRefPlugin } from "./plugins/crossref-plugin";
 
 ////////////////////////////////////////////////////////////
 
@@ -247,6 +247,36 @@ export class MainIpc_TagHandlers {
 		if(!plugin){ return []; }
 		// tag search
 		return plugin.fuzzyTagSearch(query);
+	}
+
+	async fuzzyTagFileSearch(query:string):Promise<(ITagSearchResult|IFileSearchResult)[]> {
+		// get active plugin
+		let maybePlugin = this._pluginService.getWorkspacePluginByName("crossref_plugin");
+		if(!maybePlugin){ return []; }
+		let plugin:CrossRefPlugin = maybePlugin;
+
+		// fuzzy tag search
+		let tagResults:ITagSearchResult[] = plugin.fuzzyTagSearch(query);
+
+		// find all documents which mention one of the matching tags
+		let fileHashes = new Set<string>();
+		
+		// get unique hashes for files mentioning this tag
+		tagResults
+			.flatMap( result => plugin.getTagMentions(result.result) )
+			.forEach( hash => fileHashes.add(hash) );
+
+		
+		let docResults:IFileSearchResult[] = [];
+		fileHashes.forEach( hash => {
+			let fileMeta:IFileMeta | null = this._workspaceService.getFileByHash(hash);
+			if(fileMeta !== null){
+				docResults.push({ type: "file-result", file: fileMeta });
+			}
+		});
+		
+		let results:(IFileSearchResult|ITagSearchResult)[] = [];
+		return results.concat(tagResults, docResults);
 	}
 
 	async getHashForTag(data: { tag: string, create: boolean, directoryHint?:string }):Promise<string|null> {

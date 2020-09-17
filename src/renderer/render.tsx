@@ -28,7 +28,7 @@ import { State as SolidState, SetStateFunction, createState, Suspense, Switch, M
 import { CalendarTab } from "./ui/calendarTab";
 import { OutlineTab } from "./ui/outlineTab";
 import { IOutline } from "@main/plugins/outline-plugin";
-import { ITagSearchResult } from "@main/plugins/crossref-plugin";
+import { ITagSearchResult, IFileSearchResult } from "@main/plugins/crossref-plugin";
 
 ////////////////////////////////////////////////////////////
 
@@ -188,9 +188,9 @@ class Renderer {
 				this._mainProxy.tag.requestTagOpen({ tag, create: false });
 			}
 
-			const search = async (query:string): Promise<ITagSearchResult[]> => {
+			const search = async (query:string): Promise<(ITagSearchResult|IFileSearchResult)[]> => {
 				console.log("searching...", query);
-				let result = await this._mainProxy.tag.fuzzyTagSearch(query);
+				let result = await this._mainProxy.tag.fuzzyTagFileSearch(query);
 				return result;
 			}
 
@@ -210,7 +210,7 @@ class Renderer {
 								<OutlineTab getOutline={getOutline} />
 							</Match>
 							<Match when={state.activeTab == 2}>
-								<TagSearch getSearchResults={search} handleClick={handleTagClick} />
+								<TagSearch getSearchResults={search} handleTagClick={handleTagClick} handleFileClick={handleFileClick}/>
 							</Match>
 							<Match when={state.activeTab == 3}>
 								<div id="tab_theme">themes</div>

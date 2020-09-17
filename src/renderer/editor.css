@@ -314,6 +314,9 @@ math-display.ProseMirror-selectednode {
 	position: absolute;
 	user-select: none;
 
+	max-height: 8em;
+	overflow-y: scroll;
+
 	overflow-x: none;
 	text-overflow: ellipsis;
 

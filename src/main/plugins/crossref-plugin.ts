@@ -84,11 +84,26 @@ export function isXrefProvider(resource:unknown):resource is ICrossRefProvider {
 
 // search results
 export interface ITagSearchResult {
+	type: "tag-result",
 	/** Tag name **/
 	result: string,
 	/** Tag name, emphasized with HTML tags (<b>, etc.) to reflect alignment with a query. */
 	resultEmphasized: string
 }
+
+export interface IHashSearchResult {
+	type: "hash-result",
+	/** file hash **/
+	hash: string
+}
+
+export interface IFileSearchResult {
+	type: "file-result",
+	/** file hash **/
+	file: IFileMeta
+}
+
+export type SearchResult = ITagSearchResult | IHashSearchResult | IFileSearchResult;
 
 ////////////////////////////////////////////////////////////
 
@@ -288,15 +303,19 @@ export class CrossRefPlugin implements WorkspacePlugin {
 
 	fuzzyTagSearch(query:string): ITagSearchResult[] {
 		let tags = Array.from(this._tag2docs.keys());
-		let results = fuzzysort.go(query, tags, {
+
+		// list tags matching query
+		let tagResults:Fuzzysort.Results = fuzzysort.go(query, tags, {
 			allowTypo: true,
 			limit: 10,
 			threshold: -1000
 		});
-
-		return results.map((result) => {
+		
+		// combine results
+		return tagResults.map((result) => {
 			let hl = fuzzysort.highlight(result, "<b>", "</b>");
 			return {
+				type: "tag-result",
 				result: result.target,
 				resultEmphasized: hl || result.target
 			}
