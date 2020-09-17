@@ -8,7 +8,8 @@
     "clean:dist": "npx del dist",
     "clean:releases": "npx del releases",
     "clean": "npm run clean:dist && npm run clean:releases",
-    "compile": "npm run clean:deps && electron-webpack app --env.minify=false",
+    "compile": "npm run clean:deps && electron-webpack",
+    "dist": "npm run compile && electron-builder",
     "build:mac": "npm run compile && electron-builder --mac",
     "build:win": "npm run compile && electron-builder --win && npm run script:build:fixlatestwin",
     "build:linux": "npm run compile && electron-builder --linux && npm run script:build:fixlatestlinux",
@@ -88,6 +89,7 @@
     "prosemirror-transform": "^1.2.7",
     "prosemirror-view": "^1.15.2",
     "solid-js": "^0.18.14",
+    "source-map-support": "^0.5.19",
     "yaml": "^1.10.0"
   },
   "devDependencies": {
