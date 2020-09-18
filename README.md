@@ -26,6 +26,10 @@ Display Math:
 
 ![screenshot from 16 September 2020](img/noteworthy_16sept2020.png)
 
+> (screenshot taken 17 September 2020)
+
+![screenshot from 17 September 2020](img/noteworthy_17sept2020.png)
+
 ## Feature Comparison
 
 The table below compares Noteworthy to other editors with similar features.  Of course, each editor has its own unique features not listed!  For an even more detailed comparison, check out the [exhaustive feature comparison](https://www.notion.so/db13644f08144495ad9877f217a161a1?v=ff6777802811416ba08dc114e0b11837) put together by the folks at [Athens Research](https://github.com/athensresearch/athens).
