@@ -50,12 +50,6 @@
 	text-align: justify;
 }
 
-/* blockquote */
-#editor blockquote {
-	border-left: 0.6em solid #eee;
-	color: var(--color-text-faint);
-}
-
 /* -- wikilinks, tags, citations ------------------------ */
 
 /* wikilinks */

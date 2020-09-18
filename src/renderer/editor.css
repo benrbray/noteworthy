@@ -47,6 +47,16 @@
 	text-align: left;
 }
 
+/* blockquote */
+#editor blockquote {
+	border-left: 0.6em solid var(--color-text-fainter);
+	color: var(--color-text-fainter);
+}
+
+#editor blockquote b, #editor blockquote strong {
+	color: var(--color-text-faint);
+}
+
 /* definition */
 #editor dfn, #editor .definition {
 	color: var(--color-definition);
