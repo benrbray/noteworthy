@@ -99,6 +99,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				incrHeadingLevelCmd(-1, true, markdownSchema.nodes.paragraph), 
 				mathBackspace
 			),
+			"#" : incrHeadingLevelCmd(+1, true),
 			"Ctrl-s": (state, dispatch, view) => {
 				this.saveCurrentFile(false);
 				return true;
