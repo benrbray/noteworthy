@@ -41,6 +41,7 @@ import { makeSuggestionPlugin } from "@renderer/ui/suggestions";
 // editor commands
 import { incrHeadingLevelCmd } from "@common/prosemirror/commands/demoteHeadingCmd";
 import { insertTab } from "@common/prosemirror/commands/insertTab";
+import { markActive } from "@common/prosemirror/util/markActive";
 
 ////////////////////////////////////////////////////////////
 
@@ -78,12 +79,6 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		this._popupElt = document.createElement("div");
 		this._popupElt.setAttribute("class", "popup");
 		this._editorElt.appendChild(this._popupElt);
-
-		function markActive(state:EditorState, type:MarkType) {
-			let { from, $from, to, empty } = state.selection
-			if (empty) return type.isInSet(state.storedMarks || $from.marks())
-			else return state.doc.rangeHasMark(from, to, type)
-		}
 
 		/** @todo (7/26/19) clean up markdown keymap */
 		this._keymap = keymap({
@@ -237,6 +232,8 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 	}
 	
 	// == Popup ========================================= //
+
+	/** @todo (9/27/20) move popup to separate file / plugin */
 
 	// popup data
 	_popupData?: () => { data: ITagSearchResult[] };
