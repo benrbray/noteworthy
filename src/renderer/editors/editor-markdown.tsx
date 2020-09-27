@@ -4,7 +4,7 @@ import { clipboard } from "electron";
 // prosemirror imports
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
 import { Schema as ProseSchema, MarkType, Mark, Slice } from "prosemirror-model";
-import { baseKeymap, toggleMark } from "prosemirror-commands";
+import { baseKeymap, toggleMark, chainCommands } from "prosemirror-commands";
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin, EditorState } from "prosemirror-state";
 import { history } from "prosemirror-history";
 import { keymap } from "prosemirror-keymap";
@@ -22,9 +22,6 @@ import { buildInputRules_markdown, buildKeymap_markdown } from "@common/pm-schem
 import { render } from "solid-js/dom";
 import { createEffect, createSignal, For } from "solid-js";
 
-// prosemirror-suggest
-import { suggest, Suggester, SuggestKeyBinding } from 'prosemirror-suggest';
-
 // views
 import { mathInputRules } from "@common/inputrules";
 import { openPrompt, TextField } from "@common/prompt/prompt";
@@ -40,6 +37,10 @@ import { EmbedView } from "@common/nwt/nwt-embed";
 import { mathPlugin } from "@root/lib/prosemirror-math/src/math-plugin";
 import { ITagSearchResult } from "@main/plugins/crossref-plugin";
 import { makeSuggestionPlugin } from "@renderer/ui/suggestions";
+
+// editor commands
+import { incrHeadingLevelCmd } from "@common/prosemirror/commands/demoteHeadingCmd";
+import { insertTab } from "@common/prosemirror/commands/insertTab";
 
 ////////////////////////////////////////////////////////////
 
@@ -86,16 +87,24 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 
 		/** @todo (7/26/19) clean up markdown keymap */
 		this._keymap = keymap({
-			"Tab": (state, dispatch, view) => {
-				if(dispatch) dispatch(state.tr.deleteSelection().insertText("\t"));
-				return true;
-			},
-			"Backspace" : mathBackspace,
+			"Tab": chainCommands(
+				incrHeadingLevelCmd(+1, false),
+				insertTab
+			),
+			"Shift-Tab" : chainCommands(
+				incrHeadingLevelCmd(-1, false, markdownSchema.nodes.paragraph),
+				( () => true )
+			),
+			"Backspace" : chainCommands(
+				incrHeadingLevelCmd(-1, true, markdownSchema.nodes.paragraph), 
+				mathBackspace
+			),
 			"Ctrl-s": (state, dispatch, view) => {
 				this.saveCurrentFile(false);
 				return true;
 			},
 			"Ctrl-k": (state, dispatch, view) => {
+				/** @todo (9/26/20) move command to separate file */
 				// only insert link when highlighting text
 				if(state.selection.empty){ return false; }
 
@@ -125,6 +134,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				return true;
 			},
 			"Ctrl-r": (state, dispatch, view) => {
+				/** @todo (9/26/20) move command to separate file */
 				let { $from, $to } = state.selection;
 				let nodeType = this._proseSchema.nodes.region;
 
@@ -146,6 +156,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				return true;
 			},
 			"Ctrl-m": (state, dispatch, view) => {
+				/** @todo (9/26/20) move command to separate file */
 				let { $from, $to } = state.selection;
 				let nodeType = this._proseSchema.nodes.embed;
 
@@ -171,6 +182,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				return true;
 			},
 			"Ctrl-e": (state, dispatch, view) => {
+				/** @todo (9/26/20) move command to separate file */
 				let { $from, $to } = state.selection;
 				// selection must be entirely within a single node
 				if(!$from.sameParent($to)){ return false; }
@@ -215,8 +227,8 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 			makeSuggestionPlugin(this),
 			// note: keymap order matters!
 			keymap(buildKeymap_markdown(this._proseSchema)),
-			keymap(baseKeymap),
 			this._keymap,
+			keymap(baseKeymap),
 			// other
 			history(),
 			gapCursor()
