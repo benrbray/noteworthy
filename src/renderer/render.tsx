@@ -11,7 +11,11 @@ import { to } from "@common/util/to";
 import { IpcEvents } from "@common/events";
 
 // editor importsimport { ProseMirrorEditor } from "./editors/editor-prosemirror";
+import { ProseMirrorEditor } from "./editors/editor-prosemirror";
 import { MarkdownEditor } from "./editors/editor-markdown";
+import { IpynbEditor } from "./editors/editor-ipynb";
+import { JournalEditor } from "./editors/editor-journal";
+import { NwtEditor } from "./editors/editor-nwt";
 import { Editor } from "./editors/editor";
 
 // ui imports
@@ -333,13 +337,12 @@ class Renderer {
 		let editor:Editor;
 		const args = [this._currentFile, this._ui.editorElt, this._mainProxy] as const;
 		switch (ext) {
-			/** @todo (9/27/20) re-enable other file types */
-			//case ".ipynb":   editor = new IpynbEditor(...args);       break;
-			//case ".json":    editor = new ProseMirrorEditor(...args); break;
-			//case ".journal": editor = new JournalEditor(...args);     break;
-			//case ".nwt":     editor = new NwtEditor(...args);         break;
+			case ".ipynb":   editor = new IpynbEditor(...args);       break;
+			case ".json":    editor = new ProseMirrorEditor(...args); break;
+			case ".journal": editor = new JournalEditor(...args);     break;
+			case ".nwt":     editor = new NwtEditor(...args);         break;
 			case ".md":      editor = new MarkdownEditor(...args);    break;
-			default:         editor = new MarkdownEditor(...args); break;
+			default:         editor = new MarkdownEditor(...args);      break;
 		}
 
 		// initialize editor

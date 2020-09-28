@@ -1,5 +1,6 @@
 import { ProseCommand } from "@common/types";
 import { Node as ProseNode, ResolvedPos, NodeType } from "prosemirror-model";
+import { markdownSpec } from "@common/markdown/markdown-schema";
 import { liftTarget } from "prosemirror-transform";
 
 ////////////////////////////////////////////////////////////
@@ -7,23 +8,21 @@ import { liftTarget } from "prosemirror-transform";
 /** @todo (9/26/20) use the types defined below to make it 
  * easier to mix-and-match ProseMirror node types elsewhere */
 
-/** @todo (9/27/20) revisit typings for node attributes */
-
 // converts a ProseMirror attr spec to the correct attr types
-// type ProseAttrTypeFromSpec<T> = {
-// 	[attr in keyof T] : (T[attr] extends { default : infer P } ? P : never)
-// }
+type ProseAttrTypeFromSpec<T> = {
+	[attr in keyof T] : (T[attr] extends { default : infer P } ? P : never)
+}
 
-// type ProseNodeWithAttrs<T> = ProseNode & { attrs: T };
+type ProseNodeWithAttrs<T> = ProseNode & { attrs: T };
 
-// // types for markdown heading node
-// type HeadingNodeAttrSpec = ReturnType<typeof markdownSpec>["nodes"]["heading"]["attrs"];
-// type HeadingNodeAttrs = ProseAttrTypeFromSpec<HeadingNodeAttrSpec>;
-// type HeadingNode = ProseNodeWithAttrs<HeadingNodeAttrs>
+// types for markdown heading node
+type HeadingNodeAttrSpec = ReturnType<typeof markdownSpec>["nodes"]["heading"]["attrs"];
+type HeadingNodeAttrs = ProseAttrTypeFromSpec<HeadingNodeAttrSpec>;
+type HeadingNode = ProseNodeWithAttrs<HeadingNodeAttrs>
 
-// function isHeadingNode(node: ProseNode): node is HeadingNode {
-// 	return node.type.name == "heading";
-// }
+function isHeadingNode(node: ProseNode): node is HeadingNode {
+	return node.type.name == "heading";
+}
 
 ////////////////////////////////////////////////////////////
 
@@ -39,9 +38,7 @@ export function incrHeadingLevelCmd(incr:number, requireTextblockStart:boolean, 
 		
 		// parent must be a heading
 		let parent = $anchor.parent;
-		/** @todo (9/27/20) revisit typings for node attributes */
-		//if(!isHeadingNode(parent)) { return false; }
-		if(parent.type.name !== "heading"){ return false; }
+		if(!isHeadingNode(parent)) { return false; }
 
 		// get heading position
 		let headingPos = $anchor.before($anchor.depth);

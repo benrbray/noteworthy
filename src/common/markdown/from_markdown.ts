@@ -7,6 +7,7 @@ import { citation_plugin } from "./plugins/markdown-it-citations"
 import { tag_plugin } from "./plugins/markdown-it-tags"
 import { Schema as ProseSchema, Mark as ProseMark, Node as ProseNode, NodeType, MarkType } from "prosemirror-model";
 
+import { markdownSchema } from "./markdown-schema";
 import StateInline from "markdown-it/lib/rules_inline/state_inline";
 import StateBlock from "markdown-it/lib/rules_block/state_block";
 import Token from "markdown-it/lib/token";
@@ -496,67 +497,65 @@ function noOp() {}
 
 /* -- Parser Configuration ------------------------------ */
 
-export function makeMarkdownParser(schema:ProseSchema) { 
-	return  new MarkdownParser(schema, md, {
-		/* -- Blocks ---------------------------------------- */
-		blockquote:   { type:"block", block: "blockquote"  },
-		paragraph:    { type:"block", block: "paragraph"   },
-		list_item:    { type:"block", block: "list_item", getAttrs: tok => ({ bullet: tok.markup || "*" })   },
-		bullet_list:  { type:"block", block: "bullet_list", getAttrs: tok => ({ bullet: tok.markup || "*" }) },
-		code_block:   { type:"block", block: "code_block"  },
-		region:       { type:"block", block:"region", getAttrs: tok => ({ region: tok.attrGet("regionName")||undefined}) },
+export const markdownParser = new MarkdownParser(markdownSchema, md, {
+	/* -- Blocks ---------------------------------------- */
+	blockquote:   { type:"block", block: "blockquote"  },
+	paragraph:    { type:"block", block: "paragraph"   },
+	list_item:    { type:"block", block: "list_item", getAttrs: tok => ({ bullet: tok.markup || "*" })   },
+	bullet_list:  { type:"block", block: "bullet_list", getAttrs: tok => ({ bullet: tok.markup || "*" }) },
+	code_block:   { type:"block", block: "code_block"  },
+	region:       { type:"block", block:"region", getAttrs: tok => ({ region: tok.attrGet("regionName")||undefined}) },
 
-		ordered_list: { type:"block", block: "ordered_list", getAttrs: tok => ({order: +(tok.attrGet("start") || 1)})},
-		heading:      { type:"block", block: "heading",      getAttrs: tok => ({level: +tok.tag.slice(1)})},
-		fence:        { type:"block", block: "code_block",   getAttrs: tok => ({params: tok.info || ""})},
-		
-		math_inline:  { type:"block", block: "math_inline",  getAttrs: tok => ({params: tok.info || ""})},
-		math_display: { type:"block", block: "math_display", getAttrs: tok => ({params: tok.info || ""})},
+	ordered_list: { type:"block", block: "ordered_list", getAttrs: tok => ({order: +(tok.attrGet("start") || 1)})},
+	heading:      { type:"block", block: "heading",      getAttrs: tok => ({level: +tok.tag.slice(1)})},
+	fence:        { type:"block", block: "code_block",   getAttrs: tok => ({params: tok.info || ""})},
+	
+	math_inline:  { type:"block", block: "math_inline",  getAttrs: tok => ({params: tok.info || ""})},
+	math_display: { type:"block", block: "math_display", getAttrs: tok => ({params: tok.info || ""})},
 
 
-		/* -- Nodes ----------------------------------------- */
-		hr:        { type:"node", node: "horizontal_rule" },
-		hardbreak: { type:"node", node: "hard_break"      },
+	/* -- Nodes ----------------------------------------- */
+	hr:        { type:"node", node: "horizontal_rule" },
+	hardbreak: { type:"node", node: "hard_break"      },
 
-		image: { type:"node", node: "image", getAttrs: tok => ({
-			src: tok.attrGet("src"),
-			title: tok.attrGet("title") || null,
-			alt: tok.children && tok.children[0] && tok.children[0].content || null
-		})},
+	image: { type:"node", node: "image", getAttrs: tok => ({
+		src: tok.attrGet("src"),
+		title: tok.attrGet("title") || null,
+		alt: tok.children && tok.children[0] && tok.children[0].content || null
+	})},
 
-		embed_block:  { 
-			type:"node",
-			node: "embed",
-			getAttrs: (tok:Token) => ({
-				fileName: tok.attrGet("fileName")||undefined,
-				regionName: tok.attrGet("regionName")||undefined
-			})
-		},
+	embed_block:  { 
+		type:"node",
+		node: "embed",
+		getAttrs: (tok:Token) => ({
+			fileName: tok.attrGet("fileName")||undefined,
+			regionName: tok.attrGet("regionName")||undefined
+		})
+	},
 
-		tasklist_item: {
-			type: "node",
-			node: "tasklist_item",
-			getAttrs: tok=> ({
-				label:tok.attrGet("label"),
-				checked:(tok.attrGet("checked")!="false")
-			})
-		},
+	tasklist_item: {
+		type: "node",
+		node: "tasklist_item",
+		getAttrs: tok=> ({
+			label:tok.attrGet("label"),
+			checked:(tok.attrGet("checked")!="false")
+		})
+	},
 
-		/* -- Marks ----------------------------------------- */
-		s:           { type:"mark", mark: "strike"     },
-		u:           { type:"mark", mark: "underline"  },
-		em:          { type:"mark", mark: "em"         },
-		tag:         { type:"mark", mark: "tag"        },
-		dfn:         { type:"mark", mark: "definition" },
-		cite:        { type:"mark", mark: "citation"   },
-		citation:    { type:"mark", mark: "citation"   },
-		strong:      { type:"mark", mark: "strong"     },
-		wikilink:    { type:"mark", mark:"wikilink"    },
-		code_inline: { type:"mark", mark: "code"       },
+	/* -- Marks ----------------------------------------- */
+	s:           { type:"mark", mark: "strike"     },
+	u:           { type:"mark", mark: "underline"  },
+	em:          { type:"mark", mark: "em"         },
+	tag:         { type:"mark", mark: "tag"        },
+	dfn:         { type:"mark", mark: "definition" },
+	cite:        { type:"mark", mark: "citation"   },
+	citation:    { type:"mark", mark: "citation"   },
+	strong:      { type:"mark", mark: "strong"     },
+	wikilink:    { type:"mark", mark:"wikilink"    },
+	code_inline: { type:"mark", mark: "code"       },
 
-		link: {type:"mark",mark: "link", getAttrs: tok => ({
-			href: tok.attrGet("href"),
-			title: tok.attrGet("title") || null
-		})},
-	});
-}
+	link: {type:"mark",mark: "link", getAttrs: tok => ({
+		href: tok.attrGet("href"),
+		title: tok.attrGet("title") || null
+	})},
+})
