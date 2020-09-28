@@ -3,36 +3,40 @@ import { clipboard } from "electron";
 
 // prosemirror imports
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
-import { Node as ProseNode, Schema as ProseSchema, MarkType, Mark, Slice } from "prosemirror-model";
-import { baseKeymap, toggleMark } from "prosemirror-commands";
-import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin, EditorState } from "prosemirror-state";
-import { history } from "prosemirror-history";
-import { keymap } from "prosemirror-keymap";
+import { Node as ProseNode, Mark } from "prosemirror-model";
+import { Keymap, chainCommands, joinUp, joinDown, lift, selectParentNode } from "prosemirror-commands";
+
+import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
+import { history, undo, redo } from "prosemirror-history";
 import { gapCursor } from "prosemirror-gapcursor";
 
 // project imports
 import { IPossiblyUntitledFile } from "@common/fileio";
 import { Editor } from "./editor";
 
-// markdown
-import { markdownSchema, markdownSerializer } from "@common/markdown";
-import { buildInputRules_markdown, buildKeymap_markdown } from "@common/pm-schema";
-
-// solidjs
-import { render } from "solid-js/dom";
-import { createEffect, createSignal } from "solid-js";
-
 // views
-import { mathInputRules } from "@common/inputrules";
-import { openPrompt, TextField } from "@common/prompt/prompt";
 import mathSelectPlugin from "@root/lib/prosemirror-math/src/plugins/math-select";
 import { MainIpcHandlers } from "@main/MainIPC";
 
 import { SetDocAttrStep } from "@common/prosemirror/steps";
 import { MarkdownDoc } from "@common/doctypes/markdown-doc";
-import { EmbedView } from "@common/nwt/nwt-embed";
+import { EmbedView } from "@common/nwt/embed-view";
 import { mathPlugin } from "@root/lib/prosemirror-math/src/math-plugin";
-//import { mathBackspace } from "@root/lib/prosemirror-math/src/plugins/math-backspace";
+import { markdownSerializer } from "@common/markdown";
+
+// editor commands
+import { insertTab } from "@common/prosemirror/commands/insertTab";
+import { undoInputRule } from "prosemirror-inputrules";
+import { mathBackspace } from "@root/lib/prosemirror-math/src/plugins/math-backspace";
+import { NwtExtension } from "@common/extensions/extension";
+import { EditorConfig } from "@common/extensions/editor-config";
+import { ImageExtension, BlockQuoteExtension, HeadingExtension, HorizontalRuleExtension, CodeBlockExtension, OrderedListExtension, UnorderedListExtension, ListItemExtension, HardBreakExtension, InlineMathExtension, BlockMathExtension, RegionExtension, EmbedExtension } from "@common/extensions/node-extensions";
+import { BoldExtension, ItalicExtension, DefinitionExtension, LinkExtension, UnderlineExtension, CodeExtension, StrikethroughExtension, WikilinkExtension, TagExtension, CitationExtension } from "@common/extensions/mark-extensions";
+
+////////////////////////////////////////////////////////////
+
+/** @todo (9/27/20) where to put check for macos? */
+const mac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform) : false
 
 ////////////////////////////////////////////////////////////
 
@@ -41,16 +45,14 @@ export class MarkdownRegionEditor extends Editor<ProseEditorState> {
 
 	// prosemirror
 	_proseEditorView: ProseEditorView | null;
-	_proseSchema: ProseSchema;
-	_keymap: ProsePlugin;
-
-	// dom
-	_editorElt: HTMLElement;
 
 	_globalState: ProseEditorState | null;
 
-	// macros (updated whenever KaTeX encounters \newcommand, \renewcommand, or \gdef)
-	_katexMacros: { [cmd:string] : string };
+	_config: EditorConfig;
+
+	/** @todo (9/27/20) used by paste event -- is this the best way?
+	 * if we used a ProseMirror plugin instead,*/
+	_imageExt: ImageExtension;
 
 	// state
 	_initialized:boolean;
@@ -67,8 +69,6 @@ export class MarkdownRegionEditor extends Editor<ProseEditorState> {
 		// no editor until initialized
 		this._initialized = false;
 		this._proseEditorView = null;
-		this._proseSchema = markdownSchema;
-		this._katexMacros = {};
 		this._editorElt = editorElt;
 
 		this._globalState = null;
@@ -77,53 +77,70 @@ export class MarkdownRegionEditor extends Editor<ProseEditorState> {
 		this._regionName = regionName;
 		this._region = null;
 
-		function markActive(state:EditorState, type:MarkType) {
-			let { from, $from, to, empty } = state.selection
-			if (empty) return type.isInSet(state.storedMarks || $from.marks())
-			else return state.doc.rangeHasMark(from, to, type)
-		}
+		// editor extensions
+		let extensions:NwtExtension[] = [
+			// nodes: formatting
+			new BlockQuoteExtension(),
+			new HeadingExtension(),
+			new HorizontalRuleExtension(),
+			new CodeBlockExtension(),
+			new OrderedListExtension(),
+			new UnorderedListExtension(),
+			new ListItemExtension(),
+			(this._imageExt = new ImageExtension()),
+			new HardBreakExtension(),
+			// nodes: math
+			new InlineMathExtension(),
+			new BlockMathExtension(),
+			// nodes: special
+			new RegionExtension(),
+			new EmbedExtension(),
+			// marks
+			new BoldExtension(),
+			new ItalicExtension(),
+			new DefinitionExtension(),
+			new LinkExtension(),
+			new UnderlineExtension(),
+			new CodeExtension(),
+			new StrikethroughExtension(),
+			new WikilinkExtension(),
+			new TagExtension(),
+			new CitationExtension()
+		];
 
-		/** @todo (7/26/19) clean up markdown keymap */
-		this._keymap = keymap({
-			"Tab": (state, dispatch, view) => {
-				if(dispatch) dispatch(state.tr.deleteSelection().insertText("\t"));
-				return true;
-			},
-			//"Backspace" : mathBackspace,
-			"Ctrl-s": (state, dispatch, view) => {
+		let plugins:ProsePlugin[] = [
+			mathSelectPlugin,
+			mathPlugin,
+			/** @todo (9/27/20) make popup work in embedded editor */
+			//makeSuggestionPlugin(this),
+			history(),
+			gapCursor()
+		];
+
+		let keymap: Keymap = {
+			"Tab" : insertTab,
+			"Backspace" : chainCommands(mathBackspace, undoInputRule),
+			"Ctrl-s": () => {
 				this.saveCurrentFile(false);
 				return true;
 			},
-			"Ctrl-k": (state, dispatch, view) => {
-				// only insert link when highlighting text
-				if(state.selection.empty){ return false; }
+			// undo/redo
+			"Mod-z": undo,
+			"Shift-Mod-z": redo,
+			...(!mac && { "Mod-y" : redo }),
+			// selection / join
+			"Alt-ArrowUp" : joinUp,
+			"Alt-ArrowDown" : joinDown,
+			"Mod-BracketLeft" : lift,
+			"Escape" : selectParentNode
+		};
 
-				console.log("link toggle");
-				let markType = this._proseSchema.marks.link;
-				if(markActive(state, markType)) {
-					console.log("link active");
-					toggleMark(markType)(state, dispatch)
-					return true
-				}
-				console.log("opening prompt");
-				openPrompt({
-					title: "Create a link",
-					fields: {
-						href: new TextField({
-							label: "Link target",
-							required: true
-						}),
-						title: new TextField({ label: "Title" })
-					},
-					callback(attrs: { [key: string]: any; } | undefined) {
-						if(!view){ return; }
-						toggleMark(markType, attrs)(view.state, view.dispatch)
-						view.focus()
-					}
-				})
-				return true;
-			},
-		})
+		// create editor config
+		this._config = new EditorConfig(
+			extensions,
+			plugins,
+			keymap
+		);
 	}
 
 	// == Lifecycle ===================================== //
@@ -141,27 +158,12 @@ export class MarkdownRegionEditor extends Editor<ProseEditorState> {
 		// enforce initialization order
 		if(this._initialized){ return; }
 
-		// create prosemirror config
-		let config = {
-			schema: this._proseSchema,
-			plugins: [
-				keymap(buildKeymap_markdown(this._proseSchema)),
-				keymap(baseKeymap),
-				this._keymap,
-				buildInputRules_markdown(this._proseSchema),
-				mathPlugin,
-				mathInputRules,
-				mathSelectPlugin,
-				history(),
-				gapCursor()
-			]
-		}
 		// create prosemirror state (from file)
 		let state:ProseEditorState;
 		if(this._currentFile && this._currentFile.contents){
 			state = this.parseContents(this._currentFile.contents);
 		} else {
-			state = ProseEditorState.create(config);
+			state = ProseEditorState.create(this._config);
 		}
 
 		// restrict editing to region?
@@ -199,7 +201,7 @@ export class MarkdownRegionEditor extends Editor<ProseEditorState> {
 
 		// region state
 		let regionState = ProseEditorState.create({
-			...config,
+			...this._config,
 			doc: this._region
 		})
 
@@ -261,7 +263,9 @@ export class MarkdownRegionEditor extends Editor<ProseEditorState> {
 						return true;
 					}
 					// links
-					else if(mark = markdownSchema.marks.link.isInSet(node.marks)){
+					//else if(mark = markdownSchema.marks.link.isInSet(node.marks)){
+					/** @todo (9/27/20) don't search for mark by string -- use LinkExtension object instead */
+					else if(mark = node.marks.find((mark: Mark) => mark.type.name == "link")) {
 						let url:string = mark.attrs.href;
 						if (url) { this._mainProxy.shell.requestExternalLinkOpen(url); }
 						return true;
@@ -269,8 +273,7 @@ export class MarkdownRegionEditor extends Editor<ProseEditorState> {
 				}
 				return false;
 			},
-			handlePaste: (view:EditorView, event:ClipboardEvent, slice:Slice<any>) => {
-				let file:File|undefined;
+			handlePaste: (view) => {
 
 				/** @todo (6/22/20) make this work with the ClipboardEvent? */
 
@@ -279,7 +282,7 @@ export class MarkdownRegionEditor extends Editor<ProseEditorState> {
 				if(clipboard.availableFormats("clipboard").find(str => str.startsWith("image"))){
 					let dataUrl:string = clipboard.readImage("clipboard").toDataURL();
 					
-					let imgNode = markdownSchema.nodes.image.createAndFill({
+					let imgNode = this._imageExt.type.createAndFill({
 						src: dataUrl
 					});
 					
@@ -315,22 +318,17 @@ export class MarkdownRegionEditor extends Editor<ProseEditorState> {
 	}
 
 	parseContents(contents: string):ProseEditorState {
-		let parsed:MarkdownDoc|null = MarkdownDoc.parse(contents);
-		if(!parsed) { throw new Error("Parse error!"); }
+		// NOTE: it is important to use this._config to parse, rather than using
+		// MarkdownDoc.parse()!  Otherwise, there will be strange bugs!  
+		// The reason is that the doc and the editor will secretly be using
+		// different schema instances, but the type system has no way of catching this!
+		let node: ProseNode|null = this._config.parse(contents);
+		if(!node){ throw new Error("parse error!"); }
+		let parsed = new MarkdownDoc(node);
 
 		return ProseEditorState.create({
 			doc: parsed.proseDoc,
-			plugins: [
-				// note: keymap order matters!
-				keymap(buildKeymap_markdown(this._proseSchema)),
-				keymap(baseKeymap),
-				this._keymap,
-				buildInputRules_markdown(this._proseSchema),
-				mathInputRules,
-				mathSelectPlugin,
-				history(),
-				gapCursor()
-			]
+			...this._config
 		});
 	}
 
