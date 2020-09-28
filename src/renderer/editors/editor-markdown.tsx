@@ -3,11 +3,10 @@ import { clipboard } from "electron";
 
 // prosemirror imports
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
-import { Schema as ProseSchema, MarkType, Mark, Slice } from "prosemirror-model";
-import { baseKeymap, toggleMark, chainCommands } from "prosemirror-commands";
-import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin, EditorState } from "prosemirror-state";
-import { history } from "prosemirror-history";
-import { keymap } from "prosemirror-keymap";
+import { Mark, Slice, Node as ProseNode } from "prosemirror-model";
+import { chainCommands, Keymap, joinUp, joinDown, lift, selectParentNode } from "prosemirror-commands";
+import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
+import { history, undo, redo } from "prosemirror-history";
 import { gapCursor } from "prosemirror-gapcursor";
 
 // project imports
@@ -15,16 +14,13 @@ import { IPossiblyUntitledFile } from "@common/fileio";
 import { Editor } from "./editor";
 
 // markdown
-import { markdownSchema, markdownSerializer } from "@common/markdown";
-import { buildInputRules_markdown, buildKeymap_markdown } from "@common/pm-schema";
+import { markdownSerializer } from "@common/markdown";
 
 // solidjs
 import { render } from "solid-js/dom";
-import { createEffect, createSignal, For } from "solid-js";
+import { createEffect, createSignal } from "solid-js";
 
 // views
-import { mathInputRules } from "@common/inputrules";
-import { openPrompt, TextField } from "@common/prompt/prompt";
 import mathSelectPlugin from "@root/lib/prosemirror-math/src/plugins/math-select";
 import { MainIpcHandlers } from "@main/MainIPC";
 
@@ -33,14 +29,22 @@ import { SetDocAttrStep } from "@common/prosemirror/steps";
 import { shallowEqual } from "@common/util/equal";
 import { MarkdownDoc } from "@common/doctypes/markdown-doc";
 import { mathBackspace } from "@root/lib/prosemirror-math/src/plugins/math-backspace";
-import { EmbedView } from "@common/nwt/nwt-embed";
+import { EmbedView } from "@common/nwt/embed-view";
 import { mathPlugin } from "@root/lib/prosemirror-math/src/math-plugin";
 import { makeSuggestionPlugin, SuggestionPopup } from "@renderer/ui/suggestions";
 
 // editor commands
-import { incrHeadingLevelCmd } from "@common/prosemirror/commands/demoteHeadingCmd";
 import { insertTab } from "@common/prosemirror/commands/insertTab";
-import { markActive } from "@common/prosemirror/util/markActive";
+import { undoInputRule } from "prosemirror-inputrules";
+import { EditorConfig } from "@common/extensions/editor-config";
+import { ImageExtension, BlockQuoteExtension, HeadingExtension, HorizontalRuleExtension, CodeBlockExtension, OrderedListExtension, UnorderedListExtension, ListItemExtension, HardBreakExtension, InlineMathExtension, BlockMathExtension, RegionExtension, EmbedExtension } from "@common/extensions/node-extensions";
+import { BoldExtension, ItalicExtension, DefinitionExtension, LinkExtension, UnderlineExtension, CodeExtension, StrikethroughExtension, WikilinkExtension, TagExtension, CitationExtension } from "@common/extensions/mark-extensions";
+import { NwtExtension } from "@common/extensions/extension";
+
+////////////////////////////////////////////////////////////
+
+/** @todo (9/27/20) where to put check for macos? */
+const mac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform) : false
 
 ////////////////////////////////////////////////////////////
 
@@ -48,12 +52,15 @@ import { markActive } from "@common/prosemirror/util/markActive";
 export class MarkdownEditor extends Editor<ProseEditorState> {
 
 	_proseEditorView: ProseEditorView | null;
-	_proseSchema: ProseSchema;
-	_keymap: ProsePlugin;
 	_initialized:boolean;
 
+	_config: EditorConfig;
+
+	/** @todo (9/27/20) used by paste event -- is this the best way?
+	 * if we used a ProseMirror plugin instead,*/
+	_imageExt: ImageExtension;
+
 	// DOM
-	_editorElt: HTMLElement;
 	_metaElt: HTMLElement;
 	
 	// popup
@@ -67,8 +74,6 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		// no editor until initialized
 		this._initialized = false;
 		this._proseEditorView = null;
-		this._proseSchema = markdownSchema;
-		this._editorElt = editorElt;
 
 		// create metadata elt
 		this._metaElt = document.createElement("div");
@@ -79,155 +84,69 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		// create popup elt
 		this.popup = null;
 
-		/** @todo (7/26/19) clean up markdown keymap */
-		this._keymap = keymap({
-			"Tab": chainCommands(
-				incrHeadingLevelCmd(+1, false),
-				insertTab
-			),
-			"Shift-Tab" : chainCommands(
-				incrHeadingLevelCmd(-1, false, markdownSchema.nodes.paragraph),
-				( () => true )
-			),
-			"Backspace" : chainCommands(
-				incrHeadingLevelCmd(-1, true, markdownSchema.nodes.paragraph), 
-				mathBackspace
-			),
-			"#" : incrHeadingLevelCmd(+1, true),
-			"Ctrl-s": (state, dispatch, view) => {
+		// editor extensions
+		let extensions:NwtExtension[] = [
+			// nodes: formatting
+			new BlockQuoteExtension(),
+			new HeadingExtension(),
+			new HorizontalRuleExtension(),
+			new CodeBlockExtension(),
+			new OrderedListExtension(),
+			new UnorderedListExtension(),
+			new ListItemExtension(),
+			(this._imageExt = new ImageExtension()),
+			new HardBreakExtension(),
+			// nodes: math
+			new InlineMathExtension(),
+			new BlockMathExtension(),
+			// nodes: special
+			new RegionExtension(),
+			new EmbedExtension(),
+			// marks
+			new BoldExtension(),
+			new ItalicExtension(),
+			new DefinitionExtension(),
+			new LinkExtension(),
+			new UnderlineExtension(),
+			new CodeExtension(),
+			new StrikethroughExtension(),
+			new WikilinkExtension(),
+			new TagExtension(),
+			new CitationExtension()
+		];
+
+		let plugins:ProsePlugin[] = [
+			mathSelectPlugin,
+			mathPlugin,
+			makeSuggestionPlugin(this),
+			history(),
+			gapCursor()
+		];
+
+		let keymap: Keymap = {
+			"Tab" : insertTab,
+			"Backspace" : chainCommands(mathBackspace, undoInputRule),
+			"Ctrl-s": () => {
 				this.saveCurrentFile(false);
 				return true;
 			},
-			"Ctrl-k": (state, dispatch, view) => {
-				/** @todo (9/26/20) move command to separate file */
-				// only insert link when highlighting text
-				if(state.selection.empty){ return false; }
+			// undo/redo
+			"Mod-z": undo,
+			"Shift-Mod-z": redo,
+			...(!mac && { "Mod-y" : redo }),
+			// selection / join
+			"Alt-ArrowUp" : joinUp,
+			"Alt-ArrowDown" : joinDown,
+			"Mod-BracketLeft" : lift,
+			"Escape" : selectParentNode
+		};
 
-				console.log("link toggle");
-				let markType = this._proseSchema.marks.link;
-				if(markActive(state, markType)) {
-					console.log("link active");
-					toggleMark(markType)(state, dispatch)
-					return true
-				}
-				console.log("opening prompt");
-				openPrompt({
-					title: "Create a link",
-					fields: {
-						href: new TextField({
-							label: "Link target",
-							required: true
-						}),
-						title: new TextField({ label: "Title" })
-					},
-					callback(attrs: { [key: string]: any; } | undefined) {
-						if(!view){ return; }
-						toggleMark(markType, attrs)(view.state, view.dispatch)
-						view.focus()
-					}
-				})
-				return true;
-			},
-			"Ctrl-r": (state, dispatch, view) => {
-				/** @todo (9/26/20) move command to separate file */
-				let { $from, $to } = state.selection;
-				let nodeType = this._proseSchema.nodes.region;
-
-				openPrompt({
-					title: "Create Region",
-					fields: {
-						region: new TextField({
-							label: "Region Name",
-							required: true
-						}),
-					},
-					callback(attrs: { [key: string]: any; } | undefined) {
-						// insert new embed node at top level
-						let tr = state.tr.insert($to.after(1), nodeType.createAndFill(attrs))
-						if(dispatch){ dispatch(tr); }
-						if(view){ view.focus(); }
-					}
-				})
-				return true;
-			},
-			"Ctrl-m": (state, dispatch, view) => {
-				/** @todo (9/26/20) move command to separate file */
-				let { $from, $to } = state.selection;
-				let nodeType = this._proseSchema.nodes.embed;
-
-				openPrompt({
-					title: "Embed Region",
-					fields: {
-						fileName: new TextField({
-							label: "File Name",
-							required: true
-						}),
-						regionName: new TextField({
-							label: "Region Name",
-							required: true
-						}),
-					},
-					callback(attrs: { [key: string]: any; } | undefined) {
-						// insert new embed node at top level
-						let tr = state.tr.insert($to.after(1), nodeType.createAndFill(attrs))
-						if(dispatch){ dispatch(tr); }
-						if(view){ view.focus(); }
-					}
-				})
-				return true;
-			},
-			"Ctrl-e": (state, dispatch, view) => {
-				/** @todo (9/26/20) move command to separate file */
-				let { $from, $to } = state.selection;
-				// selection must be entirely within a single node
-				if(!$from.sameParent($to)){ return false; }
-				
-				console.log($from);
-				console.log($from.node(), $from.parent)
-				console.log("isText?", $from.node().isText, $from.node().isTextblock);
-				// get selected node
-
-				// marks
-				console.log($from.marks());
-				for(let mark of $from.marks()){
-					if(mark.type.name == "link"){
-						let new_href = prompt("change link:", mark.attrs.href);
-						if(dispatch) { 
-							dispatch(state.tr.setNodeMarkup($from.pos, undefined, {
-								href: new_href,
-								title: mark.attrs.title
-							}));
-						}
-					}
-				}
-
-				return true;
-			}
-		})
-	}
-
-	// == ProseMirror Configuration ===================== //
-
-	/**
-	 * Initialize a set of plugins appropriate for this editor.
-	 */
-	createDefaultProseMirrorPlugins(){
-		return [
-			mathSelectPlugin,
-			buildInputRules_markdown(this._proseSchema),
-			// math
-			mathPlugin,
-			mathInputRules,
-			// suggestions
-			makeSuggestionPlugin(this),
-			// note: keymap order matters!
-			keymap(buildKeymap_markdown(this._proseSchema)),
-			this._keymap,
-			keymap(baseKeymap),
-			// other
-			history(),
-			gapCursor()
-		]
+		// create editor config
+		this._config = new EditorConfig(
+			extensions,
+			plugins,
+			keymap
+		);
 	}
 
 	// == Lifecycle ===================================== //
@@ -288,17 +207,12 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		// enforce initialization order
 		if(this._initialized){ return; }
 
-		// create prosemirror config
-		let config = {
-			schema: this._proseSchema,
-			plugins: this.createDefaultProseMirrorPlugins()
-		}
 		// create prosemirror state (from file)
 		let state:ProseEditorState;
 		if(this._currentFile && this._currentFile.contents){
 			state = this.parseContents(this._currentFile.contents);
 		} else {
-			state = ProseEditorState.create(config);
+			state = ProseEditorState.create(this._config);
 		}
 		
 		// create prosemirror instance
@@ -345,7 +259,9 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 						return true;
 					}
 					// links
-					else if(mark = markdownSchema.marks.link.isInSet(node.marks)){
+					//else if(mark = markdownSchema.marks.link.isInSet(node.marks)){
+					/** @todo (9/27/20) don't search for mark by string -- use LinkExtension object instead */
+					else if(mark = node.marks.find((mark: Mark) => mark.type.name == "link")) {
 						let url:string = mark.attrs.href;
 						if (url) { this._mainProxy.shell.requestExternalLinkOpen(url); }
 						return true;
@@ -353,8 +269,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				}
 				return false;
 			},
-			handlePaste: (view:EditorView, event:ClipboardEvent, slice:Slice<any>) => {
-				let file:File|undefined;
+			handlePaste: (view) => {
 
 				/** @todo (6/22/20) make this work with the ClipboardEvent? */
 
@@ -363,7 +278,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				if(clipboard.availableFormats("clipboard").find(str => str.startsWith("image"))){
 					let dataUrl:string = clipboard.readImage("clipboard").toDataURL();
 					
-					let imgNode = markdownSchema.nodes.image.createAndFill({
+					let imgNode = this._imageExt.type.createAndFill({
 						src: dataUrl
 					});
 					
@@ -394,6 +309,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		// de-initialize
 		this._initialized = false;
 	}
+
 	// == Document Model ================================ //
 
 	serializeContents(): string {
@@ -402,12 +318,13 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 	}
 
 	parseContents(contents: string):ProseEditorState {
+		let node: ProseNode|null = this._config.parse(contents);
 		let parsed:MarkdownDoc|null = MarkdownDoc.parse(contents);
 		if(!parsed) { throw new Error("Parse error!"); }
 
 		return ProseEditorState.create({
 			doc: parsed.proseDoc,
-			plugins: this.createDefaultProseMirrorPlugins()
+			...this._config
 		});
 	}
 
