@@ -1,13 +1,8 @@
 import { Node as ProseNode } from "prosemirror-model";
 import { NodeView, EditorView } from "prosemirror-view";
-import { Transaction, EditorState } from "prosemirror-state";
-import { StepMap } from "prosemirror-transform";
-import { keymap } from "prosemirror-keymap";
-import { baseKeymap } from "prosemirror-commands";
 import { Editor } from "@renderer/editors/editor";
-import { MarkdownEditor } from "@renderer/editors/editor-markdown";
 import { MainIpcHandlers } from "@main/MainIPC";
-import { IFileMeta, IFileWithContents } from "@common/fileio";
+import { IFileWithContents } from "@common/fileio";
 import { replaceInvalidFileNameChars } from "@common/util/pathstrings";
 import { MarkdownRegionEditor } from "@renderer/editors/editor-embed";
 
@@ -181,25 +176,6 @@ export class EmbedView implements NodeView {
 
 		this._isEditing = false;
 	}
-
-	// dispatchInner(tr: Transaction) {
-	// 	if (!this._innerView) { return; }
-	// 	let { state, transactions } = this._innerView.state.applyTransaction(tr)
-	// 	//this._innerView.updateState(state)
-
-	// 	if (!tr.getMeta("fromOutside")) {
-	// 		let outerTr = this._outerView.state.tr, offsetMap = StepMap.offset(this._getPos() + 1)
-	// 		for (let i = 0; i < transactions.length; i++) {
-	// 			let steps = transactions[i].steps
-	// 			for (let j = 0; j < steps.length; j++) {
-	// 				let mapped = steps[j].map(offsetMap);
-	// 				if (!mapped) { throw Error("step discarded!"); }
-	// 				outerTr.step(mapped)
-	// 			}
-	// 		}
-	// 		if (outerTr.docChanged) this._outerView.dispatch(outerTr)
-	// 	}
-	// }
 
 	// == Events ======================================== //
 

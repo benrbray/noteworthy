@@ -3,9 +3,9 @@ import { Node as ProseNode, Mark } from "prosemirror-model";
 
 // noteworthy imports
 import { ICrossRefProvider } from "@main/plugins/crossref-plugin";
-import { markdownParser } from "@common/markdown";
 import { IDoc, DocMeta, ParserFor } from "./doctypes";
-import { IOutlineProvider, IOutline, IOutlineEntry } from "@main/plugins/outline-plugin";
+import { IOutlineProvider, IOutlineEntry } from "@main/plugins/outline-plugin";
+import { defaultMarkdownConfig } from "@common/extensions/default-config";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -26,7 +26,7 @@ export class MarkdownDoc implements IMarkdownDoc, ICrossRefProvider, IOutlinePro
 	}
 	
 	static parse(serialized: string) : MarkdownDoc|null {
-		let doc = markdownParser.parse(serialized);
+		let doc = defaultMarkdownConfig.parse(serialized);
 		if(!doc){ return null; }
 		return new MarkdownDoc(doc);
 	}
