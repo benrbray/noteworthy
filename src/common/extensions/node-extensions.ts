@@ -24,6 +24,23 @@ const mac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform) : f
 
 //// NODE EXTENSIONS ///////////////////////////////////////
 
+/* -- Paragraph ----------------------------------------- */
+
+export class ParagraphExtension extends NodeExtension {
+
+	get name() { return "paragraph" as const; }
+
+	createNodeSpec(): NodeSpec {
+		return {
+			content: "inline*",
+			attrs: { class: { default: undefined } },
+			group: "block",
+			parseDOM: [{ tag: "p" }],
+			toDOM(node: ProseNode): DOMOutputSpec { return ["p", { ...(node.attrs.class && { class: node.attrs.class }) }, 0] }
+		};
+	}
+}
+
 /* -- Block Quote --------------------------------------- */
 
 // : (NodeType) → InputRule
@@ -69,6 +86,8 @@ export class HeadingExtension extends NodeExtension {
 
 	get name() { return "heading" as const; }
 
+	constructor(private _bottomType:NodeExtension) { super(); }
+
 	createNodeSpec(): NodeSpec {
 		return {
 			attrs: { level: { default: 1 } },
@@ -89,9 +108,9 @@ export class HeadingExtension extends NodeExtension {
 		let keymap:Keymap = {
 			"Tab"       : incrHeadingLevelCmd(+1, false),
 			"#"         : incrHeadingLevelCmd(+1, true),
-			"Shift-Tab" : incrHeadingLevelCmd(-1, false, this.type),
+			"Shift-Tab" : incrHeadingLevelCmd(-1, false, this._bottomType.type),
 			/** BUG: backspace cmd not working with h1 */
-			"Backspace" : incrHeadingLevelCmd(-1, true,  this.type),
+			"Backspace" : incrHeadingLevelCmd(-1, true,  this._bottomType.type),
 		};
 
 		for(let i = 1; i <= 6; i++){

@@ -23,9 +23,21 @@ export class EditorConfig {
 	private _parser: MarkdownParser;
 
 	constructor(extensions:NwtExtension[], plugins:ProsePlugin[], keymap:Keymap){
+		/** Step 1: Build Schema
+		 * @effect Populates the `.type` field of each extension with a
+		 *    ProseMirror NodeType, which can be referenced during plugin creation.
+		 */
 		this.schema = this._buildSchema(extensions);
+
+		/** Step 2: Build Plugins
+		 * @note it is important that this happens AFTER schema creation, so that
+		 *    the necessary NodeType / MarkType objects have been initialized.
+		 */
 		this.plugins = this._buildPlugins(extensions, plugins.concat(makeKeymap(keymap)));
 
+		/** Step 3: Build Parser
+		 * Create a document parser for this configuration.
+		 */
 		this._parser = makeMarkdownParser(this.schema);
 	}
 
@@ -43,14 +55,7 @@ export class EditorConfig {
 			},
 			text: {
 				group: "inline"
-			},
-			paragraph: {
-				content: "inline*",
-				attrs: { class: { default: undefined } },
-				group: "block",
-				parseDOM: [{ tag: "p" }],
-				toDOM(node: ProseNode): DOMOutputSpec { return ["p", { ...(node.attrs.class && { class: node.attrs.class }) }, 0] }
-			},
+			}
 		};
 
 		// create node and mark specs
@@ -66,6 +71,8 @@ export class EditorConfig {
 				markSpecs[name] = ext.createMarkSpec();
 			}
 		}
+
+		console.log(JSON.stringify(nodeSpecs, undefined, 2));
 
 		// build schema
 		let schema = new ProseSchema({
@@ -101,7 +108,8 @@ export class EditorConfig {
 		}
 
 		// combine all input rules as single ProseMirror plugin
-		plugins.push(makeInputRules({ rules: inputRules }));
+		let resultPlugins = [];
+		resultPlugins.push(makeInputRules({ rules: inputRules }));
 
 		// include extension keymaps
 		/** @todo (9/27/20) sort keymap entries by priority? */
@@ -109,12 +117,13 @@ export class EditorConfig {
 		keymaps.forEach((cmds, key) => { 
 			keymap[key] = chainCommands(...cmds);
 		});
-		plugins.push(makeKeymap(keymap));
+		resultPlugins.push(makeKeymap(keymap));
 
 		// include base keymap
 		/** @todo (9/27/20) sort keymap entries by priority? */
-		plugins.push(makeKeymap(baseKeymap));
+		resultPlugins.push(makeKeymap(baseKeymap));
 
-		return plugins;
+		// provided plugins go last
+		return resultPlugins.concat(plugins);
 	}
 }

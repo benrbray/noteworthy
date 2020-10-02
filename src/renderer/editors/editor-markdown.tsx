@@ -37,7 +37,7 @@ import { makeSuggestionPlugin, SuggestionPopup } from "@renderer/ui/suggestions"
 import { insertTab } from "@common/prosemirror/commands/insertTab";
 import { undoInputRule } from "prosemirror-inputrules";
 import { EditorConfig } from "@common/extensions/editor-config";
-import { ImageExtension, BlockQuoteExtension, HeadingExtension, HorizontalRuleExtension, CodeBlockExtension, OrderedListExtension, UnorderedListExtension, ListItemExtension, HardBreakExtension, InlineMathExtension, BlockMathExtension, RegionExtension, EmbedExtension } from "@common/extensions/node-extensions";
+import { ImageExtension, BlockQuoteExtension, HeadingExtension, HorizontalRuleExtension, CodeBlockExtension, OrderedListExtension, UnorderedListExtension, ListItemExtension, HardBreakExtension, InlineMathExtension, BlockMathExtension, RegionExtension, EmbedExtension, ParagraphExtension } from "@common/extensions/node-extensions";
 import { BoldExtension, ItalicExtension, DefinitionExtension, LinkExtension, UnderlineExtension, CodeExtension, StrikethroughExtension, WikilinkExtension, TagExtension, CitationExtension } from "@common/extensions/mark-extensions";
 import { NwtExtension } from "@common/extensions/extension";
 
@@ -58,6 +58,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 
 	/** @todo (9/27/20) used by paste event -- is this the best way?
 	 * if we used a ProseMirror plugin instead,*/
+	_paragraphExt: ParagraphExtension;
 	_imageExt: ImageExtension;
 
 	// DOM
@@ -87,8 +88,9 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		// editor extensions
 		let extensions:NwtExtension[] = [
 			// nodes: formatting
+			(this._paragraphExt = new ParagraphExtension()),
 			new BlockQuoteExtension(),
-			new HeadingExtension(),
+			new HeadingExtension(this._paragraphExt),
 			new HorizontalRuleExtension(),
 			new CodeBlockExtension(),
 			new OrderedListExtension(),
