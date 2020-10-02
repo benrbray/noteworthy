@@ -37,3 +37,14 @@ The table below compares Noteworthy to other editors with similar features.  Of 
 ![feature comparison](img/noteworthy-comparison_16sept2020.png)
 
 > If you notice an error in the feature comparison table, please [file an issue](https://github.com/benrbray/noteworthy/issues/new/choose) and I will correct it.
+
+## Building Noteworthy
+
+> Noteworthy is NOT quite ready for use.  However, you can follow these instructions if you really wish to run it.
+
+```
+git clone --recurse-submodules git@github.com:benrbray/noteworthy.git
+cd noteworthy
+npm install
+npm run dev
+```
