@@ -2,10 +2,9 @@
 import path from "path";
 
 // prosemirror
-import { Node as ProseNode, Mark } from "prosemirror-model";
+import { Node as ProseNode } from "prosemirror-model";
 
 // project imports
-import NoteworthyApp from "@main/app";
 import { IWorkspaceDir, IFileMeta } from "@common/fileio";
 import { WorkspacePlugin } from "./plugin";
 import { IDoc } from "@common/doctypes/doctypes";
@@ -13,6 +12,11 @@ import { IDoc } from "@common/doctypes/doctypes";
 // fuzzy search
 import fuzzysort from "fuzzysort";
 import { DefaultMap } from "@common/util/DefaultMap";
+import { EditorView, NodeView, Decoration } from "prosemirror-view";
+import { PluginKey, PluginSpec, Plugin as ProsePlugin, EditorState, Transaction, TextSelection } from "prosemirror-state";
+import { StepMap } from "prosemirror-transform";
+import { keymap } from "prosemirror-keymap";
+import { chainCommands, deleteSelection } from "prosemirror-commands";
 
 ////////////////////////////////////////////////////////////
 
@@ -320,5 +324,348 @@ export class CrossRefPlugin implements WorkspacePlugin {
 		/** @todo: validate that deserialized data is actually valid */
 
 		return this;
+	}
+}
+
+////////////////////////////////////////////////////////////
+
+interface ICitationPluginState {
+}
+
+/** 
+ * @see https://prosemirror.net/docs/ref/#view.EditorProps.nodeViews
+ */
+function createCitationView(){
+	return (node: ProseNode, view: EditorView, getPos:boolean|(()=>number)): CitationView => {
+		/** @todo is this necessary?
+		* Docs says that for any function proprs, the current plugin instance
+		* will be bound to `this`.  However, the typings don't reflect this.
+		*/
+		let pluginState = citationPluginKey.getState(view.state);
+		if(!pluginState){ throw new Error("no math plugin!"); }
+
+		// set up NodeView
+		let nodeView = new CitationView(
+			node, view, getPos as (() => number)
+		);
+
+		return nodeView;
+	}
+}
+
+let citationPluginKey = new PluginKey<ICitationPluginState>("noteworthy-citations");
+
+let citationPluginSpec:PluginSpec<ICitationPluginState> = {
+	key: citationPluginKey,
+	state: {
+		init(config, instance){
+			return {
+				macros: {},
+				activeNodeViews: []
+			};
+		},
+		apply(tr, value, oldState, newState){
+			/** @todo (8/21/20)
+			 * since new state has not been fully applied yet, we don't yet have
+			 * information about any new NodeViews that were created by this transaction.
+			 * As a result, the cursor position may be wrong for any newly created node views.
+			 */
+			let pluginState = citationPluginKey.getState(oldState);
+			return value;
+		},
+		/** @todo (8/21/20) implement serialization */
+	},
+	props: {
+		nodeViews: {
+			"citation" : createCitationView()
+		}
+	}
+};
+
+export const citationPlugin = new ProsePlugin(citationPluginSpec);
+
+////////////////////////////////////////////////////////////
+
+interface ICitationViewOptions {
+	/** Dom element name to use for this NodeView */
+	tagName?: string;
+}
+
+export class CitationView implements NodeView {
+
+	// nodeview params
+	private _node: ProseNode;
+	private _outerView: EditorView;
+	private _getPos: (() => number);
+
+	// nodeview dom
+	dom: HTMLElement;
+	private _nodeRenderElt: HTMLElement | undefined;
+	private _nodeSrcElt: HTMLElement | undefined;
+	private _innerView: EditorView | undefined;
+
+	// internal state
+	cursorSide: "start" | "end";
+	private _tagName: string;
+	private _isEditing: boolean;
+	private _onDestroy: (() => void) | undefined;
+
+	// == Lifecycle ===================================== //
+
+	/**
+	 * @param onDestroy Callback for when this NodeView is destroyed.  
+	 *     This NodeView should unregister itself from the list of ICursorPosObservers.
+	 * 
+	 * Citation Views support the following options:
+	 * @option tagName HTML tag name to use for this NodeView.  If none is provided,
+	 *     will use the node name with underscores converted to hyphens.
+	 */
+	constructor(node: ProseNode, view: EditorView, getPos: (() => number), options: ICitationViewOptions = {}, onDestroy?: (() => void)) {
+		// store arguments
+		this._node = node;
+		this._outerView = view;
+		this._getPos = getPos;
+		this._onDestroy = onDestroy && onDestroy.bind(this);
+
+		// editing state
+		this.cursorSide = "start";
+		this._isEditing = false;
+
+		// options
+		this._tagName = options.tagName || this._node.type.name.replace("_", "-");
+
+		// create dom representation of nodeview
+		this.dom = document.createElement(this._tagName);
+		this.dom.classList.add("citation", "node-wysiwym");
+
+		this._nodeRenderElt = document.createElement("span");
+		this._nodeRenderElt.textContent = "";
+		this._nodeRenderElt.classList.add("node-render");
+		this.dom.appendChild(this._nodeRenderElt);
+
+		this._nodeSrcElt = document.createElement("span");
+		this._nodeSrcElt.classList.add("node-src");
+		this.dom.appendChild(this._nodeSrcElt);
+
+		// ensure 
+		this.dom.addEventListener("click", () => this.ensureFocus());
+
+		// render initial content
+		this.render();
+	}
+
+	destroy() {
+		// close the inner editor without rendering
+		this.closeEditor(false);
+
+		// clean up dom elements
+		if (this._nodeRenderElt) {
+			this._nodeRenderElt.remove();
+			delete this._nodeRenderElt;
+		}
+		if (this._nodeSrcElt) {
+			this._nodeSrcElt.remove();
+			delete this._nodeSrcElt;
+		}
+		delete this.dom;
+	}
+
+	/**
+	 * Ensure focus on the inner editor whenever this node has focus.
+	 * This helps to prevent accidental deletions of math blocks.
+	 */
+	ensureFocus() {
+		if (this._innerView && this._outerView.hasFocus()) {
+			this._innerView.focus();
+		}
+	}
+
+	// == Updates ======================================= //
+
+	update(node: ProseNode, decorations: Decoration[]) {
+		if (!node.sameMarkup(this._node)) return false
+		this._node = node;
+
+		if (this._innerView) {
+			let state = this._innerView.state;
+
+			let start = node.content.findDiffStart(state.doc.content)
+			if (start != null) {
+				let diff = node.content.findDiffEnd(state.doc.content as any);
+				if (diff) {
+					let { a: endA, b: endB } = diff;
+					let overlap = start - Math.min(endA, endB)
+					if (overlap > 0) { endA += overlap; endB += overlap }
+					this._innerView.dispatch(
+						state.tr
+							.replace(start, endB, node.slice(start, endA))
+							.setMeta("fromOutside", true))
+				}
+			}
+		}
+
+		if (!this._isEditing) {
+			this.render();
+		}
+
+		return true;
+	}
+
+	updateCursorPos(state: EditorState): void {
+		const pos = this._getPos();
+		const size = this._node.nodeSize;
+		const inPmSelection =
+			(state.selection.from < pos + size)
+			&& (pos < state.selection.to);
+
+		if (!inPmSelection) {
+			this.cursorSide = (pos < state.selection.from) ? "end" : "start";
+		}
+	}
+
+	// == Events ===================================== //
+
+	selectNode() {
+		this.dom.classList.add("pm-selected");
+		if (!this._isEditing) { this.openEditor(); }
+	}
+
+	deselectNode() {
+		this.dom.classList.remove("pm-selected");
+		if (this._isEditing) { this.closeEditor(); }
+	}
+
+	stopEvent(event: Event): boolean {
+		return (this._innerView !== undefined)
+			&& (event.target !== undefined)
+			&& this._innerView.dom.contains(event.target as Node);
+	}
+
+	ignoreMutation() { return true; }
+
+	// == Rendering ===================================== //
+
+	render() {
+		if (!this._nodeRenderElt) { return; }
+
+		// get tex string to render
+		console.log(this._node);
+		let contentRaw = this._node.content.content;
+		let contentStr = "";
+		if (contentRaw.length > 0 && contentRaw[0].textContent !== null) {
+			contentStr = contentRaw[0].textContent.trim();
+		}
+
+		// empty math?
+		if (contentStr.length < 1) {
+			this.dom.classList.add("node-empty");
+			// clear rendered math, since this node is in an invalid state
+			while(this._nodeRenderElt.firstChild){ this._nodeRenderElt.firstChild.remove(); }
+			// do not render empty math
+			return;
+		} else {
+			this.dom.classList.remove("node-empty");
+		}
+
+		// render katex, but fail gracefully
+		try {
+			this._nodeRenderElt.innerText = contentStr.toUpperCase();
+			this._nodeRenderElt.classList.remove("parse-error");
+			this.dom.setAttribute("title", contentStr);
+		} catch (err) {
+			/** @todo (10/2/20) catch errors? */
+			console.error(err);
+		}
+	}
+
+	// == Inner Editor ================================== //
+
+	dispatchInner(tr: Transaction) {
+		if (!this._innerView) { return; }
+		let { state, transactions } = this._innerView.state.applyTransaction(tr)
+		this._innerView.updateState(state)
+
+		if (!tr.getMeta("fromOutside")) {
+			let outerTr = this._outerView.state.tr, offsetMap = StepMap.offset(this._getPos() + 1)
+			for (let i = 0; i < transactions.length; i++) {
+				let steps = transactions[i].steps
+				for (let j = 0; j < steps.length; j++) {
+					let mapped = steps[j].map(offsetMap);
+					if (!mapped) { throw Error("step discarded!"); }
+					outerTr.step(mapped)
+				}
+			}
+			if (outerTr.docChanged) this._outerView.dispatch(outerTr)
+		}
+	}
+
+	openEditor() {
+		if (this._innerView) { throw Error("inner view should not exist!"); }
+
+		// create a nested ProseMirror view
+		this._innerView = new EditorView(this._nodeSrcElt, {
+			state: EditorState.create({
+				doc: this._node,
+				plugins: [keymap({
+					"Backspace": chainCommands(deleteSelection, (state, dispatch, tr_inner) => {
+						// default backspace behavior for non-empty selections
+						if(!state.selection.empty) { return false; }
+						// default backspace behavior when math node is non-empty
+						if(this._node.textContent.length > 0){ return false; }
+						// otherwise, we want to delete the empty math node and focus the outer view
+						this._outerView.dispatch(this._outerView.state.tr.insertText(""));
+						this._outerView.focus();
+						return true;
+					}),
+					"Ctrl-Enter": (state: EditorState, dispatch: ((tr: Transaction) => void)|undefined) => {
+						let { to } = this._outerView.state.selection;
+						let outerState: EditorState = this._outerView.state;
+
+						// place cursor outside of math node
+						this._outerView.dispatch(
+							outerState.tr.setSelection(
+								TextSelection.create(outerState.doc, to)
+							)
+						);
+
+						// must return focus to the outer view,
+						// otherwise no cursor will appear
+						this._outerView.focus();
+						return true;
+					}
+				})]
+			}),
+			dispatchTransaction: this.dispatchInner.bind(this)
+		})
+
+		// focus element
+		let innerState = this._innerView.state;
+		this._innerView.focus();
+
+		// determine cursor position
+		let pos: number = (this.cursorSide == "start") ? 0 : this._node.nodeSize - 2;
+		this._innerView.dispatch(
+			innerState.tr.setSelection(
+				TextSelection.create(innerState.doc, pos)
+			)
+		);
+
+		this._isEditing = true;
+	}
+
+	/**
+	 * Called when the inner ProseMirror editor should close.
+	 * f
+	 * @param render Optionally update the rendered math after closing. (which
+	 *    is generally what we want to do, since the user is done editing!)
+	 */
+	closeEditor(render: boolean = true) {
+		if (this._innerView) {
+			this._innerView.destroy();
+			this._innerView = undefined;
+		}
+
+		if (render) { this.render(); }
+		this._isEditing = false;
 	}
 }

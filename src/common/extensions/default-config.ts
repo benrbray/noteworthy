@@ -1,6 +1,16 @@
 import { EditorConfig } from "./editor-config";
-import { BlockQuoteExtension, HeadingExtension, HorizontalRuleExtension, CodeBlockExtension, OrderedListExtension, UnorderedListExtension, ListItemExtension, ImageExtension, HardBreakExtension, InlineMathExtension, BlockMathExtension, RegionExtension, EmbedExtension, ParagraphExtension } from "./node-extensions";
-import { BoldExtension, ItalicExtension, DefinitionExtension, LinkExtension, UnderlineExtension, CodeExtension, StrikethroughExtension, WikilinkExtension, TagExtension, CitationExtension } from "./mark-extensions";
+import {
+	BlockQuoteExtension, HeadingExtension, HorizontalRuleExtension,
+	CodeBlockExtension, OrderedListExtension, UnorderedListExtension,
+	ListItemExtension, ImageExtension, HardBreakExtension, InlineMathExtension,
+	BlockMathExtension, RegionExtension, EmbedExtension, ParagraphExtension,
+	CitationExtension
+} from "./node-extensions";
+import {
+	BoldExtension, ItalicExtension, DefinitionExtension, LinkExtension,
+	UnderlineExtension, CodeExtension, StrikethroughExtension,
+	WikilinkExtension, TagExtension
+} from "./mark-extensions";
 
 ////////////////////////////////////////////////////////////
 
@@ -35,6 +45,7 @@ export const defaultMarkdownConfig = new EditorConfig([
 	new UnderlineExtension(),
 	new CodeExtension(),
 	new StrikethroughExtension(),
+	// plugins: crossrefs
 	new WikilinkExtension(),
 	new TagExtension(),
 	new CitationExtension()

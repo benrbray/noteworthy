@@ -37,9 +37,20 @@ import { makeSuggestionPlugin, SuggestionPopup } from "@renderer/ui/suggestions"
 import { insertTab } from "@common/prosemirror/commands/insertTab";
 import { undoInputRule } from "prosemirror-inputrules";
 import { EditorConfig } from "@common/extensions/editor-config";
-import { ImageExtension, BlockQuoteExtension, HeadingExtension, HorizontalRuleExtension, CodeBlockExtension, OrderedListExtension, UnorderedListExtension, ListItemExtension, HardBreakExtension, InlineMathExtension, BlockMathExtension, RegionExtension, EmbedExtension, ParagraphExtension } from "@common/extensions/node-extensions";
-import { BoldExtension, ItalicExtension, DefinitionExtension, LinkExtension, UnderlineExtension, CodeExtension, StrikethroughExtension, WikilinkExtension, TagExtension, CitationExtension } from "@common/extensions/mark-extensions";
 import { NwtExtension } from "@common/extensions/extension";
+import { citationPlugin } from "@main/plugins/crossref-plugin";
+import {
+	BlockQuoteExtension, HeadingExtension, HorizontalRuleExtension,
+	CodeBlockExtension, OrderedListExtension, UnorderedListExtension,
+	ListItemExtension, ImageExtension, HardBreakExtension, InlineMathExtension,
+	BlockMathExtension, RegionExtension, EmbedExtension, ParagraphExtension,
+	CitationExtension
+} from "@common/extensions/node-extensions";
+import {
+	BoldExtension, ItalicExtension, DefinitionExtension, LinkExtension,
+	UnderlineExtension, CodeExtension, StrikethroughExtension,
+	WikilinkExtension, TagExtension
+} from "@common/extensions/mark-extensions";
 
 ////////////////////////////////////////////////////////////
 
@@ -120,6 +131,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		let plugins:ProsePlugin[] = [
 			mathSelectPlugin,
 			mathPlugin,
+			citationPlugin,
 			makeSuggestionPlugin(this),
 			history(),
 			gapCursor()

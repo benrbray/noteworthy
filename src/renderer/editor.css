@@ -145,6 +145,27 @@ li.task-list-item input[type='checkbox'] {
 	left: -1em;
 }
 
+/* == WYSIWYM =========================================== */
+
+/* @todo bundle this css with the wysiwym plugins */
+
+.node-wysiwym {
+	min-width: 1em;
+	min-height: 1em;
+}
+
+.node-wysiwym.pm-selected              { outline: none; }
+.node-wysiwym.pm-selected .node-src    { display: inline-block; }
+.node-wysiwym.pm-selected .node-render { display: none;   }
+
+
+.node-wysiwym .node-src { display: none; }
+
+.node-wysiwym .node-render {
+	display: inline;
+	cursor: pointer;
+}
+
 /* == MATH ============================================== */
 
 .math-src                           { color: var(--color-math-src)   !important; }

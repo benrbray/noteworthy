@@ -168,6 +168,11 @@ export const markdownSerializer = new MarkdownSerializer({
 		state.ensureNewLine()
 		state.write("$$")
 		state.closeBlock(node)
+	},
+	citation(state, node) {
+		state.write("@[");
+		state.text(node.textContent, false);
+		state.write("]");
 	}
 }, {
 	em: {open: "*", close: "*", mixable: true, expelEnclosingWhitespace: true},
@@ -176,7 +181,6 @@ export const markdownSerializer = new MarkdownSerializer({
 	strike: {open: "~~", close: "~~", mixable: true, expelEnclosingWhitespace: true},
 	tag: {open: "#[", close: "]", mixable: true, expelEnclosingWhitespace: true, escape:false},
 	definition: {open: "<dfn>", close: "</dfn>", mixable: true, expelEnclosingWhitespace: true, escape:false},
-	citation: {open: "@[", close: "]", mixable: true, expelEnclosingWhitespace: true, escape:false},
 	wikilink: {open: "[[", close: "]]", mixable: true, expelEnclosingWhitespace: true, escape:false},
 	link: {
 		open(_state, mark, parent, index) {

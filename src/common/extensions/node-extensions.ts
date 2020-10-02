@@ -2,7 +2,7 @@
 import { NodeType, Node as ProseNode, NodeSpec, DOMOutputSpec } from "prosemirror-model";
 import { wrapInList, splitListItem, liftListItem, sinkListItem } from "prosemirror-schema-list"
 import {
-	wrappingInputRule, textblockTypeInputRule,
+	wrappingInputRule, textblockTypeInputRule, InputRule,
 } from "prosemirror-inputrules"
 import {
 	setBlockType, chainCommands, exitCode,
@@ -551,5 +551,56 @@ export class EmbedExtension extends NodeExtension {
 			return true;
 		}
 	}}
+
+}
+
+////////////////////////////////////////////////////////////
+
+export function inlineInputRule(pattern: RegExp, nodeType: NodeType, getAttrs?: (match: string[]) => any) {
+	return new InputRule(pattern, (state, match, start, end) => {
+		let $start = state.doc.resolve(start);
+		let index = $start.index();
+		let $end = state.doc.resolve(end);
+		// get attrs
+		let attrs = getAttrs instanceof Function ? getAttrs(match) : getAttrs
+		// check if replacement valid
+		if (!$start.parent.canReplaceWith(index, $end.index(), nodeType)) {
+			return null;
+		}
+		// perform replacement
+		return state.tr.replaceRangeWith(
+			start, end,
+			nodeType.create(attrs, nodeType.schema.text(match[1]))
+		);
+	});
+}
+
+/* -- Citation ----------------------------------------------- */
+
+export function citationRule(nodeType: NodeType): InputRule {
+	return inlineInputRule(/@\[([^\s](?:[^\]]*[^\s])?)\](.)$/, nodeType);
+}
+
+export class CitationExtension extends NodeExtension {
+	
+	get name() { return "citation" as const; }
+	
+	createNodeSpec(): NodeSpec {
+		return {
+			content: "text*",
+			group: "inline",
+			inline: true,
+			atom: true,
+			attrs: { title: { default: null } },
+			parseDOM: [{ tag: "span.citation" }],
+			toDOM(node: ProseNode): DOMOutputSpec { return ["span", Object.assign({ class: "citation" }, node.attrs), 0] }
+		};
+	}
+
+	createKeymap(): Keymap { return {
+		//"Mod-@" : toggleMark(this.type)
+	}}
+
+	createInputRules() { return [citationRule(this.type)]; }
 
 }

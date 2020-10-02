@@ -287,30 +287,3 @@ export class TagExtension extends MarkExtension {
 	createInputRules() { return [tagRule(this.type), tagRuleBracketed(this.type)]; }
 
 }
-
-/* -- Citation ----------------------------------------------- */
-
-export function citationRule(markType: MarkType): InputRule {
-	return markInputRule(/@\[([^\s](?:[^\]]*[^\s])?)\](.)$/, markType);
-}
-
-export class CitationExtension extends MarkExtension {
-	
-	get name() { return "citation" as const; }
-	
-	createMarkSpec(): MarkSpec {
-		return {
-			attrs: { title: { default: null } },
-			inclusive: false,
-			parseDOM: [{ tag: "span.citation" }],
-			toDOM(node: Mark): DOMOutputSpec { return ["span", Object.assign({ class: "citation" }, node.attrs)] }
-		};
-	}
-
-	createKeymap(): Keymap { return {
-		"Mod-@" : toggleMark(this.type)
-	}}
-
-	createInputRules() { return [citationRule(this.type)]; }
-
-}
