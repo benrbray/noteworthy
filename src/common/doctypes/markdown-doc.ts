@@ -6,12 +6,13 @@ import { ICrossRefProvider } from "@main/plugins/crossref-plugin";
 import { IDoc, DocMeta, ParserFor } from "./doctypes";
 import { IOutlineProvider, IOutlineEntry } from "@main/plugins/outline-plugin";
 import { defaultMarkdownConfig } from "@common/extensions/default-config";
+import { IMetadataProvider, IMetadata } from "@main/plugins/metadata-plugin";
 
 ////////////////////////////////////////////////////////////////////////////////
 
 interface IMarkdownDoc extends IDoc { }
 
-export class MarkdownDoc implements IMarkdownDoc, ICrossRefProvider, IOutlineProvider {
+export class MarkdownDoc implements IMarkdownDoc, ICrossRefProvider, IOutlineProvider, IMetadataProvider {
 	
 	constructor(private _doc:ProseNode){
 
@@ -21,7 +22,7 @@ export class MarkdownDoc implements IMarkdownDoc, ICrossRefProvider, IOutlinePro
 	
 	// -- IMarkdownDoc ---------------------------------- //
 
-	getMeta():DocMeta {
+	getMeta(): DocMeta {
 		return this._doc.attrs["yamlMeta"] || {};
 	}
 	
@@ -56,6 +57,15 @@ export class MarkdownDoc implements IMarkdownDoc, ICrossRefProvider, IOutlinePro
 		})
 
 		return entries;
+	}
+
+	// -- IMetadataProvider ----------------------------- //
+
+	public IS_METADATA_PROVIDER: true = true;
+	
+	getMetadata(): IMetadata {
+		/** @todo (10/2/20) unify this function with getMeta() above */
+		return this._doc.attrs["yamlMeta"];
 	}
 
 	// -- ICrossRefProvider ----------------------------- //

@@ -51,6 +51,7 @@ import {
 	UnderlineExtension, CodeExtension, StrikethroughExtension,
 	WikilinkExtension, TagExtension
 } from "@common/extensions/mark-extensions";
+import { IMetadata } from "@main/plugins/metadata-plugin";
 
 ////////////////////////////////////////////////////////////
 
@@ -70,6 +71,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 	/** @todo (9/27/20) used by paste event -- is this the best way?
 	 * if we used a ProseMirror plugin instead,*/
 	_paragraphExt: ParagraphExtension;
+	_citationExt: CitationExtension;
 	_imageExt: ImageExtension;
 
 	// DOM
@@ -125,13 +127,60 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 			new StrikethroughExtension(),
 			new WikilinkExtension(),
 			new TagExtension(),
-			new CitationExtension()
+			(this._citationExt = new CitationExtension())
 		];
 
 		let plugins:ProsePlugin[] = [
 			mathSelectPlugin,
 			mathPlugin,
-			citationPlugin,
+			citationPlugin({
+				renderCitation: async (id:string): Promise<string> => {
+					console.log(`renderCitation ::`, id);
+					// treat id as tag, and find hash as corresponding file
+					let hash: string | null = await this._mainProxy.tag.getHashForTag({ tag: id , create: false });
+					if(hash === null) {
+						console.warn(`renderCitation :: tag @[${id}] does not correspond to a hash`);
+						return id;
+					}
+					
+					// get metadata corresponding to this file hash
+					let meta = await this._mainProxy.metadata.getMetadataForHash(hash);
+					if(meta === null) { 
+						console.warn(`renderCitation :: no metadata found for hash ${hash}`);
+						return id;
+					}
+
+					console.log(meta);
+
+					// if both author and year present, use them
+					let author: string|string[]|undefined = meta["author"];
+					let authors: string|string[]|undefined = meta["authors"];
+					let date: string|string[]|undefined = meta["date"];
+					let year: string|string[]|undefined = meta["year"];
+
+					/** @todo (10/2/20) these checks can be removed once we properly parse YAML metadata */
+					if(!author && Array.isArray(authors)) { author = authors[0]; }
+					if(!date && !Array.isArray(year))     { date = year;         }
+					if(Array.isArray(date)){ date = date[0]; }
+					if(Array.isArray(author)){ author = author[0]; }
+
+					let parsedDate:Date = new Date(date);
+					if(isNaN(parsedDate.valueOf())){
+						console.warn(`renderCitation :: invalid date ${date}`);
+						return id;
+					}
+
+					if(!author || !date){
+						console.warn(`renderCitation :: not enough fields`);
+						return id;
+					}
+
+					let names = author.split(/\s+/);
+					let lastName = names[names.length-1];
+
+					return `${lastName} ${parsedDate.getFullYear()}`;
+				}
+			}),
 			makeSuggestionPlugin(this),
 			history(),
 			gapCursor()
@@ -281,6 +330,15 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 						return true;
 					}
 				}
+
+				if(event.ctrlKey && node.type == this._citationExt.type) {
+					/** @todo (10/3/20) clicking tags isn't working properly with NodeViews! */
+					let tag = node.textContent;
+					let directoryHint = this._currentFile?.dirPath;
+					if (tag) { this._mainProxy.tag.requestTagOpen({tag, create:true, directoryHint}); }
+					return true;
+				}
+
 				return false;
 			},
 			handlePaste: (view) => {

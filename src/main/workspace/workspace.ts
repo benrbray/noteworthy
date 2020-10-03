@@ -14,6 +14,7 @@ import * as FSALFile from "../fsal/fsal-file";
 import * as FSALDir from "../fsal/fsal-dir";
 import { loadFile } from "@common/doctypes/parse-doc";
 import { OutlinePlugin } from "@main/plugins/outline-plugin";
+import { MetadataPlugin } from "@main/plugins/metadata-plugin";
 
 ////////////////////////////////////////////////////////////
 
@@ -221,6 +222,7 @@ export class Workspace implements IDisposable {
 
 	/** @todo fix typings for plugin by name? */
 	getPluginByName(name:"crossref_plugin"):CrossRefPlugin|null;
+	getPluginByName(name:"metadata_plugin"):MetadataPlugin|null;
 	getPluginByName(name:"outline_plugin"):OutlinePlugin|null;
 	getPluginByName(name:string):WorkspacePlugin|null;
 	getPluginByName(name:string):WorkspacePlugin|null {

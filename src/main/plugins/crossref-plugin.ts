@@ -330,12 +330,17 @@ export class CrossRefPlugin implements WorkspacePlugin {
 ////////////////////////////////////////////////////////////
 
 interface ICitationPluginState {
+
+}
+
+interface ICitationPluginOptions {
+	renderCitation: (id:string) => Promise<string>;
 }
 
 /** 
  * @see https://prosemirror.net/docs/ref/#view.EditorProps.nodeViews
  */
-function createCitationView(){
+function createCitationView(renderCitation: (id:string) => Promise<string>){
 	return (node: ProseNode, view: EditorView, getPos:boolean|(()=>number)): CitationView => {
 		/** @todo is this necessary?
 		* Docs says that for any function proprs, the current plugin instance
@@ -346,7 +351,8 @@ function createCitationView(){
 
 		// set up NodeView
 		let nodeView = new CitationView(
-			node, view, getPos as (() => number)
+			node, view, getPos as (() => number),
+			{ renderCitation }
 		);
 
 		return nodeView;
@@ -355,40 +361,41 @@ function createCitationView(){
 
 let citationPluginKey = new PluginKey<ICitationPluginState>("noteworthy-citations");
 
-let citationPluginSpec:PluginSpec<ICitationPluginState> = {
-	key: citationPluginKey,
-	state: {
-		init(config, instance){
-			return {
-				macros: {},
-				activeNodeViews: []
-			};
+export const citationPlugin = (options:ICitationPluginOptions): ProsePlugin<ICitationPluginState> => {
+	let citationPluginSpec:PluginSpec<ICitationPluginState> = {
+		key: citationPluginKey,
+		state: {
+			init(config, instance){
+				return {
+					macros: {},
+					activeNodeViews: []
+				};
+			},
+			apply(tr, value, oldState, newState){
+				/** @todo (8/21/20)
+				* since new state has not been fully applied yet, we don't yet have
+				* information about any new NodeViews that were created by this transaction.
+				* As a result, the cursor position may be wrong for any newly created node views.
+				*/
+				let pluginState = citationPluginKey.getState(oldState);
+				return value;
+			},
+			/** @todo (8/21/20) implement serialization */
 		},
-		apply(tr, value, oldState, newState){
-			/** @todo (8/21/20)
-			 * since new state has not been fully applied yet, we don't yet have
-			 * information about any new NodeViews that were created by this transaction.
-			 * As a result, the cursor position may be wrong for any newly created node views.
-			 */
-			let pluginState = citationPluginKey.getState(oldState);
-			return value;
-		},
-		/** @todo (8/21/20) implement serialization */
-	},
-	props: {
-		nodeViews: {
-			"citation" : createCitationView()
+		props: {
+			nodeViews: { "citation" : createCitationView(options.renderCitation) }
 		}
-	}
-};
-
-export const citationPlugin = new ProsePlugin(citationPluginSpec);
+	};
+	return new ProsePlugin(citationPluginSpec);
+}
 
 ////////////////////////////////////////////////////////////
 
 interface ICitationViewOptions {
 	/** Dom element name to use for this NodeView */
 	tagName?: string;
+	/** Given a citation id, determines the text to display. */
+	renderCitation: (id:string) => Promise<string>;
 }
 
 export class CitationView implements NodeView {
@@ -409,6 +416,7 @@ export class CitationView implements NodeView {
 	private _tagName: string;
 	private _isEditing: boolean;
 	private _onDestroy: (() => void) | undefined;
+	private _renderCitation: (id:string) => Promise<string>;
 
 	// == Lifecycle ===================================== //
 
@@ -420,7 +428,13 @@ export class CitationView implements NodeView {
 	 * @option tagName HTML tag name to use for this NodeView.  If none is provided,
 	 *     will use the node name with underscores converted to hyphens.
 	 */
-	constructor(node: ProseNode, view: EditorView, getPos: (() => number), options: ICitationViewOptions = {}, onDestroy?: (() => void)) {
+	constructor(
+		node: ProseNode, 
+		view: EditorView, 
+		getPos: (() => number),
+		options: ICitationViewOptions,
+		onDestroy?: (() => void)
+	) {
 		// store arguments
 		this._node = node;
 		this._outerView = view;
@@ -432,6 +446,7 @@ export class CitationView implements NodeView {
 		this._isEditing = false;
 
 		// options
+		this._renderCitation = options.renderCitation;
 		this._tagName = options.tagName || this._node.type.name.replace("_", "-");
 
 		// create dom representation of nodeview
@@ -446,9 +461,6 @@ export class CitationView implements NodeView {
 		this._nodeSrcElt = document.createElement("span");
 		this._nodeSrcElt.classList.add("node-src");
 		this.dom.appendChild(this._nodeSrcElt);
-
-		// ensure 
-		this.dom.addEventListener("click", () => this.ensureFocus());
 
 		// render initial content
 		this.render();
@@ -536,6 +548,9 @@ export class CitationView implements NodeView {
 	}
 
 	stopEvent(event: Event): boolean {
+		if(event instanceof MouseEvent && event.ctrlKey){
+			return false;
+		}
 		return (this._innerView !== undefined)
 			&& (event.target !== undefined)
 			&& this._innerView.dom.contains(event.target as Node);
@@ -546,7 +561,11 @@ export class CitationView implements NodeView {
 	// == Rendering ===================================== //
 
 	render() {
+		/** @todo (10/2/20) ideally this check should be unnecessary,
+		  * but _nodeRenderElt is initially null -- need something like linear types?
+		  */
 		if (!this._nodeRenderElt) { return; }
+		let renderElt = this._nodeRenderElt;
 
 		// get tex string to render
 		console.log(this._node);
@@ -567,15 +586,20 @@ export class CitationView implements NodeView {
 			this.dom.classList.remove("node-empty");
 		}
 
-		// render katex, but fail gracefully
-		try {
-			this._nodeRenderElt.innerText = contentStr.toUpperCase();
-			this._nodeRenderElt.classList.remove("parse-error");
-			this.dom.setAttribute("title", contentStr);
-		} catch (err) {
-			/** @todo (10/2/20) catch errors? */
-			console.error(err);
-		}
+		// render citation
+		this.dom.setAttribute("title", contentStr);
+		this._nodeRenderElt.innerText = "...";
+
+		this._renderCitation(contentStr).then((val:string) => {
+			console.log(`citation-view :: setting text ${val}`);
+			renderElt.innerText = val;
+			renderElt.classList.remove("render-error");
+		}).catch((reason:unknown) => {
+			console.error(`citation-view :: could not render`);
+			console.error(reason);
+			renderElt.innerText = contentStr;
+			renderElt.classList.add("render-error");
+		});
 	}
 
 	// == Inner Editor ================================== //

@@ -3,7 +3,7 @@ import * as pathlib from "path";
 import { ipcRenderer } from "electron";
 
 // project imports
-import { MainIpcHandlers, MainIpc_LifecycleHandlers, MainIpc_FileHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, MainIpc_DialogHandlers, MainIpc_TagHandlers, MainIpc_OutlineHandlers } from "@main/MainIPC";
+import { MainIpcHandlers, MainIpc_LifecycleHandlers, MainIpc_FileHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, MainIpc_DialogHandlers, MainIpc_TagHandlers, MainIpc_OutlineHandlers, MainIpc_MetadataHandlers } from "@main/MainIPC";
 import { RendererIpcEvents, RendererIpcHandlers } from "./RendererIPC";
 import { IPossiblyUntitledFile, IDirEntryMeta } from "@common/fileio";
 import { invokerFor } from "@common/ipc";
@@ -67,7 +67,8 @@ class Renderer {
 			shell:     invokerFor<MainIpc_ShellHandlers>    (ipcRenderer, channel, logPrefix, "shell"),
 			dialog:    invokerFor<MainIpc_DialogHandlers>   (ipcRenderer, channel, logPrefix, "dialog"),
 			tag:       invokerFor<MainIpc_TagHandlers>      (ipcRenderer, channel, logPrefix, "tag"),
-			outline:   invokerFor<MainIpc_OutlineHandlers>      (ipcRenderer, channel, logPrefix, "outline")
+			outline:   invokerFor<MainIpc_OutlineHandlers>  (ipcRenderer, channel, logPrefix, "outline"),
+			metadata:  invokerFor<MainIpc_MetadataHandlers> (ipcRenderer, channel, logPrefix, "metadata"),
 		}
 
 		this._eventHandlers = new RendererIpcHandlers(this);

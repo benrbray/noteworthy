@@ -16,6 +16,8 @@ import { ThemeService } from "./theme/theme-service";
 import { PluginService } from "./plugins/plugin-service";
 import { IOutline } from "./plugins/outline-plugin";
 import { ITagSearchResult, SearchResult, IFileSearchResult, IHashSearchResult, CrossRefPlugin } from "./plugins/crossref-plugin";
+import { WorkspacePlugin } from "./plugins/plugin";
+import { IMetadata } from "./plugins/metadata-plugin";
 
 ////////////////////////////////////////////////////////////
 
@@ -384,6 +386,21 @@ export class MainIpc_ShellHandlers {
 	}
 }
 
+//// PLUGINS ///////////////////////////////////////////////
+
+export class MainIpc_MetadataHandlers {
+	constructor(
+		private _pluginService: PluginService
+	) { }
+
+	async getMetadataForHash(hash: string): Promise<IMetadata|null> {
+		let plugin = this._pluginService.getWorkspacePluginByName("metadata_plugin");
+		if(!plugin){ console.error("no plugin!"); return null; }
+		console.log(`getMetadataForHash :: ${hash}`);
+		return plugin.getMetadataForHash(hash);
+	}
+}
+
 ////////////////////////////////////////////////////////////
 
 export interface MainIpcHandlers {
@@ -398,6 +415,7 @@ export interface MainIpcHandlers {
 	 * way to request plugin data from the render process */
 	tag:       MainIpc_TagHandlers;
 	outline:   MainIpc_OutlineHandlers;
+	metadata:  MainIpc_MetadataHandlers;
 };
 
 export type MainIpcChannel = keyof MainIpcHandlers;
