@@ -67,6 +67,7 @@
   "homepage": "https://github.com/benrbray/noteworthy#readme",
   "dependencies": {
     "chokidar": "^3.4.1",
+    "citeproc": "^2.4.35",
     "custom-electron-titlebar": "^3.2.3",
     "dateformat": "^3.0.3",
     "electron-store": "^5.2.0",
