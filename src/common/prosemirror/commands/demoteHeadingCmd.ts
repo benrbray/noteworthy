@@ -27,11 +27,21 @@ import { liftTarget } from "prosemirror-transform";
 
 ////////////////////////////////////////////////////////////
 
-export function incrHeadingLevelCmd(incr:number, requireTextblockStart:boolean, bottomType?:NodeType):ProseCommand {
+export function incrHeadingLevelCmd(
+	incr:number,
+	options:{ 
+		requireTextblockStart:boolean,
+		requireEmptySelection:boolean,
+	},
+	bottomType?:NodeType
+):ProseCommand {
 	return (state, dispatch, view) => {
+		// only works for empty selection
+		if(options.requireEmptySelection && !state.selection.empty){ return false; }
+
 		// only works at start of heading block
 		let { $anchor } = state.selection;
-		if (requireTextblockStart) {
+		if (options.requireTextblockStart) {
 			if (view ? !view.endOfTextblock("backward", state) 
 		         : $anchor.parentOffset > 0 ) 
 		         { return false; }

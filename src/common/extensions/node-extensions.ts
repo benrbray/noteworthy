@@ -106,11 +106,10 @@ export class HeadingExtension extends NodeExtension {
 
 	createKeymap(): Keymap {
 		let keymap:Keymap = {
-			"Tab"       : incrHeadingLevelCmd(+1, false),
-			"#"         : incrHeadingLevelCmd(+1, true),
-			"Shift-Tab" : incrHeadingLevelCmd(-1, false, this._bottomType.type),
-			/** BUG: backspace cmd not working with h1 */
-			"Backspace" : incrHeadingLevelCmd(-1, true,  this._bottomType.type),
+			"Tab"       : incrHeadingLevelCmd(+1, { requireTextblockStart: false, requireEmptySelection: false }),
+			"#"         : incrHeadingLevelCmd(+1, { requireTextblockStart: true,  requireEmptySelection: true  }),
+			"Shift-Tab" : incrHeadingLevelCmd(-1, { requireTextblockStart: false, requireEmptySelection: false }, this._bottomType.type),
+			"Backspace" : incrHeadingLevelCmd(-1, { requireTextblockStart: true,  requireEmptySelection: true  }, this._bottomType.type),
 		};
 
 		for(let i = 1; i <= 6; i++){
