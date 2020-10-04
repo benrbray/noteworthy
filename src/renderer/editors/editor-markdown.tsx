@@ -52,6 +52,7 @@ import {
 	WikilinkExtension, TagExtension
 } from "@common/extensions/mark-extensions";
 import { IMetadata } from "@main/plugins/metadata-plugin";
+import { moveSelectionDown, moveSelectionUp } from "@common/prosemirror/commands/moveSelection";
 
 ////////////////////////////////////////////////////////////
 
@@ -194,14 +195,14 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				return true;
 			},
 			// undo/redo
-			"Mod-z": undo,
-			"Shift-Mod-z": redo,
+			"Mod-z"       : undo,
+			"Shift-Mod-z" : redo,
 			...(!mac && { "Mod-y" : redo }),
 			// selection / join
-			"Alt-ArrowUp" : joinUp,
-			"Alt-ArrowDown" : joinDown,
+			"Alt-ArrowUp"     : chainCommands(moveSelectionUp(), joinUp),
+			"Alt-ArrowDown"   : chainCommands(moveSelectionDown(), joinDown),
 			"Mod-BracketLeft" : lift,
-			"Escape" : selectParentNode
+			"Escape"          : selectParentNode
 		};
 
 		// create editor config
