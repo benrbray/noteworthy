@@ -1,4 +1,4 @@
-import { ProseCommand } from "@common/types";
+import { Command as ProseCommand } from "prosemirror-commands";
 import { Node as ProseNode, ResolvedPos, NodeType } from "prosemirror-model";
 import { liftTarget } from "prosemirror-transform";
 

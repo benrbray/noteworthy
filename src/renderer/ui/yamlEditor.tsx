@@ -9,7 +9,7 @@ import { afterEffects, SetStateFunction } from "solid-js";
 import { Schema as ProseSchema, NodeSpec, Node as ProseNode } from "prosemirror-model";
 import { EditorState as ProseEditorState, Transaction, TextSelection } from "prosemirror-state";
 import { EditorView as ProseEditorView } from "prosemirror-view";
-import { ProseCommand } from "@common/types";
+import { Command as ProseCommand } from "prosemirror-commands";
 import { undo, redo } from "prosemirror-history"
 import { keymap } from "prosemirror-keymap";
 

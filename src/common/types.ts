@@ -19,13 +19,6 @@ declare module "prosemirror-model" {
 	}
 }
 
-// convenience type for common prosemirror callback signature
-export type ProseCommand = (
-	state: import("prosemirror-state").EditorState,
-	dispatch?: ((tr: import("prosemirror-state").Transaction) => void),
-	view?: import("prosemirror-view").EditorView
-) => boolean;
-
 export interface IDisposable {
 	dispose():void;
 }
