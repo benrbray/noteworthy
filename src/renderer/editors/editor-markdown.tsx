@@ -135,6 +135,11 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 			mathSelectPlugin,
 			mathPlugin,
 			citationPlugin({
+				handleCitationOpen: async (tag:string): Promise<void> => {
+					/** @todo (10/4/20) where should new files be created? */
+					let directoryHint = this._currentFile?.dirPath;
+					if (tag) { return this._mainProxy.tag.requestTagOpen({tag, create:true, directoryHint}); }
+				},
 				renderCitation: async (id:string): Promise<string> => {
 					console.log(`renderCitation ::`, id);
 					// treat id as tag, and find hash as corresponding file
@@ -330,14 +335,6 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 						if (url) { this._mainProxy.shell.requestExternalLinkOpen(url); }
 						return true;
 					}
-				}
-
-				if(event.ctrlKey && node.type == this._citationExt.type) {
-					/** @todo (10/3/20) clicking tags isn't working properly with NodeViews! */
-					let tag = node.textContent;
-					let directoryHint = this._currentFile?.dirPath;
-					if (tag) { this._mainProxy.tag.requestTagOpen({tag, create:true, directoryHint}); }
-					return true;
 				}
 
 				return false;

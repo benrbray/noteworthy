@@ -335,6 +335,7 @@ interface ICitationPluginState {
 
 interface ICitationPluginOptions {
 	renderCitation: (id:string) => Promise<string>;
+	handleCitationOpen: (citation_text:string) => Promise<void>;
 }
 
 /** 
@@ -383,6 +384,16 @@ export const citationPlugin = (options:ICitationPluginOptions): ProsePlugin<ICit
 			/** @todo (8/21/20) implement serialization */
 		},
 		props: {
+			handleClickOn: (view, pos, node, nodePos, event, direct) => {
+				// don't expand citations when ctrl+clicking
+				/** @todo (10/4/20) don't reference NodeType by string */
+				if(event.ctrlKey && node.type.name == "citation") {
+					options.handleCitationOpen(node.textContent);
+					return true;
+				}
+				return false;
+			},
+			/** @todo (10/4/20) don't reference NodeType by string */
 			nodeViews: { "citation" : createCitationView(options.renderCitation) }
 		}
 	};
