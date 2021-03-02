@@ -63,7 +63,7 @@ class Window {
 				webSecurity: true
 			},
 			/** @todo (9/15/20) icon caused bug on prod build, re-enable later */
-			//icon: "assets/icon/nwt_large.png"
+			icon: "assets/icon/noteworthy-icon-512.png"
 		}, options);
 
 		const win = new BrowserWindow(options);
@@ -132,7 +132,6 @@ class Window {
 	__closed = () => {
 		console.log("window :: closed");
 		this.cleanup();
-		delete this.window;
 	}
 
 	__focused = () => {
