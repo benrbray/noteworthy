@@ -1,7 +1,7 @@
 import path from 'path'
 import * as url from 'url'
 
-const isDevelopment = process.env.NODE_ENV !== 'production';
+const isDevelopment = (process.env.NODE_ENV === 'development');
 
 declare const __static:string;
 
