@@ -133,7 +133,7 @@ export class EmbedView implements NodeView {
 
 	destroy():void {
 		this.closeEditor();
-		delete this.dom;
+		this.dom.remove();
 		this._initialized = false;
 	}
 

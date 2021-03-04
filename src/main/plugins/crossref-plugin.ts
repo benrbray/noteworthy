@@ -490,7 +490,6 @@ export class CitationView implements NodeView {
 			this._nodeSrcElt.remove();
 			delete this._nodeSrcElt;
 		}
-		delete this.dom;
 	}
 
 	/**

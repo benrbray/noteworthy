@@ -53,7 +53,7 @@ export class Workspace implements IDisposable {
 	// -- Lifecycle ------------------------------------- //
 
 	dispose(){
-		delete this._dir;
+		// TODO: dispose Workspace?
 	}
 
 	close(persist:boolean = true){
