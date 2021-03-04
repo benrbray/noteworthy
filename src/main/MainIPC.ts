@@ -7,7 +7,8 @@ import * as pathlib from "path";
 // noteworthy imports
 import FSAL from "./fsal/fsal";
 import NoteworthyApp from "./app"
-import { readFile, saveFile, IFileWithContents, IPossiblyUntitledFile, IDirEntryMeta, IFileMeta } from "@common/fileio";
+import { IFileWithContents, IPossiblyUntitledFile, IDirEntryMeta, IFileMeta } from "@common/files";
+import { readFile, saveFile } from "@common/fileio";
 import { DialogSaveDiscardOptions } from "@common/dialog";
 import { to } from "@common/util/to";
 import { filterNonVoid } from "@common/util/non-void";

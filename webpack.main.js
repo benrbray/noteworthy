@@ -1,8 +1,50 @@
 const base = require("./webpack.base");
 const path = require("path");
 
+const CopyWebpackPlugin = require('copy-webpack-plugin');
+
+////////////////////////////////////////////////////////////////////////////////
+
 const PACKAGE_JSON = require("./package.json");
 let IS_PRODUCTION = (process.env.NODE_ENV !== "development");
+
+////////////////////////////////////////////////////////////////////////////////
+
+
+// TODO: (2021/3/01) this was blindly copied from electron-webpack, but I should make an effort to replace+simplify it later
+// https://github.com/electron-userland/electron-webpack/blob/8a9d2892ecedd8f0d8158f3175116f34efdf94ed/packages/electron-webpack/src/main.ts#L278
+function computeExternals(isRenderer /*bool*/) {
+	// (ben @ 2021/03/05) electron-webpack code was written with consideration for other build targets,
+	// but for our purposes, if we're not the renderer we MUST be the main process
+	let isMain = !isRenderer;
+
+	// whitelisted modules
+	const manualWhiteList = PACKAGE_JSON.electronWebpack.whiteListedModules;
+	const whiteListedModules = new Set(manualWhiteList || [])
+
+	if (isRenderer) {
+		whiteListedModules.add("react")
+		whiteListedModules.add("react-dom")
+	}
+
+	const filter = (name) => !name.startsWith("@types/") && (whiteListedModules == null || !whiteListedModules.has(name))
+	const externals = Object.keys(PACKAGE_JSON.dependencies).filter(filter)
+	externals.push("electron")
+	externals.push("webpack")
+	// because electron-devtools-installer specified in the devDependencies, but required in the index.dev
+	externals.push("electron-devtools-installer")
+	if (isMain) {
+		externals.push("webpack/hot/log-apply-result")
+		externals.push("electron-webpack/out/electron-main-hmr/HmrClient")
+		externals.push("source-map-support/source-map-support.js")
+	}
+
+	// if (this.electronWebpackConfiguration.externals != null) {
+	// 	return externals.concat(this.electronWebpackConfiguration.externals)
+	// }
+
+	return externals;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -19,6 +61,9 @@ const config = base({
 		libraryTarget: 'commonjs2',
 		path: path.resolve(__dirname, "dist/main")
 	},
+	// Provides a way of excluding dependencies from the output bundles. Instead
+	// the bundle expects to find that dependency in the consumer's environment.
+	externals: computeExternals(false),
 	// Choose a style of source mapping to enhance the debugging process.
 	devtool : "source-map",
 	// Options for changing how modules are resolved.
@@ -29,6 +74,11 @@ const config = base({
 		// (allows leaving off the extension when importing)
 		extensions: [".js", ".ts", ".tsx", ".json", ".node"],
 	},
+	plugins : [
+		new CopyWebpackPlugin({
+			patterns: [ { from: 'static' } ]
+		}),
+	],
 	// Determine how the different types of modules within a project will be treated.
 	module: {
 		// An array of rules which are matched to requests when modules 
@@ -60,30 +110,9 @@ const config = base({
 						]
 					}
 				}
-			},
-			{
-				test: /\.node$/,
-				use: "node-loader"
-			},
-			{
-				test: /\.ts$/,
-        		exclude: /(node_modules)/,
-				use: [{
-					"loader": "ts-loader",
-					"options": {
-						"transpileOnly": false,
-						"configFile": path.resolve(__dirname, "tsconfig.json")
-					}
-				}]
-			},
+			}
 		]
 	},
 });
-
-console.log("//// MAIN CONFIG ///////////////////////////////////////////////");
-
-console.log(config());
-
-console.log("////////////////////////////////////////////////////////////////");
 
 module.exports = config;

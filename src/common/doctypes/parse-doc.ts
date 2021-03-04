@@ -1,7 +1,8 @@
 // import parsers
 import { MarkdownParser } from "./markdown-doc";
 import { BibTexParser } from "./bibtex-doc";
-import { IFileMeta, readFile } from "@common/fileio";
+import { IFileMeta } from "@common/files";
+import { readFile } from "@common/fileio";
 import { IDoc, IDocParser } from "./doctypes";
 
 export function parseFile(file:IFileMeta, contents:string):IDoc|null {

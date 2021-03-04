@@ -1,5 +1,6 @@
 // noteworthy imports
-import { IFileMeta, readFile } from "@common/fileio";
+import { IFileMeta } from "@common/files";
+import { readFile } from "@common/fileio";
 
 ////////////////////////////////////////////////////////////
 

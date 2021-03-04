@@ -3,7 +3,7 @@ import path from "path";
 import { promises as fs } from "fs";
 
 // project imports
-import { IFileDesc, IDirectory, IFileMeta } from "@common/fileio";
+import { IFileDesc, IDirectory, IFileMeta } from "@common/files";
 import hash from "@common/util/hash";
 
 export async function parseFile(filePath:string, parent:IDirectory|null=null, preserveContents:boolean=false):Promise<IFileDesc|null> {

@@ -1,7 +1,7 @@
 // project imports
 import FSAL from "@main/fsal/fsal";
 import * as FSALDir from "@main/fsal/fsal-dir";
-import { IDirectory, IFileMeta, IDirEntryMeta } from "@common/fileio";
+import { IDirectory, IFileMeta, IDirEntryMeta } from "@common/files";
 import { WorkspacePlugin } from "@main/plugins/plugin";
 import { CrossRefPlugin } from "@main/plugins/crossref-plugin";
 import { Workspace } from "./workspace";

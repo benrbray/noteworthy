@@ -1,4 +1,4 @@
-import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
+import { IPossiblyUntitledFile, IUntitledFile } from "@common/files";
 import { MainIpcHandlers } from "@main/MainIPC";
 import { to } from "@common/util/to";
 

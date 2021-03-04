@@ -1,12 +1,11 @@
 // node imports
 import * as pathlib from "path";
-import { ipcRenderer } from "electron";
 
 // project imports
 import { MainIpcHandlers, MainIpc_LifecycleHandlers, MainIpc_FileHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, MainIpc_DialogHandlers, MainIpc_TagHandlers, MainIpc_OutlineHandlers, MainIpc_MetadataHandlers } from "@main/MainIPC";
 import { RendererIpcEvents, RendererIpcHandlers } from "./RendererIPC";
-import { IPossiblyUntitledFile, IDirEntryMeta } from "@common/fileio";
-import { invokerFor } from "@common/ipc";
+import { IPossiblyUntitledFile, IDirEntryMeta } from "@common/files";
+import { invokerFor, RestrictedIpcRenderer } from "@common/ipc";
 import { to } from "@common/util/to";
 import { IpcEvents } from "@common/events";
 
@@ -27,6 +26,9 @@ import { IOutline } from "@main/plugins/outline-plugin";
 import { ITagSearchResult, IFileSearchResult } from "@main/plugins/crossref-plugin";
 
 ////////////////////////////////////////////////////////////
+
+// TODO find a way to remove this cast
+let ipcRenderer = (window as any).restrictedIpcRenderer as RestrictedIpcRenderer; 
 
 interface IRendererState {
 	activeTab: number,
@@ -95,13 +97,13 @@ class Renderer {
 
 		// handle events from main
 		/** @todo (9/13/20) is this event channel used anywhere? */
-		ipcRenderer.on("mainCommand", (evt, key: RendererIpcEvents, data: any) => {
-			console.log("RenderIPC :: mainCommand", key, data);
-			this.handle(key, data);
-		});
+		// ipcRenderer.receive("mainCommand", (key: RendererIpcEvents, data: any) => {
+		// 	console.log("RenderIPC :: mainCommand", key, data);
+		// 	this.handle(key, data);
+		// });
 
-		ipcRenderer.on(IpcEvents.RENDERER_INVOKE,
-			(evt, responseId: string, key: RendererIpcEvents, data: any) => {
+		ipcRenderer.receive(IpcEvents.RENDERER_INVOKE,
+			(responseId: string, key: RendererIpcEvents, data: any) => {
 				console.log("render.on() :: RENDERER_INVOKE ::", responseId, key, data);
 				this.handle(key, data)
 					.then((result: any) => { ipcRenderer.send(responseId, true, result); })

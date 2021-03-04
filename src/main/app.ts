@@ -17,7 +17,7 @@ import {
 } from "./MainIPC";
 import FSAL from "./fsal/fsal";
 import { invokerFor, FunctionPropertyNames } from "@common/ipc";
-import { IDirEntryMeta } from "@common/fileio";
+import { IDirEntryMeta } from "@common/files";
 import { FsalEvents, AppEvents, ChokidarEvents, IpcEvents } from "@common/events";
 import { RendererIpcHandlers } from "@renderer/RendererIPC";
 import { promises as fs } from "fs";
@@ -57,10 +57,16 @@ export default class NoteworthyApp extends EventEmitter {
 	// INITIALIZATION //////////////////////////////////////
 
 	init(){
-		ipcMain.handle("command", <T extends MainIpcChannel>(evt: IpcMainInvokeEvent, channel: T, key: FunctionPropertyNames<MainIpcHandlers[T]>, data: any) => {
-			console.log(`MainIPC :: handling event :: ${channel}, ${key}`);
-			return this.handle(channel, key, data);
-		});
+		ipcMain.handle(
+			"command", 
+			<T extends MainIpcChannel>(
+				evt: IpcMainInvokeEvent, channel: T,
+				key: FunctionPropertyNames<MainIpcHandlers[T]>, data: any
+			) => {
+				console.log(`MainIPC :: handling event :: ${channel} ${key}`);
+				return this.handle(channel, key, data);
+			}
+		);
 	}
 
 

@@ -1,10 +1,9 @@
 // node imports
 import path from "path";
 import { promises as fs } from "fs";
-import { shell } from "electron";
 
 // project imports
-import { FileHash, IFileDesc, IDirectory, IDirEntry, IDirectoryMeta, IDirEntryMeta, IFileMeta } from "@common/fileio";
+import { FileHash, IFileDesc, IDirectory, IDirEntry, IDirectoryMeta, IDirEntryMeta, IFileMeta } from "@common/files";
 import isFile from "@common/util/is-file";
 import isDir from "@common/util/is-dir";
 import { ignoreDir } from "@common/util/ignore-dir";

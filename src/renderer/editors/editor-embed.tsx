@@ -1,6 +1,3 @@
-// electron imports
-import { clipboard } from "electron";
-
 // prosemirror imports
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
 import { Node as ProseNode, Mark } from "prosemirror-model";
@@ -11,7 +8,7 @@ import { history, undo, redo } from "prosemirror-history";
 import { gapCursor } from "prosemirror-gapcursor";
 
 // project imports
-import { IPossiblyUntitledFile } from "@common/fileio";
+import { IPossiblyUntitledFile } from "@common/files";
 import { Editor } from "./editor";
 
 // views
@@ -288,27 +285,28 @@ export class MarkdownRegionEditor extends Editor<ProseEditorState> {
 			handlePaste: (view) => {
 
 				/** @todo (6/22/20) make this work with the ClipboardEvent? */
+				/** @todo (2021/03/05) this was temporarily disabled while setting up contextIsolation */
 
 				// for some reason, event.clipboardData.getData("img/png") etc.
 				// do not return any data.  So we use the electron clipboard instead.
-				if(clipboard.availableFormats("clipboard").find(str => str.startsWith("image"))){
-					let dataUrl:string = clipboard.readImage("clipboard").toDataURL();
+				// if(clipboard.availableFormats("clipboard").find(str => str.startsWith("image"))){
+				// 	let dataUrl:string = clipboard.readImage("clipboard").toDataURL();
 					
-					let imgNode = this._imageExt.type.createAndFill({
-						src: dataUrl
-					});
+				// 	let imgNode = this._imageExt.type.createAndFill({
+				// 		src: dataUrl
+				// 	});
 					
-					if(imgNode){
-						let { $from } = view.state.selection;
-						let tr = view.state.tr.deleteSelection().insert(
-							$from.pos,
-							imgNode
-						)
-						view.dispatch(tr);
-						return true;
-					}
+				// 	if(imgNode){
+				// 		let { $from } = view.state.selection;
+				// 		let tr = view.state.tr.deleteSelection().insert(
+				// 			$from.pos,
+				// 			imgNode
+				// 		)
+				// 		view.dispatch(tr);
+				// 		return true;
+				// 	}
 
-				}
+				// }
 				
 				return false;
 			}

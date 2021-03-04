@@ -1,10 +1,13 @@
 import * as _ from 'lodash'; // TODO: remove lodash
-import {BrowserWindow, BrowserWindowConstructorOptions, ipcMain, IpcMainEvent} from "electron";
+import { app, BrowserWindow, BrowserWindowConstructorOptions, ipcMain, IpcMainEvent } from "electron";
 import windowStateKeeper from 'electron-window-state';
 //import pkg from '@root/package.json';
 import Environment from '@common/environment';
 import { Settings } from '@common/settings';
 import { randomId } from '@common/util/random';
+import path from "path";
+
+////////////////////////////////////////////////////////////////////////////////
 
 class Window {
 	name:string;
@@ -56,13 +59,14 @@ class Window {
 		options = _.merge(dimensions, {
 			frame: true, //!is.macos,
 			show: false,
-			title: "Noteworthy", //pkg.productName,
+			title: "Noteworthy",
 			//titleBarStyle: 'hiddenInset',
 			webPreferences: {
-				nodeIntegration: true,
-				webSecurity: true
+				webSecurity: true,
+				sandbox: true,
+				contextIsolation: true,
+				preload: path.join(app.getAppPath(), 'dist/preload/preload.js'),
 			},
-			/** @todo (9/15/20) icon caused bug on prod build, re-enable later */
 			icon: "assets/icon/noteworthy-icon-512.png"
 		}, options);
 
@@ -73,7 +77,9 @@ class Window {
 	}
 
 	cleanup(){
-		this.window.removeAllListeners();
+		this.detach__closed();
+		this.detach__didFinishLoad();
+		this.detach__focus();
 	}
 
 	load(){ }
@@ -114,12 +120,18 @@ class Window {
 
 	attach__didFinishLoad = () =>
 		{ this.window.webContents.on("did-finish-load", this.__didFinishLoad); }
+	detach__didFinishLoad = () =>
+		{ this.window.webContents.removeListener("did-finish-load", this.__didFinishLoad); }
 
 	attach__closed = () =>
 		{ this.window.on("closed", this.__closed); }
+	detach__closed = () =>
+		{ this.window.removeListener("closed", this.__closed); }
 
 	attach__focus = () =>
 		{ this.window.on("focus", this.__focused); }
+	detach__focus = () =>
+		{ this.window.removeListener("focus", this.__focused); }
 
 	// Event Handlers --------------------------------------
 
