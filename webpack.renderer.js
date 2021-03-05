@@ -103,7 +103,6 @@ const config = base({
 		renderer: "./src/renderer/index.ts",
 	},
 	output: {
-		filename: '[name].js',
 		chunkFilename: '[name].bundle.js',
 		path: path.resolve(__dirname, "dist/renderer")
 	},
