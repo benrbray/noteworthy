@@ -2,10 +2,6 @@ import Renderer from './render';
 
 // other imports
 //import { Titlebar, Color } from "custom-electron-titlebar";
-import path from "path";
-
-// source-map-support
-import 'source-map-support/register'
 
 // library css
 import "@lib/prosemirror-math/style/math.css";

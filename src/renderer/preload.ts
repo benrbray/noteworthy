@@ -23,7 +23,7 @@ let restrictedIpcRenderer: RestrictedIpcRenderer = {
 	send: (channel:string, ...data:any[]) => {
 		// whitelist channels
 		let validChannels: string[] = ["command"];
-		if (validChannels.includes(channel)) {
+		if (validChannels.includes(channel) || channel.startsWith("RENDER_DID_HANDLE")) {
 			console.log(`preload :: send() :: channel=${channel} :: ${data}`);
 			ipcRenderer.send(channel, ...data);
 		} else {
@@ -33,7 +33,7 @@ let restrictedIpcRenderer: RestrictedIpcRenderer = {
 	receive: (channel:string, listener: (...args: any[]) => void) => {
 		//let validChannels: string[] = [IpcEvents.RENDERER_INVOKE];
 		//TODO: (2021/03/05) send message over sub-channel instead of using prefix
-		if (channel.startsWith(IpcEvents.RENDERER_INVOKE)) {
+		if (channel.startsWith("RENDER_DID_HANDLE") || channel.startsWith(IpcEvents.RENDERER_INVOKE)) {
 			console.log(`preload :: attaching listener for channel=${channel}`);
 			// deliberately strip event as it includes `sender` 
 			ipcRenderer.on(channel, (event, ...args) => {
