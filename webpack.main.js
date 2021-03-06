@@ -63,8 +63,6 @@ const config = base({
 	// Provides a way of excluding dependencies from the output bundles. Instead
 	// the bundle expects to find that dependency in the consumer's environment.
 	externals: computeExternals(false),
-	// Choose a style of source mapping to enhance the debugging process.
-	devtool : "source-map",
 	// Options for changing how modules are resolved.
 	resolve: { 
 		// aliases to import more easily from common folders

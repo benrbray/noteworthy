@@ -20,12 +20,12 @@ import {
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 let restrictedIpcRenderer: RestrictedIpcRenderer = {
-	send: (channel:string, ...data:any[]) => {
+	send: async (channel:string, ...data:any[]) => {
 		// whitelist channels
 		let validChannels: string[] = ["command"];
 		if (validChannels.includes(channel) || channel.startsWith("RENDER_DID_HANDLE")) {
 			console.log(`preload :: send() :: channel=${channel} :: ${data}`);
-			ipcRenderer.send(channel, ...data);
+			return await ipcRenderer.send(channel, ...data);
 		} else {
 			console.log(`preload :: send() :: invalid channel '${channel}'!`);
 		}
@@ -44,11 +44,11 @@ let restrictedIpcRenderer: RestrictedIpcRenderer = {
 			console.log(`preload :: receive() :: invalid channel '${channel}'`);
 		}
 	},
-	invoke: (channel:string, ...data:any[]) => {
+	invoke: async (channel:string, ...data:any[]) => {
 		let validChannels: string[] = ["command"];
 		if (validChannels.includes(channel)) {
 			console.log(`preload :: invoke() :: channel=${channel} :: ${data}`);
-			ipcRenderer.invoke(channel, ...data)
+			return await ipcRenderer.invoke(channel, ...data)
 		} else {
 			console.log(`preload :: invoke() :: invalid channel '${channel}' :: ${data}`);
 		}

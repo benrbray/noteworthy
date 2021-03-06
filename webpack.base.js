@@ -17,16 +17,17 @@ const PACKAGE_JSON = require("./package.json");
 ////////////////////////////////////////////////////////////
 
 // TODO: this was copied from the Notable config, what does it do and should it be kept?
-function PluginSkeletonOptimization ( compiler ) { // Loading heavy resources after the skeleton
-  compiler.plugin ( 'compilation', compilation => {
-    compilation.hooks.htmlWebpackPluginAfterHtmlProcessing = {
-      async promise ( data ) {
-        data.html = data.html.replace ( /<link(.*?)rel="stylesheet">(.*?)<body>(.*?)<script/, '$2<body>$3<link$1rel="stylesheet"><script' ); // Moving the main CSS to the bottom in order to make the skeleton load faster
-        return data;
-      }
-    };
-  });
-}
+// (disabled 2021/03/05)
+// function PluginSkeletonOptimization ( compiler ) { // Loading heavy resources after the skeleton
+//   compiler.plugin ( 'compilation', compilation => {
+//     compilation.hooks.htmlWebpackPluginAfterHtmlProcessing = {
+//       async promise ( data ) {
+//         data.html = data.html.replace ( /<link(.*?)rel="stylesheet">(.*?)<body>(.*?)<script/, '$2<body>$3<link$1rel="stylesheet"><script' ); // Moving the main CSS to the bottom in order to make the skeleton load faster
+//         return data;
+//       }
+//     };
+//   });
+// }
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -63,22 +64,35 @@ function base(options){
 				// aliases to import more easily from common folders
 				alias: {
 					"common" : path.resolve(__dirname, "src/common/")
-				}	
+				},
+				// webpack 5 no longer polyfills by default, so we explicitly
+				// list all required polyfills here
+				fallback: {
+					"path": require.resolve("path-browserify"),
+					"util": require.resolve("util/"),
+					"crypto": require.resolve("crypto-browserify"),
+					"buffer": require.resolve("buffer/"),
+					"stream": require.resolve("stream-browserify"),
+				}
 			},
 			//
 			plugins: [
-				// make `Environment.isDevelopment` available as global variable
-				new webpack.DefinePlugin ({
+				// define global variables
+				new webpack.DefinePlugin({
+					// TODO differences in __static path for production vs development?
+					// https://github.com/electron-userland/electron-webpack/blob/ebbf9150b1549fbe7b5e97e9a972e547108eba50/packages/electron-webpack/src/targets/BaseTarget.ts#L121	
+					__static: `"${path.join(__dirname, "static").replace(/\\/g, "\\\\")}"`,
+					// make static directory path available as global variable
+					"process.env.NODE_ENV": IS_PRODUCTION ? "\"production\"" : "\"development\"",
+					// make `Environment.isDevelopment` available as global variable
 					'Environment.isDevelopment': JSON.stringify ( IS_PRODUCTION )
 				}),
-				// make static directory path available as global variable
-				// TODO differences in __static path for production vs development?
-				// https://github.com/electron-userland/electron-webpack/blob/ebbf9150b1549fbe7b5e97e9a972e547108eba50/packages/electron-webpack/src/targets/BaseTarget.ts#L121
-				new webpack.DefinePlugin({
-					__static: `"${path.join(__dirname, "static").replace(/\\/g, "\\\\")}"`,
-					"process.env.NODE_ENV": IS_PRODUCTION ? "\"production\"" : "\"development\""
+				// https://stackoverflow.com/a/64553486/1444650
+				new webpack.ProvidePlugin({
+					process: 'process/browser.js',
 				}),
-				PluginSkeletonOptimization
+				// TODO: (2021/03/05) should this be re-enabled?
+				//PluginSkeletonOptimization
 			],
 			// Determine how the different types of modules within a project will be treated.
 			module: {
@@ -104,7 +118,10 @@ function base(options){
 				]
 			},
 			/* TODO (2021/3/1) disable source-map in production mode */
-			devtool: "source-map"
+			// TODO (2021/03/07) I could only get source maps to work by making
+			// them inline -- is there a way around this?
+			// choose a style of source map
+			devtool: "inline-source-map"
 		}, options);
 
 		return result;

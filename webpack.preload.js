@@ -13,7 +13,6 @@ module.exports = base({
 		filename: '[name].js',
 		path: path.resolve(__dirname, "dist/preload")
 	},
-	devtool: "source-map",
 	// Options for changing how modules are resolved.
 	resolve: { 
 		// aliases to import more easily from common folders

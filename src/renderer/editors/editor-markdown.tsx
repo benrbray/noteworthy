@@ -141,8 +141,14 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 					console.log(`renderCitation ::`, id);
 					// treat id as tag, and find hash as corresponding file
 					let hash: string | null = await this._mainProxy.tag.getHashForTag({ tag: id , create: false });
+
 					if(hash === null) {
 						console.warn(`renderCitation :: tag @[${id}] does not correspond to a hash`);
+						return id;
+					}
+
+					if(hash === undefined) {
+						console.error(`renderCitation :: no response from main process when querying for tag @[${id}]`); 
 						return id;
 					}
 					

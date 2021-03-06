@@ -82,9 +82,9 @@ function generateIndexFile(nodeModulePath /* string|null */, template /* string 
 	//if (scripts.length) { html = html.replace("</head>", `${scripts.join("")}</head>`); }
 	//if (css.length)     { html = html.replace("</head>", `${css.join("")}</head>`);     }
 
-	const filePath = path.join("dist", ".renderer-index-template.html");
+	const filePath = path.join("./dist", ".renderer-index-template.html");
 	fsExtra.outputFileSync(filePath, html);
-	return `!!html-loader?minimize=false&attributes=false!${filePath}`
+	return `!!html-loader!${filePath}`
 }
 
 let template = fsExtra.readFileSync(PACKAGE_JSON.electronWebpack.renderer.template, {encoding: "utf8"});
@@ -106,8 +106,6 @@ const config = base({
 		chunkFilename: '[name].bundle.js',
 		path: path.resolve(__dirname, "dist/renderer")
 	},
-	// Choose a style of source mapping to enhance the debugging process.
-	devtool : "source-map",
 	// Options for changing how modules are resolved.
 	resolve: { 
 		// aliases to import more easily from common folders
@@ -148,6 +146,16 @@ const config = base({
 		// loaders to the module, or modify the parser.
 		rules: [
 			{
+				// https://github.com/eemeli/yaml/issues/228#issuecomment-785772112
+				test: /node_modules\/yaml\/browser\/index\.js$/,
+				use: {
+					loader: 'babel-loader',
+					options: {
+						plugins: ['@babel/plugin-proposal-export-namespace-from']
+					}
+				}
+			},
+			{
 				test: /\.js$/,
         		exclude: /(node_modules)/,
 				use: {
@@ -156,7 +164,7 @@ const config = base({
 						presets : [
 							[ require("@babel/preset-env").default, 
 								{
-									modules: false,
+									modules: false, 
 									targets: { electron: "12.0.0" }
 								}
 							],

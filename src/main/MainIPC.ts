@@ -74,7 +74,8 @@ export class MainIpc_FileHandlers {
 	async requestFileSave(file: IFileWithContents): Promise<boolean> {
 		if (!this._app.window) { return false; }
 
-		saveFile(file.path, file.contents);
+		//TODO: re-enable saving!!!!
+		//saveFile(file.path, file.contents);
 		/** @todo (7/12/20) check for file save errors? */
 		this._app._renderProxy?.fileDidSave({saveas: false, path: file.path });
 		return true;
@@ -285,7 +286,10 @@ export class MainIpc_TagHandlers {
 	async getHashForTag(data: { tag: string, create: boolean, directoryHint?:string }):Promise<string|null> {
 		// get active plugin
 		let plugin = this._pluginService.getWorkspacePluginByName("crossref_plugin");
-		if(!plugin){ return null; }
+		if(!plugin){ 
+			console.error("crossref plugin not active"); 
+			return null;
+		}
 
 		// get files which define this tag
 		let defs: string[] | null = plugin.getDefsForTag(data.tag);
@@ -298,7 +302,7 @@ export class MainIpc_TagHandlers {
 		} else if (defs.length == 0) {
 			// create a file for this tag when none exists?
 			if (!data.create) { return null; }
-			console.log(`MainIPC :: creating file for tag '${data.tag}'`);
+			console.log(`MainIpc_TagHandlers :: creating file for tag '${data.tag}'`);
 
 			/** @todo (6/27/20)
 			 * what if data.tag is not a valid file name?
@@ -319,7 +323,7 @@ export class MainIpc_TagHandlers {
 			else {                  filePath = this._workspaceService.resolveWorkspaceRelativePath(fileName); }
 
 			if (!filePath) {
-				console.error("MainIPC :: could not create file for tag, no active workspace");
+				console.error("MainIpc_TagHandlers :: could not create file for tag, no active workspace");
 				return null;
 			}
 
@@ -328,7 +332,7 @@ export class MainIpc_TagHandlers {
 			let fileContents: string = this._app.getDefaultFileContents(".md", fileName)
 			let file: IFileMeta | null = await this._fileHandlers.requestFileCreate(filePath, fileContents);
 			if (!file) {
-				console.error("MainIPC :: unknown error creating file for tag");
+				console.error("MainIpc_TagHandlers :: unknown error creating file for tag");
 				return null;
 			}
 
@@ -338,6 +342,7 @@ export class MainIpc_TagHandlers {
 			fileHash = defs[0];
 		} else {
 			/** @todo (6/20/20) handle more than one defining file for tag */
+			console.warn(`MainIPC_TagHandlers :: more than one defining file for tag ${data.tag} (not implemented)`);
 			return null;
 		}
 
