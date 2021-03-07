@@ -40,6 +40,8 @@ import {
 	WikilinkExtension, TagExtension
 } from "@common/extensions/mark-extensions";
 
+////////////////////////////////////////////////////////////
+
 // The use of `contextIsolation=true` for election requires a preload phase to
 // expose Electron APIs to the render process.  These APIs are made available
 // globally at runtime, and I haven't found clever enough typings yet to express
@@ -53,6 +55,8 @@ declare let window: Window & typeof globalThis & WindowAfterPreload;
 const mac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform) : false
 
 ////////////////////////////////////////////////////////////
+
+// TODO (2021/03/08) this file is largely a duplicate of editor-markdown.tsx
 
 // editor class
 export class MarkdownRegionEditor extends Editor<ProseEditorState> {

@@ -53,6 +53,15 @@ import { moveSelectionDown, moveSelectionUp } from "@common/prosemirror/commands
 
 ////////////////////////////////////////////////////////////
 
+// The use of `contextIsolation=true` for election requires a preload phase to
+// expose Electron APIs to the render process.  These APIs are made available
+// globally at runtime, and I haven't found clever enough typings yet to express
+// this transformation.  So, we must explicitly declare them here:
+import { WindowAfterPreload } from "@renderer/preload_types";
+declare let window: Window & typeof globalThis & WindowAfterPreload;
+
+////////////////////////////////////////////////////////////
+
 /** @todo (9/27/20) where to put check for macos? */
 const mac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform) : false
 
@@ -345,28 +354,28 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 			handlePaste: (view) => {
 
 				/** @todo (6/22/20) make this work with the ClipboardEvent? */
-				/** @todo (2021/03/05) this was temporarily removed while setting up `contextIsolation` */
 
-				// for some reason, event.clipboardData.getData("img/png") etc.
-				// do not return any data.  So we use the electron clipboard instead.
-				// if(clipboard.availableFormats("clipboard").find(str => str.startsWith("image"))){
-				// 	let dataUrl:string = clipboard.readImage("clipboard").toDataURL();
-					
-				// 	let imgNode = this._imageExt.type.createAndFill({
-				// 		src: dataUrl
-				// 	});
-					
-				// 	if(imgNode){
-				// 		let { $from } = view.state.selection;
-				// 		let tr = view.state.tr.deleteSelection().insert(
-				// 			$from.pos,
-				// 			imgNode
-				// 		)
-				// 		view.dispatch(tr);
-				// 		return true;
-				// 	}
+				// handle pasting of images
+				// (for some reason, event.clipboardData.getData("img/png") etc.
+				// do not return any data.  So we use the electron clipboard instead.)
+				let clipboardImageURI: string|null = window.clipboardApi.getClipboardImageDataURI();
 
-				// }
+				if(clipboardImageURI == null){
+					let imgNode = this._imageExt.type.createAndFill({
+						src: clipboardImageURI
+					});
+					
+					if(imgNode){
+						let { $from } = view.state.selection;
+						let tr = view.state.tr.deleteSelection().insert(
+							$from.pos,
+							imgNode
+						)
+						view.dispatch(tr);
+						return true;
+					}
+
+				}
 				
 				return false;
 			}
