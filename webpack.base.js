@@ -2,10 +2,9 @@
 // (https://github.com/notable/notable/blob/54646c1fb64fbcf3cc0857a2791cfb6a6ae48313/webpack.base.js)
 
 const TSConfigPathsPlugin = require("tsconfig-paths-webpack-plugin");
-const CopyWebpackPlugin = require('copy-webpack-plugin');
 const path = require("path");
 const webpack = require("webpack");
-const merge = require("webpack-merge");
+const { merge } = require("webpack-merge");
 
 const PACKAGE_JSON = require("./package.json");
 
@@ -18,51 +17,17 @@ const PACKAGE_JSON = require("./package.json");
 ////////////////////////////////////////////////////////////
 
 // TODO: this was copied from the Notable config, what does it do and should it be kept?
-function PluginSkeletonOptimization ( compiler ) { // Loading heavy resources after the skeleton
-  compiler.plugin ( 'compilation', compilation => {
-    compilation.hooks.htmlWebpackPluginAfterHtmlProcessing = {
-      async promise ( data ) {
-        data.html = data.html.replace ( /<link(.*?)rel="stylesheet">(.*?)<body>(.*?)<script/, '$2<body>$3<link$1rel="stylesheet"><script' ); // Moving the main CSS to the bottom in order to make the skeleton load faster
-        return data;
-      }
-    };
-  });
-}
-
-// TODO: (2021/3/21) this was blindly copied from electron-webpack, but I should make an effort to replace+simplify it later
-// https://github.com/electron-userland/electron-webpack/blob/8a9d2892ecedd8f0d8158f3175116f34efdf94ed/packages/electron-webpack/src/main.ts#L278
-function computeExternals(isRenderer /*bool*/) {
-	// electron-webpack code was written with consideration for other build targets,
-	// but for our purposes, if we're not the renderer we MUST be the main process
-	let isMain = !isRenderer;
-
-	// whitelisted modules
-	const manualWhiteList = PACKAGE_JSON.electronWebpack.whiteListedModules;
-	const whiteListedModules = new Set(manualWhiteList || [])
-
-	if (isRenderer) {
-		whiteListedModules.add("react")
-		whiteListedModules.add("react-dom")
-	}
-
-	const filter = (name) => !name.startsWith("@types/") && (whiteListedModules == null || !whiteListedModules.has(name))
-	const externals = Object.keys(PACKAGE_JSON.dependencies).filter(filter)
-	externals.push("electron")
-	externals.push("webpack")
-	// because electron-devtools-installer specified in the devDependencies, but required in the index.dev
-	externals.push("electron-devtools-installer")
-	if (isMain) {
-		externals.push("webpack/hot/log-apply-result")
-		externals.push("electron-webpack/out/electron-main-hmr/HmrClient")
-		externals.push("source-map-support/source-map-support.js")
-	}
-
-	// if (this.electronWebpackConfiguration.externals != null) {
-	// 	return externals.concat(this.electronWebpackConfiguration.externals)
-	// }
-
-	return externals;
-}
+// (disabled 2021/03/05)
+// function PluginSkeletonOptimization ( compiler ) { // Loading heavy resources after the skeleton
+//   compiler.plugin ( 'compilation', compilation => {
+//     compilation.hooks.htmlWebpackPluginAfterHtmlProcessing = {
+//       async promise ( data ) {
+//         data.html = data.html.replace ( /<link(.*?)rel="stylesheet">(.*?)<body>(.*?)<script/, '$2<body>$3<link$1rel="stylesheet"><script' ); // Moving the main CSS to the bottom in order to make the skeleton load faster
+//         return data;
+//       }
+//     };
+//   });
+// }
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -70,17 +35,15 @@ function base(options){
 	// modify default config with a config function
 	// (https://webpack.electron.build/modifying-webpack-configurations#using-a-config-function)
 	let IS_PRODUCTION = (process.env.NODE_ENV !== "development");
-	let isRenderer = (options.target == "electron-renderer");
-	let DIRNAME = path.resolve(__dirname);
+	//let isRenderer = (options.target == "electron-renderer");
 	return (env) => {
 		// merge incoming config with a few extra options
-		let result = merge(options, {
+		let result = merge({
 			mode: IS_PRODUCTION ? "production" : "development",
 			// Absolute path for resolving entry points and loaders from configuration. 
 			// By default, webpack uses the current directory, but it is recommended to 
 			// manually provide a value.
 			context : path.resolve(__dirname),
-			externals: computeExternals(isRenderer),
 			// Dependencies to exclude from the output bundles.  Instead, the created 
 			// bundle relies on that dependency to be present in the consumer's environment.
 			// This feature is typically most useful to library developers.
@@ -101,30 +64,65 @@ function base(options){
 				// aliases to import more easily from common folders
 				alias: {
 					"common" : path.resolve(__dirname, "src/common/")
-				}	
+				},
+				// webpack 5 no longer polyfills by default, so we explicitly
+				// list all required polyfills here
+				fallback: {
+					"path": require.resolve("path-browserify"),
+					"util": require.resolve("util/"),
+					"crypto": require.resolve("crypto-browserify"),
+					"buffer": require.resolve("buffer/"),
+					"stream": require.resolve("stream-browserify"),
+				}
 			},
 			//
 			plugins: [
-				// make `Environment.isDevelopment` available as global variable
-				new webpack.DefinePlugin ({
+				// define global variables
+				new webpack.DefinePlugin({
+					// TODO differences in __static path for production vs development?
+					// https://github.com/electron-userland/electron-webpack/blob/ebbf9150b1549fbe7b5e97e9a972e547108eba50/packages/electron-webpack/src/targets/BaseTarget.ts#L121	
+					__static: `"${path.join(__dirname, "static").replace(/\\/g, "\\\\")}"`,
+					// make static directory path available as global variable
+					"process.env.NODE_ENV": IS_PRODUCTION ? "\"production\"" : "\"development\"",
+					// make `Environment.isDevelopment` available as global variable
 					'Environment.isDevelopment': JSON.stringify ( IS_PRODUCTION )
 				}),
-				// make static directory path available as global variable
-				// TODO differences in __static path for production vs development?
-				// https://github.com/electron-userland/electron-webpack/blob/ebbf9150b1549fbe7b5e97e9a972e547108eba50/packages/electron-webpack/src/targets/BaseTarget.ts#L121
-				new webpack.DefinePlugin({
-					__static: `"${path.join(__dirname, "static").replace(/\\/g, "\\\\")}"`,
-					"process.env.NODE_ENV": IS_PRODUCTION ? "\"production\"" : "\"development\""
+				// https://stackoverflow.com/a/64553486/1444650
+				new webpack.ProvidePlugin({
+					process: 'process/browser.js',
 				}),
-				new CopyWebpackPlugin({
-					patterns: [ { from: 'static' } ]
-				}),
-				PluginSkeletonOptimization
+				// TODO: (2021/03/05) should this be re-enabled?
+				//PluginSkeletonOptimization
 			],
-
+			// Determine how the different types of modules within a project will be treated.
+			module: {
+				// An array of rules which are matched to requests when modules 
+				// are created, which can odify how modules are created, apply
+				// loaders to the module, or modify the parser.
+				rules: [
+					{
+						test: /\.node$/,
+						use: "node-loader"
+					},
+					{
+						test: /\.ts$/,
+						exclude: /(node_modules)/,
+						use: [{
+							"loader": "ts-loader",
+							"options": {
+								"transpileOnly": false,
+								"configFile": path.resolve(__dirname, "tsconfig.json")
+							}
+						}]
+					},
+				]
+			},
 			/* TODO (2021/3/1) disable source-map in production mode */
-			devtool: "source-map"
-		});
+			// TODO (2021/03/07) I could only get source maps to work by making
+			// them inline -- is there a way around this?
+			// choose a style of source map
+			devtool: "inline-source-map"
+		}, options);
 
 		return result;
 	}

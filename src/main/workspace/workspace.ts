@@ -3,7 +3,8 @@ import * as pathlib from "path";
 import fs from "fs";
 
 // project imports
-import { IFileMeta, IFileDesc, IDirectory, IDirEntryMeta, readFile } from "@common/fileio";
+import { IFileMeta, IFileDesc, IDirectory, IDirEntryMeta } from "@common/files";
+import { readFile } from "@common/fileio";
 import { IDisposable } from "@common/types";
 import { ChokidarEvents } from "@common/events";
 import { IDoc } from "@common/doctypes/doctypes";
@@ -53,7 +54,7 @@ export class Workspace implements IDisposable {
 	// -- Lifecycle ------------------------------------- //
 
 	dispose(){
-		delete this._dir;
+		// TODO: dispose Workspace?
 	}
 
 	close(persist:boolean = true){

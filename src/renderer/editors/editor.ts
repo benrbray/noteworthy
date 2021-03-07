@@ -1,4 +1,4 @@
-import { IPossiblyUntitledFile, IUntitledFile } from "@common/fileio";
+import { IPossiblyUntitledFile, IUntitledFile } from "@common/files";
 import { MainIpcHandlers } from "@main/MainIPC";
 import { to } from "@common/util/to";
 
@@ -82,12 +82,34 @@ export abstract class Editor<TDocumentModel=any> {
 
 		this._currentFile.contents = this.serializeContents();
 
+		console.log("saveCurrentFile ::", this._currentFile);
+
 		// perform save
 		if (saveas || this._currentFile.path == null) {
 			let [err] = await to(this._mainProxy.dialog.dialogFileSaveAs(this._currentFile));
 			if(err) { return Promise.reject(err); }
 		} else {
-			let [err] = await to(this._mainProxy.file.requestFileSave(this._currentFile));
+			// TODO As of (2021/03/07) this manual shallow-clone is necessary
+			// because SolidJS attaches two `symbol` keys to the _currentFile
+			// object which prevent it from being serialized via the structured
+			// clone algorithm for ipc transfer.
+			//
+			// Revisit this later, once the following issue has been resolved: 
+			// https://github.com/ryansolid/solid/issues/360
+			let sendData = {
+				contents: this._currentFile.contents,
+				creationTime: this._currentFile.creationTime,
+				dirPath: this._currentFile.dirPath,
+				modTime: this._currentFile.modTime,
+				name: this._currentFile.name,
+				parent: this._currentFile.parent,
+				path: this._currentFile.path,
+				type: this._currentFile.type,
+				ext: this._currentFile.ext,
+				hash: this._currentFile.hash
+			}
+
+			let [err] = await to(this._mainProxy.file.requestFileSave(sendData));
 			if(err) { return Promise.reject(err); }
 		}
 

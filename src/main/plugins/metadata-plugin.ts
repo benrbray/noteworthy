@@ -1,5 +1,5 @@
 // project imports
-import { IWorkspaceDir, IFileMeta } from "@common/fileio";
+import { IWorkspaceDir, IFileMeta } from "@common/files";
 import { WorkspacePlugin } from "./plugin";
 import { IDoc } from "@common/doctypes/doctypes";
 

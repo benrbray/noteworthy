@@ -5,7 +5,7 @@ import path from "path";
 import { Node as ProseNode } from "prosemirror-model";
 
 // project imports
-import { IWorkspaceDir, IFileMeta } from "@common/fileio";
+import { IWorkspaceDir, IFileMeta } from "@common/files";
 import { WorkspacePlugin } from "./plugin";
 import { IDoc } from "@common/doctypes/doctypes";
 
@@ -490,7 +490,6 @@ export class CitationView implements NodeView {
 			this._nodeSrcElt.remove();
 			delete this._nodeSrcElt;
 		}
-		delete this.dom;
 	}
 
 	/**

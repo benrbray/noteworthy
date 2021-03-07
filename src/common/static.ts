@@ -1,7 +1,8 @@
 import path from 'path'
 import * as url from 'url'
 
-const isDevelopment = (process.env.NODE_ENV === 'development');
+// TODO (2021/03/05) re-enable development
+const isDevelopment = false; //(process.env.NODE_ENV === 'development');
 
 declare const __static:string;
 

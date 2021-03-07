@@ -1,5 +1,5 @@
 import Renderer from "./render";
-import { IPossiblyUntitledFile, IDirEntryMeta } from "@common/fileio";
+import { IPossiblyUntitledFile, IDirEntryMeta } from "@common/files";
 
 ////////////////////////////////////////////////////////////
 

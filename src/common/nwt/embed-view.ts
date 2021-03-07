@@ -2,7 +2,7 @@ import { Node as ProseNode } from "prosemirror-model";
 import { NodeView, EditorView } from "prosemirror-view";
 import { Editor } from "@renderer/editors/editor";
 import { MainIpcHandlers } from "@main/MainIPC";
-import { IFileWithContents } from "@common/fileio";
+import { IFileWithContents } from "@common/files";
 import { replaceInvalidFileNameChars } from "@common/util/pathstrings";
 import { MarkdownRegionEditor } from "@renderer/editors/editor-embed";
 
@@ -133,7 +133,7 @@ export class EmbedView implements NodeView {
 
 	destroy():void {
 		this.closeEditor();
-		delete this.dom;
+		this.dom.remove();
 		this._initialized = false;
 	}
 

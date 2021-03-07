@@ -3,7 +3,6 @@ import fs from "fs";
 import * as pathlib from "path";
 
 // project imports
-import { IDirEntry } from "@common/fileio";
 import { FsalEvents, ChokidarEvents } from "@common/events";
 import FSALWatchdog from "./fsal-watcher";
 

@@ -48,7 +48,8 @@ export function invokerFor<T extends object>(ipc: Invokable, channel:string="com
 		get(target, prop: FunctionPropertyNames<T>) {
 			return async (data: unknown) => {
 				console.log(`[${logPrefix}] :: invoke event :: prop=${prop}, channel=${channel}, const_args=${const_args}`);
-				return target.ipc.invoke(channel, ...const_args, prop, data);
+				let result = target.ipc.invoke(channel, ...const_args, prop, data);
+				return result;
 			}
 		}
 	});

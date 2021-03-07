@@ -1,6 +1,3 @@
-// electron imports
-import { clipboard } from "electron";
-
 // prosemirror imports
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
 import { Node as ProseNode, Mark } from "prosemirror-model";
@@ -11,7 +8,7 @@ import { history, undo, redo } from "prosemirror-history";
 import { gapCursor } from "prosemirror-gapcursor";
 
 // project imports
-import { IPossiblyUntitledFile } from "@common/fileio";
+import { IPossiblyUntitledFile } from "@common/files";
 import { Editor } from "./editor";
 
 // views
@@ -42,6 +39,13 @@ import {
 	UnderlineExtension, CodeExtension, StrikethroughExtension,
 	WikilinkExtension, TagExtension
 } from "@common/extensions/mark-extensions";
+
+// The use of `contextIsolation=true` for election requires a preload phase to
+// expose Electron APIs to the render process.  These APIs are made available
+// globally at runtime, and I haven't found clever enough typings yet to express
+// this transformation.  So, we must explicitly declare them here:
+import { WindowAfterPreload } from "@renderer/preload_types";
+declare let window: Window & typeof globalThis & WindowAfterPreload;
 
 ////////////////////////////////////////////////////////////
 
@@ -289,13 +293,14 @@ export class MarkdownRegionEditor extends Editor<ProseEditorState> {
 
 				/** @todo (6/22/20) make this work with the ClipboardEvent? */
 
-				// for some reason, event.clipboardData.getData("img/png") etc.
-				// do not return any data.  So we use the electron clipboard instead.
-				if(clipboard.availableFormats("clipboard").find(str => str.startsWith("image"))){
-					let dataUrl:string = clipboard.readImage("clipboard").toDataURL();
-					
+				// handle pasting of images
+				// (for some reason, event.clipboardData.getData("img/png") etc.
+				// do not return any data.  So we use the electron clipboard instead.)
+				let clipboardImageURI: string|null = window.clipboardApi.getClipboardImageDataURI();
+
+				if(clipboardImageURI == null){
 					let imgNode = this._imageExt.type.createAndFill({
-						src: dataUrl
+						src: clipboardImageURI
 					});
 					
 					if(imgNode){

@@ -11,7 +11,7 @@
  * END HEADER
  */
 
-import { FileHash } from "@common/fileio"
+import { FileHash } from "@common/files"
 import * as pathlib from "path";
 
 /** @todo (6/27/20) 

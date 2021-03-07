@@ -77,14 +77,14 @@ function generateIndexFile(nodeModulePath /* string|null */, template /* string 
 
 	if (nodeModulePath) { html = html.replace("</head>", `<script>require('module').globalPaths.push("${nodeModulePath.replace(/\\/g, "/")}")</script></head>`) }
 
-	html = html.replace("</head>", '<script>require("source-map-support/source-map-support.js").install()</script></head>')
+	//html = html.replace("</head>", '<script>require("source-map-support/source-map-support.js").install()</script></head>')
 
 	//if (scripts.length) { html = html.replace("</head>", `${scripts.join("")}</head>`); }
 	//if (css.length)     { html = html.replace("</head>", `${css.join("")}</head>`);     }
 
-	const filePath = path.join("dist", ".renderer-index-template.html");
+	const filePath = path.join("./dist", ".renderer-index-template.html");
 	fsExtra.outputFileSync(filePath, html);
-	return `!!html-loader?minimize=false&attributes=false!${filePath}`
+	return `!!html-loader!${filePath}`
 }
 
 let template = fsExtra.readFileSync(PACKAGE_JSON.electronWebpack.renderer.template, {encoding: "utf8"});
@@ -92,7 +92,7 @@ let template = fsExtra.readFileSync(PACKAGE_JSON.electronWebpack.renderer.templa
 ////////////////////////////////////////////////////////////////////////////////
 
 const config = base({
-	target: "electron-renderer",
+	target: "web",
 	// Absolute path for resolving entry points and loaders from configuration. 
 	// By default, webpack uses the current directory, but it is recommended to 
 	// manually provide a value.
@@ -100,20 +100,16 @@ const config = base({
 	// The point or points to start the bundling process.
 	// (if an array is passed, all items will be processed)
 	entry : {
-		renderer: "./src/renderer/index.ts"
+		renderer: "./src/renderer/index.ts",
 	},
 	output: {
-		filename: '[name].js',
 		chunkFilename: '[name].bundle.js',
-		libraryTarget: 'commonjs2',
 		path: path.resolve(__dirname, "dist/renderer")
 	},
-	// Choose a style of source mapping to enhance the debugging process.
-	devtool : "source-map",
 	// Options for changing how modules are resolved.
 	resolve: { 
 		// aliases to import more easily from common folders
-		alias: { "@" : path.resolve(__dirname, "src/main") },
+		alias: { "@" : path.resolve(__dirname, "src/renderer") },
 		// attempt to resolve file extensions in this order
 		// (allows leaving off the extension when importing)
 		extensions: [".js", ".ts", ".tsx", ".json", ".css", ".node"],
@@ -150,6 +146,16 @@ const config = base({
 		// loaders to the module, or modify the parser.
 		rules: [
 			{
+				// https://github.com/eemeli/yaml/issues/228#issuecomment-785772112
+				test: /node_modules\/yaml\/browser\/index\.js$/,
+				use: {
+					loader: 'babel-loader',
+					options: {
+						plugins: ['@babel/plugin-proposal-export-namespace-from']
+					}
+				}
+			},
+			{
 				test: /\.js$/,
         		exclude: /(node_modules)/,
 				use: {
@@ -158,8 +164,8 @@ const config = base({
 						presets : [
 							[ require("@babel/preset-env").default, 
 								{
-									modules: false,
-									targets: { electron: "9.1.1" } // TODO: update node version here
+									modules: false, 
+									targets: { electron: "12.0.0" }
 								}
 							],
 							require("@babel/preset-typescript").default,
@@ -171,10 +177,6 @@ const config = base({
 						]
 					}
 				}
-			},
-			{
-				test: /\.node$/,
-				use: "node-loader"
 			},
 			{
 				test: /\.css$/i,
@@ -194,17 +196,6 @@ const config = base({
 					}
 				}
 			},
-			{
-				test: /\.ts$/,
-        		exclude: /(node_modules)/,
-				use: [{
-					"loader": "ts-loader",
-					"options": {
-						"transpileOnly": false,
-						"configFile": path.resolve(__dirname, "tsconfig.json")
-					}
-				}]
-			},
 			// using SolidJS requires custom babel plugin
 			{
 				test: /\.tsx$/,
@@ -216,7 +207,7 @@ const config = base({
 						presets: [
 							[ '@babel/preset-env', { 
 								// TODO: update electron version here
-								"targets": { "electron": "9.0.2", }
+								"targets": { "electron": "12.0.0", }
 							} ],
 							'solid',
 							'@babel/preset-typescript'

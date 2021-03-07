@@ -1,4 +1,4 @@
-import { IDirEntryMeta } from "@common/fileio";
+import { IDirEntryMeta } from "@common/files";
 import { MainIpcHandlers } from "@main/MainIPC";
 import * as pathlib from "path";
 import { For, afterEffects, Match, Switch } from "solid-js";

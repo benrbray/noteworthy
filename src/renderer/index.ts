@@ -1,8 +1,7 @@
 import Renderer from './render';
 
 // other imports
-import { Titlebar, Color } from "custom-electron-titlebar";
-import path from "path";
+//import { Titlebar, Color } from "custom-electron-titlebar";
 
 // library css
 import "@lib/prosemirror-math/style/math.css";
@@ -31,11 +30,13 @@ onload = function(){
 
 	/* HOT MODULE REPLACEMENT */
 
-	if (module.hot) {
+	// TODO: (2021/03/04) re-enable hot module reloading, which was disabled when migrating from electron-webpack
+
+	/*if (module.hot) {
 
 		module.hot.accept('./render', () => {
 			require('./render').default();
 		});
 
-	}
+	}*/
 }

@@ -11,7 +11,7 @@
  * END HEADER
  */
 
-const path = require('path')
+import path from "path";
 
 /** @todo (6/28/20) load ignored dirs from file? */
 // Ignored directory patterns

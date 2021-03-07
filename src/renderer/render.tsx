@@ -1,11 +1,10 @@
 // node imports
 import * as pathlib from "path";
-import { ipcRenderer } from "electron";
 
 // project imports
 import { MainIpcHandlers, MainIpc_LifecycleHandlers, MainIpc_FileHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, MainIpc_DialogHandlers, MainIpc_TagHandlers, MainIpc_OutlineHandlers, MainIpc_MetadataHandlers } from "@main/MainIPC";
 import { RendererIpcEvents, RendererIpcHandlers } from "./RendererIPC";
-import { IPossiblyUntitledFile, IDirEntryMeta } from "@common/fileio";
+import { IPossiblyUntitledFile, IDirEntryMeta } from "@common/files";
 import { invokerFor } from "@common/ipc";
 import { to } from "@common/util/to";
 import { IpcEvents } from "@common/events";
@@ -25,6 +24,17 @@ import { CalendarTab } from "./ui/calendarTab";
 import { OutlineTab } from "./ui/outlineTab";
 import { IOutline } from "@main/plugins/outline-plugin";
 import { ITagSearchResult, IFileSearchResult } from "@main/plugins/crossref-plugin";
+
+////////////////////////////////////////////////////////////
+
+// The use of `contextIsolation=true` for election requires a preload phase to
+// expose Electron APIs to the render process.  These APIs are made available
+// globally at runtime, and I haven't found clever enough typings yet to express
+// this transformation.  So, we must explicitly declare them here:
+import { WindowAfterPreload } from "@renderer/preload_types";
+declare let window: Window & typeof globalThis & WindowAfterPreload;
+// this is a "safe" version of ipcRenderer exposed by the preload script
+const ipcRenderer = window.restrictedIpcRenderer;
 
 ////////////////////////////////////////////////////////////
 
@@ -95,13 +105,13 @@ class Renderer {
 
 		// handle events from main
 		/** @todo (9/13/20) is this event channel used anywhere? */
-		ipcRenderer.on("mainCommand", (evt, key: RendererIpcEvents, data: any) => {
-			console.log("RenderIPC :: mainCommand", key, data);
-			this.handle(key, data);
-		});
+		// ipcRenderer.receive("mainCommand", (key: RendererIpcEvents, data: any) => {
+		// 	console.log("RenderIPC :: mainCommand", key, data);
+		// 	this.handle(key, data);
+		// });
 
-		ipcRenderer.on(IpcEvents.RENDERER_INVOKE,
-			(evt, responseId: string, key: RendererIpcEvents, data: any) => {
+		ipcRenderer.receive(IpcEvents.RENDERER_INVOKE,
+			(responseId: string, key: RendererIpcEvents, data: any) => {
 				console.log("render.on() :: RENDERER_INVOKE ::", responseId, key, data);
 				this.handle(key, data)
 					.then((result: any) => { ipcRenderer.send(responseId, true, result); })

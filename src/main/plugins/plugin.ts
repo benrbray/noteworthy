@@ -1,4 +1,4 @@
-import { IWorkspaceDir, IFileMeta } from "@common/fileio";
+import { IWorkspaceDir, IFileMeta } from "@common/files";
 import { IDoc } from "@common/doctypes/doctypes";
 
 ////////////////////////////////////////////////////////////
