@@ -103,13 +103,6 @@ class Renderer {
 	init() {
 		console.log("render :: init()");
 
-		// handle events from main
-		/** @todo (9/13/20) is this event channel used anywhere? */
-		// ipcRenderer.receive("mainCommand", (key: RendererIpcEvents, data: any) => {
-		// 	console.log("RenderIPC :: mainCommand", key, data);
-		// 	this.handle(key, data);
-		// });
-
 		ipcRenderer.receive(IpcEvents.RENDERER_INVOKE,
 			(responseId: string, key: RendererIpcEvents, data: any) => {
 				console.log("render.on() :: RENDERER_INVOKE ::", responseId, key, data);
