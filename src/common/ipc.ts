@@ -11,12 +11,6 @@
 
 export type FunctionPropertyNames<T> = { [K in keyof T]: K extends string ? (T[K] extends Function ? K : never) : never }[keyof T];
 
-export type RestrictedIpcRenderer = {
-	send: (channel:string, ...data:any) => void,
-	receive: (channel:string, listener: (...args: any[]) => void) => void,
-	invoke: (channel:string, listener: (...args: any[]) => void) => void
-}
-
 /* -- Invoker ------------------------------------------- */
 
 interface Invokable {

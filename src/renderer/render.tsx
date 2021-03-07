@@ -5,7 +5,7 @@ import * as pathlib from "path";
 import { MainIpcHandlers, MainIpc_LifecycleHandlers, MainIpc_FileHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, MainIpc_DialogHandlers, MainIpc_TagHandlers, MainIpc_OutlineHandlers, MainIpc_MetadataHandlers } from "@main/MainIPC";
 import { RendererIpcEvents, RendererIpcHandlers } from "./RendererIPC";
 import { IPossiblyUntitledFile, IDirEntryMeta } from "@common/files";
-import { invokerFor, RestrictedIpcRenderer } from "@common/ipc";
+import { invokerFor } from "@common/ipc";
 import { to } from "@common/util/to";
 import { IpcEvents } from "@common/events";
 
@@ -27,8 +27,16 @@ import { ITagSearchResult, IFileSearchResult } from "@main/plugins/crossref-plug
 
 ////////////////////////////////////////////////////////////
 
-// TODO find a way to remove this cast
-let ipcRenderer = (window as any).restrictedIpcRenderer as RestrictedIpcRenderer; 
+// The use of `contextIsolation=true` for election requires a preload phase to
+// expose Electron APIs to the render process.  These APIs are made available
+// globally at runtime, and I haven't found clever enough typings yet to express
+// this transformation.  So, we must explicitly declare them here:
+import { WindowAfterPreload } from "@renderer/preload_types";
+declare let window: Window & typeof globalThis & WindowAfterPreload;
+// this is a "safe" version of ipcRenderer exposed by the preload script
+const ipcRenderer = window.restrictedIpcRenderer;
+
+////////////////////////////////////////////////////////////
 
 interface IRendererState {
 	activeTab: number,

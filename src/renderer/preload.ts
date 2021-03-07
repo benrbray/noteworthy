@@ -1,9 +1,10 @@
 import { IpcEvents } from "@common/events";
-import { RestrictedIpcRenderer } from "@common/ipc";
 import {
     contextBridge,
-    ipcRenderer
+    ipcRenderer,
+	clipboard
 } from "electron";
+import { WindowAfterPreload } from "./preload_types";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -19,7 +20,7 @@ import {
 // https://github.com/electron/electron/issues/9920#issuecomment-575839738
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
-let restrictedIpcRenderer: RestrictedIpcRenderer = {
+let restrictedIpcRenderer: WindowAfterPreload["restrictedIpcRenderer"] = {
 	send: async (channel:string, ...data:any[]) => {
 		// whitelist channels
 		let validChannels: string[] = ["command"];
@@ -57,4 +58,20 @@ let restrictedIpcRenderer: RestrictedIpcRenderer = {
 
 contextBridge.exposeInMainWorld(
     "restrictedIpcRenderer", restrictedIpcRenderer
+);
+
+////////////////////////////////////////////////////////////////////////////////
+
+let clipboardApi: WindowAfterPreload["clipboardApi"] = {
+	getClipboardImageDataURI(): string|null {
+		if(clipboard.availableFormats("clipboard").find(str => str.startsWith("image"))){
+			return clipboard.readImage("clipboard").toDataURL();
+		} else {
+			return null;
+		}
+	}
+}
+
+contextBridge.exposeInMainWorld(
+	"clipboardApi", clipboardApi
 );
