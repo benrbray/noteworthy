@@ -74,8 +74,7 @@ export class MainIpc_FileHandlers {
 	async requestFileSave(file: IFileWithContents): Promise<boolean> {
 		if (!this._app.window) { return false; }
 
-		//TODO: re-enable saving!!!!
-		//saveFile(file.path, file.contents);
+		saveFile(file.path, file.contents);
 		/** @todo (7/12/20) check for file save errors? */
 		this._app._renderProxy?.fileDidSave({saveas: false, path: file.path });
 		return true;

@@ -89,6 +89,13 @@ export abstract class Editor<TDocumentModel=any> {
 			let [err] = await to(this._mainProxy.dialog.dialogFileSaveAs(this._currentFile));
 			if(err) { return Promise.reject(err); }
 		} else {
+			// TODO As of (2021/03/07) this manual shallow-clone is necessary
+			// because SolidJS attaches two `symbol` keys to the _currentFile
+			// object which prevent it from being serialized via the structured
+			// clone algorithm for ipc transfer.
+			//
+			// Revisit this later, once the following issue has been resolved: 
+			// https://github.com/ryansolid/solid/issues/360
 			let sendData = {
 				contents: this._currentFile.contents,
 				creationTime: this._currentFile.creationTime,
