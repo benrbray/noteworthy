@@ -6,8 +6,7 @@ import { IDoc } from "@common/doctypes/doctypes";
 ////////////////////////////////////////////////////////////
 
 /**
- * An outline is an ordered collection of IOutlineEntry objects,
- *    whose `.depth` property defines an implicit tree structure.
+ * Type representing file metadata.
  */
 export type IMetadata = { [key:string] : string|string[] };
 
@@ -35,14 +34,14 @@ export class MetadataPlugin implements WorkspacePlugin {
 	_doc2meta: { [hash:string] : IMetadata };
 
 	constructor(){
-		console.log(`outline-plugin :: constructor()`);
+		console.log(`metadata-plugin :: constructor()`);
 		this._doc2meta = { };
 	}
 
 	// == Lifecycle ===================================== //
 
 	async init():Promise<void> {
-		console.log("outline-plugin :: init()");
+		console.log("metadata-plugin :: init()");
 		this.attachEvents();
 	}
 
@@ -71,7 +70,7 @@ export class MetadataPlugin implements WorkspacePlugin {
 	}
 
 	handleFileDeleted(filePath:string, fileHash:string): void {
-		// remove outline information for this doc
+		// remove metadata information for this doc
 		delete this._doc2meta[fileHash];
 	}
 
