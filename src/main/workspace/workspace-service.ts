@@ -48,7 +48,7 @@ export class WorkspaceService extends EventEmitter {
 		let plugins: WorkspacePlugin[] = [
 			new CrossRefPlugin(),
 			new OutlinePlugin(),
-			new MetadataPlugin(),
+			new MetadataPlugin()
 		];
 
 		// get directory info

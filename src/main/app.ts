@@ -13,7 +13,8 @@ import {
 	MainIpc_FileHandlers, MainIpc_TagHandlers, MainIpc_DialogHandlers, 
 	MainIpc_LifecycleHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, 
 	MainIpcHandlers, MainIpcChannel, MainIpc_OutlineHandlers, 
-	MainIpc_MetadataHandlers
+	MainIpc_MetadataHandlers,
+	MainIpc_NavigationHandlers
 } from "./MainIPC";
 import FSAL from "./fsal/fsal";
 import { invokerFor, FunctionPropertyNames } from "@common/ipc";
@@ -80,26 +81,28 @@ export default class NoteworthyApp extends EventEmitter {
 	 */
 	makeHandlers(): MainIpcHandlers {
 		// handlers with no dependencies
-		let lifecycleHandlers = new MainIpc_LifecycleHandlers(this);
-		let fileHandlers      = new MainIpc_FileHandlers(this, this._fsal, this._workspaceService);
-		let shellHandlers     = new MainIpc_ShellHandlers();
+		let lifecycleHandlers  = new MainIpc_LifecycleHandlers(this);
+		let fileHandlers       = new MainIpc_FileHandlers(this, this._fsal, this._workspaceService, this._pluginService);
+		let shellHandlers      = new MainIpc_ShellHandlers();
 
 		// handlers with a single dependency
-		let dialogHandlers    = new MainIpc_DialogHandlers(this, this._workspaceService, fileHandlers);
-		let tagHandlers       = new MainIpc_TagHandlers(this, this._workspaceService, this._pluginService, fileHandlers);
-		let outlineHandlers   = new MainIpc_OutlineHandlers(this._pluginService);
-		let themeHandlers     = new MainIpc_ThemeHandlers(this._themeService);
-		let metadataHandlers  = new MainIpc_MetadataHandlers(this._pluginService);
+		let tagHandlers        = new MainIpc_TagHandlers(this, this._workspaceService, this._pluginService, fileHandlers);
+		let navigationHandlers = new MainIpc_NavigationHandlers(this, this._workspaceService, this._pluginService, fileHandlers, tagHandlers);
+		let dialogHandlers     = new MainIpc_DialogHandlers(this, this._workspaceService, navigationHandlers);
+		let outlineHandlers    = new MainIpc_OutlineHandlers(this._pluginService);
+		let themeHandlers      = new MainIpc_ThemeHandlers(this._themeService);
+		let metadataHandlers   = new MainIpc_MetadataHandlers(this._pluginService);
 
 		return {
-			lifecycle: lifecycleHandlers,
-			file:      fileHandlers,
-			theme:     themeHandlers,
-			shell:     shellHandlers,
-			dialog:    dialogHandlers,
-			tag:       tagHandlers,
-			outline:   outlineHandlers,
-			metadata:  metadataHandlers,
+			lifecycle:  lifecycleHandlers,
+			file:       fileHandlers,
+			theme:      themeHandlers,
+			shell:      shellHandlers,
+			dialog:     dialogHandlers,
+			tag:        tagHandlers,
+			outline:    outlineHandlers,
+			metadata:   metadataHandlers,
+			navigation: navigationHandlers,
 		}
 	}
 

@@ -1,4 +1,4 @@
-import Renderer from "./render";
+import Renderer, { IRendererState } from "./render";
 import { IPossiblyUntitledFile, IDirEntryMeta } from "@common/files";
 
 ////////////////////////////////////////////////////////////
@@ -29,6 +29,11 @@ export class RendererIpcHandlers {
 
 	async fileDidOpen(file:IPossiblyUntitledFile):Promise<void> {
 		return this._renderer.setCurrentFile(file);
+	}
+
+	async navHistoryChanged(history: IRendererState["navigationHistory"]){
+		// TODO (2021/03/12) navigation should probably be handled entirely in the render process
+		this._renderer.setNavHistory(history);
 	}
 
 	/**

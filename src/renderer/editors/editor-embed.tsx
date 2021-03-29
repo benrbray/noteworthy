@@ -279,7 +279,7 @@ export class MarkdownRegionEditor extends Editor<ProseEditorState> {
 					if (mark = node.marks.find((mark: Mark) => markTypes.includes(mark.type.name))){
 						let tag = node.text;
 						let directoryHint = this._currentFile?.dirPath;
-						if (tag) { this._mainProxy.tag.requestTagOpen({tag, create:true, directoryHint}); }
+						if (tag) { this._mainProxy.navigation.navigateToTag({tag, create:true, directoryHint}); }
 						return true;
 					}
 					// links

@@ -2,9 +2,9 @@
 import * as pathlib from "path";
 
 // project imports
-import { MainIpcHandlers, MainIpc_LifecycleHandlers, MainIpc_FileHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, MainIpc_DialogHandlers, MainIpc_TagHandlers, MainIpc_OutlineHandlers, MainIpc_MetadataHandlers } from "@main/MainIPC";
+import { MainIpcHandlers, MainIpc_LifecycleHandlers, MainIpc_FileHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, MainIpc_DialogHandlers, MainIpc_TagHandlers, MainIpc_OutlineHandlers, MainIpc_MetadataHandlers, MainIpc_NavigationHandlers } from "@main/MainIPC";
 import { RendererIpcEvents, RendererIpcHandlers } from "./RendererIPC";
-import { IPossiblyUntitledFile, IDirEntryMeta } from "@common/files";
+import { IPossiblyUntitledFile, IDirEntryMeta, IFileMeta } from "@common/files";
 import { invokerFor } from "@common/ipc";
 import { to } from "@common/util/to";
 import { IpcEvents } from "@common/events";
@@ -22,6 +22,7 @@ import { render } from "solid-js/dom";
 import { State as SolidState, SetStateFunction, createState, Suspense, Switch, Match, For } from "solid-js";
 import { CalendarTab } from "./ui/calendarTab";
 import { OutlineTab } from "./ui/outlineTab";
+import { HistoryTab } from "./ui/historyTab";
 import { IOutline } from "@main/plugins/outline-plugin";
 import { ITagSearchResult, IFileSearchResult } from "@main/plugins/crossref-plugin";
 
@@ -32,16 +33,18 @@ import { ITagSearchResult, IFileSearchResult } from "@main/plugins/crossref-plug
 // globally at runtime, and I haven't found clever enough typings yet to express
 // this transformation.  So, we must explicitly declare them here:
 import { WindowAfterPreload } from "@renderer/preload_types";
+import { MouseButton } from "@common/inputEvents";
 declare let window: Window & typeof globalThis & WindowAfterPreload;
 // this is a "safe" version of ipcRenderer exposed by the preload script
 const ipcRenderer = window.restrictedIpcRenderer;
 
 ////////////////////////////////////////////////////////////
 
-interface IRendererState {
+export interface IRendererState {
 	activeTab: number,
 	activeFile: null|IPossiblyUntitledFile;
 	fileTree: [IFolderMarker, IDirEntryMeta[]][];
+	navigationHistory: { history: IFileMeta[], currentIdx: number };
 	themeCss: string;
 }
 
@@ -71,14 +74,15 @@ class Renderer {
 		const channel = "command";
 		const logPrefix = "render->main";
 		this._mainProxy = {
-			lifecycle: invokerFor<MainIpc_LifecycleHandlers>(ipcRenderer, channel, logPrefix, "lifecycle"),
-			file:      invokerFor<MainIpc_FileHandlers>     (ipcRenderer, channel, logPrefix, "file"),
-			theme:     invokerFor<MainIpc_ThemeHandlers>    (ipcRenderer, channel, logPrefix, "theme"),
-			shell:     invokerFor<MainIpc_ShellHandlers>    (ipcRenderer, channel, logPrefix, "shell"),
-			dialog:    invokerFor<MainIpc_DialogHandlers>   (ipcRenderer, channel, logPrefix, "dialog"),
-			tag:       invokerFor<MainIpc_TagHandlers>      (ipcRenderer, channel, logPrefix, "tag"),
-			outline:   invokerFor<MainIpc_OutlineHandlers>  (ipcRenderer, channel, logPrefix, "outline"),
-			metadata:  invokerFor<MainIpc_MetadataHandlers> (ipcRenderer, channel, logPrefix, "metadata"),
+			lifecycle:  invokerFor<MainIpc_LifecycleHandlers>  (ipcRenderer, channel, logPrefix, "lifecycle"),
+			file:       invokerFor<MainIpc_FileHandlers>       (ipcRenderer, channel, logPrefix, "file"),
+			theme:      invokerFor<MainIpc_ThemeHandlers>      (ipcRenderer, channel, logPrefix, "theme"),
+			shell:      invokerFor<MainIpc_ShellHandlers>      (ipcRenderer, channel, logPrefix, "shell"),
+			dialog:     invokerFor<MainIpc_DialogHandlers>     (ipcRenderer, channel, logPrefix, "dialog"),
+			tag:        invokerFor<MainIpc_TagHandlers>        (ipcRenderer, channel, logPrefix, "tag"),
+			outline:    invokerFor<MainIpc_OutlineHandlers>    (ipcRenderer, channel, logPrefix, "outline"),
+			metadata:   invokerFor<MainIpc_MetadataHandlers>   (ipcRenderer, channel, logPrefix, "metadata"),
+			navigation: invokerFor<MainIpc_NavigationHandlers> (ipcRenderer, channel, logPrefix, "navigation")
 		}
 
 		this._eventHandlers = new RendererIpcHandlers(this);
@@ -129,6 +133,7 @@ class Renderer {
 				activeTab: 0,
 				activeFile: null,
 				fileTree:[],
+				navigationHistory: { history: [], currentIdx: 0 },
 				themeCss: ""
 			});
 			this._react = { state, setState }
@@ -152,6 +157,10 @@ class Renderer {
 				return outline;
 			}
 
+			const getHistory = async () => {
+				return this._mainProxy.navigation.getNavigationHistory();
+			}
+
 			const Loading = () => {
 				return (<div>loading...</div>);
 			}
@@ -167,7 +176,7 @@ class Renderer {
 			const handleFileClick = (evt:MouseEvent) => {
 				let target:HTMLElement = evt.currentTarget as HTMLElement;
 
-				/** @todo this is hacky, handle properly next time! */
+				/** FIXME this is hacky, handle properly next time! */
 				if(target.className == "folder"){
 					let collapsed:string = target.getAttribute("data-collapsed") || "false";
 					target.setAttribute("data-collapsed", collapsed == "true" ? "false" : "true");
@@ -178,14 +187,37 @@ class Renderer {
 				if(fileHash === null){ return; }
 				
 				console.log("explorer :: clicked", fileHash);
-				this._mainProxy.file.requestFileOpen({ hash: fileHash });
+				this._mainProxy.navigation.navigateToHash({ hash: fileHash });
 			}
 
 			const handleTagClick = (evt:MouseEvent) => {
 				let target:HTMLElement = evt.currentTarget as HTMLElement;
 				let tag = target.getAttribute("data-tag");
 				if(tag === null){ return; }
-				this._mainProxy.tag.requestTagOpen({ tag, create: false });
+				this._mainProxy.navigation.navigateToTag({ tag, create: false });
+			}
+
+			const handleAppClicked = (evt:MouseEvent) => {
+				switch(evt.button){
+					case MouseButton.BACK:
+						this._mainProxy.navigation.navigatePrev();
+						break;
+					case MouseButton.FORWARD:
+						this._mainProxy.navigation.navigateNext();
+						break;
+				}
+			}
+
+			const handleHistoryClick = (evt: MouseEvent) => {
+				let target: HTMLElement = evt.currentTarget as HTMLElement;
+
+				let historyIdxAttr = target.getAttribute("data-history-idx");
+				if(historyIdxAttr === null){ return; }
+
+				let historyIdx: number = parseInt(historyIdxAttr);
+				if(isNaN(historyIdx)){ return; }
+
+				this._mainProxy.navigation.navigateToIndex(historyIdx);
 			}
 
 			const search = async (query:string): Promise<(ITagSearchResult|IFileSearchResult)[]> => {
@@ -213,7 +245,10 @@ class Renderer {
 								<TagSearch getSearchResults={search} handleTagClick={handleTagClick} handleFileClick={handleFileClick}/>
 							</Match>
 							<Match when={state.activeTab == 3}>
-								<div id="tab_theme">themes</div>
+								<HistoryTab 
+									navHistory={state.navigationHistory} 
+									handleHistoryClick={handleHistoryClick} 
+								/>
 							</Match>
 							<Match when={state.activeTab == 4}>
 								<CalendarTab />
@@ -251,7 +286,7 @@ class Renderer {
 
 			return (<>
 				<style>{state.themeCss}</style>
-				<div id="app">
+				<div id="app" onMouseUp={handleAppClicked}>
 					<AppSidebar />
 					<AppContent />
 					<AppFooter />
@@ -351,8 +386,13 @@ class Renderer {
 		this._editor.init();
 	}
 
-	setCurrentFilePath(filePath: string): void {
-		this._editor?.setCurrentFilePath(filePath);
+	// TODO (2021/03/09) remove this unused method?
+	// setCurrentFilePath(filePath: string): void {
+	// 	this._editor?.setCurrentFilePath(filePath);
+	// }
+
+	setNavHistory(navHistory: IRendererState["navigationHistory"]) {
+		this._react?.setState({ navigationHistory: navHistory });
 	}
 
 	setFileTree(fileTree:IDirEntryMeta[]){

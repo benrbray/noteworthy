@@ -19,6 +19,7 @@ import { IOutline } from "./plugins/outline-plugin";
 import { ITagSearchResult, SearchResult, IFileSearchResult, IHashSearchResult, CrossRefPlugin } from "./plugins/crossref-plugin";
 import { WorkspacePlugin } from "./plugins/plugin";
 import { IMetadata } from "./plugins/metadata-plugin";
+import { getFileMetadata } from "./fsal/fsal-file";
 
 ////////////////////////////////////////////////////////////
 
@@ -55,7 +56,8 @@ export class MainIpc_FileHandlers {
 	constructor(
 		private _app:NoteworthyApp,
 		private _fsal:FSAL,
-		private _workspaceService:WorkspaceService
+		private _workspaceService:WorkspaceService,
+		private _pluginService:PluginService
 	){ }
 
 	// -- Request File Create --------------------------- //
@@ -82,10 +84,10 @@ export class MainIpc_FileHandlers {
 
 	// -- Request File Open ----------------------------- //
 
-	async requestFileContents(fileInfo: { hash?: string, path?: string }):Promise<IFileWithContents|null> {
-		let { hash, path } = fileInfo;
+	async requestFileContents(fileInfo: { hash?: string }):Promise<IFileWithContents|null> {
+		let { hash } = fileInfo;
 		// validate input
-		if (hash === undefined && path === undefined) {
+		if (hash === undefined) {
 			throw new Error("MainIPC :: requestFileContents() :: no file path or hash provided");
 		}
 
@@ -109,12 +111,6 @@ export class MainIpc_FileHandlers {
 
 		return file;
 	}
-
-	async requestFileOpen(fileInfo: { hash?: string, path?: string }):Promise<void> {
-		if (!this._app.window) { return; }
-		let file = await this.requestFileContents(fileInfo);
-		if(file) { this._app._renderProxy?.fileDidOpen(file); }
-	}
 }
 
 //// DIALOG ////////////////////////////////////////////////
@@ -124,7 +120,7 @@ export class MainIpc_DialogHandlers {
 	constructor(
 		private _app:NoteworthyApp,
 		private _workspaceService:WorkspaceService,
-		private _fileHandlers:MainIpc_FileHandlers
+		private _navigationHandlers:MainIpc_NavigationHandlers
 	){ }
 
 	// -- Show Notification ----------------------------- //
@@ -171,8 +167,10 @@ export class MainIpc_DialogHandlers {
 		// if no path selected, do nothing
 		if (!filePaths || !filePaths.length) return;
 
+		throw new Error("MainIpc_DialogHandlers :: opening individual file from path is not implemented");
+
 		// load file from path
-		this._fileHandlers.requestFileOpen({ path: filePaths[0] })
+		//this._navigationHandlers.requestFileOpen({ path: filePaths[0] })
 	}
 
 	// -- Dialog File Save As --------------------------- //
@@ -231,7 +229,7 @@ export class MainIpc_TagHandlers {
 		private _app:NoteworthyApp,
 		private _workspaceService:WorkspaceService,
 		private _pluginService:PluginService,
-		private _fileHandlers:MainIpc_FileHandlers
+		private _fileHandlers:MainIpc_FileHandlers,
 	){ }
 	
 	async tagSearch(query:string):Promise<IFileMeta[]> {
@@ -353,16 +351,6 @@ export class MainIpc_TagHandlers {
 		if (!fileHash) return null;
 		return this._workspaceService.getFileByHash(fileHash);
 	}
-
-	async requestTagOpen(data:{tag: string, create:boolean, directoryHint?:string}):Promise<void> {
-		if (!this._app.window) { return; }
-
-		// get files which define this tag
-		let fileHash = await this.getHashForTag(data);
-		if(!fileHash) return;
-		// load file from hash
-		this._fileHandlers.requestFileOpen({ hash: fileHash });
-	}
 }
 
 //// OUTLINE ///////////////////////////////////////////////
@@ -406,21 +394,155 @@ export class MainIpc_MetadataHandlers {
 	}
 }
 
+//// NAVIGATION ////////////////////////////////////////////////////////////////
+
+export class MainIpc_NavigationHandlers {
+	// TODO (2021/03/12) clear navigation history on workspace open/close
+
+	private _navHistory: IFileMeta[];
+	private _navIdx: number;
+
+	constructor(
+		private _app:NoteworthyApp,
+		private _workspaceService: WorkspaceService,
+		private _pluginService: PluginService,
+		private _fileHandlers: MainIpc_FileHandlers,
+		private _tagHandlers: MainIpc_TagHandlers
+	) {
+		this._navHistory = [];
+		this._navIdx = 0;
+	}
+
+	/**
+	 * @returns Metadata for the opened file, if successful, otherwise null
+	 */
+	private async _navigate(fileInfo: { hash: string }): Promise<IFileMeta | null> {
+		console.log(`MainIPC_NavigationHandlers :: navigate :: ${ fileInfo.hash }`);
+
+		// get file contents
+		let file = await this._fileHandlers.requestFileContents(fileInfo);
+		if(!file){ return null; }
+
+		// send file to render process
+		this._app._renderProxy?.fileDidOpen(file);
+
+		// return 
+		return getFileMetadata(file);
+	}
+
+	public getNavigationHistory() {
+		return {
+			history: [...this._navHistory],
+			currentIdx: this._navIdx
+		}
+	}
+
+	public navigateNext(): void {
+		// clamp to guarantee valid output index, even if we receive invalid input
+		let nextIdx: number = Math.min(Math.max(this._navIdx, 0), this._navHistory.length);
+
+		// search forwards through history for next valid index
+		let foundValid: boolean = false;
+		while(nextIdx + 1 < this._navHistory.length){
+			nextIdx = nextIdx + 1;
+			if(this._workspaceService.getFileByHash(this._navHistory[nextIdx].hash)) {
+				foundValid = true;
+				break;
+			}
+		}
+
+		// do nothing if no valid files found
+		if(!foundValid || nextIdx === this._navIdx) { return; }
+
+		// navigate
+		let file = this._navigate({ hash: this._navHistory[nextIdx].hash });
+		if(!file) { return; }
+		this._navIdx = nextIdx;
+
+		// TODO (2021/03/12) re-think updates to reactive ui data
+		this._app._renderProxy?.navHistoryChanged({ history: this._navHistory, currentIdx: this._navIdx });
+	}
+
+	public navigatePrev(): void {
+		// clamp to guarantee valid output index, even if we receive invalid input
+		let prevIdx: number = Math.min(Math.max(this._navIdx, 0), this._navHistory.length);
+
+		// search forwards through history for next valid index
+		let foundValid: boolean = false;
+		while(prevIdx - 1 > 0){
+			prevIdx = prevIdx - 1;
+			if(this._workspaceService.getFileByHash(this._navHistory[prevIdx].hash)) {
+				foundValid = true;
+				break;
+			}
+		}
+
+		// do nothing if no valid files found
+		if(!foundValid || prevIdx === this._navIdx) { return; }
+
+		// navigate
+		let file = this._navigate({ hash: this._navHistory[prevIdx].hash });
+		if(!file) { return; }
+		this._navIdx = prevIdx;
+
+		// TODO (2021/03/12) re-think updates to reactive ui data
+		this._app._renderProxy?.navHistoryChanged({ history: this._navHistory, currentIdx: this._navIdx });
+	}
+
+	async navigateToHash(fileInfo: { hash: string }): Promise<void> {
+		if (!this._app.window) { return; }
+		
+		// request file contents
+		let file = await this._navigate(fileInfo);
+		if(!file){ return; }
+
+		// push this file onto navigation stack, erasing any existing forward history
+		this._navHistory.splice(this._navIdx+1, this._navHistory.length-this._navIdx+1, file);
+		this._navIdx = this._navHistory.length - 1;
+
+		// TODO (2021/03/12) re-think updates to reactive ui data
+		this._app._renderProxy?.navHistoryChanged({ history: this._navHistory, currentIdx: this._navIdx });
+	}
+
+	async navigateToTag(data:{tag: string, create:boolean, directoryHint?:string}):Promise<void> {
+		if (!this._app.window) { return; }
+
+		// get files which define this tag
+		let fileHash = await this._tagHandlers.getHashForTag(data);
+		if(!fileHash) return;
+		// load file from hash
+		this.navigateToHash({ hash: fileHash });
+	}
+
+	async navigateToIndex(idx: number){
+		if(idx < 0 || idx >= this._navHistory.length) {
+			return Promise.reject("MainIpc_NavigationHandlers :: navigateToIndex :: index out of bounds");
+		}
+
+		this._navigate({ hash: this._navHistory[idx].hash });
+		this._navIdx = idx;
+
+		// TODO (2021/03/12) re-think updates to reactive ui data
+		this._app._renderProxy?.navHistoryChanged({ history: this._navHistory, currentIdx: this._navIdx });
+	}
+}
+
 ////////////////////////////////////////////////////////////
 
 export interface MainIpcHandlers {
-	lifecycle: MainIpc_LifecycleHandlers;
-	file:      MainIpc_FileHandlers;
-	theme:     MainIpc_ThemeHandlers;
-	shell:     MainIpc_ShellHandlers;
-	dialog:    MainIpc_DialogHandlers;
+	lifecycle:  MainIpc_LifecycleHandlers;
+	file:       MainIpc_FileHandlers;
+	theme:      MainIpc_ThemeHandlers;
+	shell:      MainIpc_ShellHandlers;
+	dialog:     MainIpc_DialogHandlers;
 	// plugins
 	/** @todo Custom plugins won't be able to add their own
 	 * handlers to this file, so there needs to be a standard
 	 * way to request plugin data from the render process */
-	tag:       MainIpc_TagHandlers;
-	outline:   MainIpc_OutlineHandlers;
-	metadata:  MainIpc_MetadataHandlers;
+	tag:        MainIpc_TagHandlers;
+	outline:    MainIpc_OutlineHandlers;
+	metadata:   MainIpc_MetadataHandlers;
+	navigation: MainIpc_NavigationHandlers;
 };
 
 export type MainIpcChannel = keyof MainIpcHandlers;

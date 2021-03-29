@@ -48,7 +48,12 @@ export class Workspace implements IDisposable {
 	) {
 		this._dir = dir;
 		this._files = files;
-		this._plugins = plugins;
+
+		// register plugins
+		this._plugins = [];
+		for(let plugin of plugins){
+			this.registerPlugin(plugin);
+		}
 	}
 
 	// -- Lifecycle ------------------------------------- //
