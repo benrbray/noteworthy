@@ -144,7 +144,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				handleCitationOpen: async (tag:string): Promise<void> => {
 					/** @todo (10/4/20) where should new files be created? */
 					let directoryHint = this._currentFile?.dirPath;
-					if (tag) { return this._mainProxy.tag.requestTagOpen({tag, create:true, directoryHint}); }
+					if (tag) { return this._mainProxy.navigation.navigateToTag({tag, create:true, directoryHint}); }
 				},
 				renderCitation: async (id:string): Promise<string> => {
 					console.log(`renderCitation ::`, id);
@@ -336,7 +336,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 					if (mark = node.marks.find((mark: Mark) => markTypes.includes(mark.type.name))){
 						let tag = node.text;
 						let directoryHint = this._currentFile?.dirPath;
-						if (tag) { this._mainProxy.tag.requestTagOpen({tag, create:true, directoryHint}); }
+						if (tag) { this._mainProxy.navigation.navigateToTag({tag, create:true, directoryHint}); }
 						return true;
 					}
 					// links
