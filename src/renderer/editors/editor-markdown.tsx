@@ -18,16 +18,14 @@ import { render } from "solid-js/dom";
 import { createEffect, createSignal } from "solid-js";
 
 // views
-import mathSelectPlugin from "@root/lib/prosemirror-math/src/plugins/math-select";
+import { mathPlugin, mathBackspaceCmd, mathSelectPlugin } from "@benrbray/prosemirror-math";
 import { MainIpcHandlers } from "@main/MainIPC";
 
 import { YamlEditor } from "../ui/yamlEditor";
 import { SetDocAttrStep } from "@common/prosemirror/steps";
 import { shallowEqual } from "@common/util/equal";
 import { MarkdownDoc } from "@common/doctypes/markdown-doc";
-import { mathBackspace } from "@root/lib/prosemirror-math/src/plugins/math-backspace";
 import { EmbedView } from "@common/nwt/embed-view";
-import { mathPlugin } from "@root/lib/prosemirror-math/src/math-plugin";
 import { makeSuggestionPlugin, SuggestionPopup } from "@renderer/ui/suggestions";
 
 // editor commands
@@ -206,7 +204,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 
 		let keymap: Keymap = {
 			"Tab" : insertTab,
-			"Backspace" : chainCommands(mathBackspace, undoInputRule),
+			"Backspace" : chainCommands(mathBackspaceCmd, undoInputRule),
 			"Ctrl-s": () => {
 				this.saveCurrentFile(false);
 				return true;

@@ -1,4 +1,0 @@
-[submodule "lib/prosemirror-math"]
-	path = lib/prosemirror-math
-	url = git@github.com:benrbray/prosemirror-math.git
-	ignore = dirty

@@ -14,9 +14,9 @@ import { openPrompt, TextField } from "@common/prompt/prompt";
 import { incrHeadingLevelCmd } from "@common/prosemirror/commands/demoteHeadingCmd";
 import { NodeExtension } from "@common/extensions/extension";
 import {
-	inlineInputRule as inlineMathInputRule, 
-	blockInputRule as blockMathInputRule
-} from "@root/lib/prosemirror-math/src/plugins/math-inputrules";
+	makeInlineMathInputRule, makeBlockMathInputRule,
+	REGEX_INLINE_MATH_DOLLARS_ESCAPED, REGEX_BLOCK_MATH_DOLLARS
+} from "@benrbray/prosemirror-math";
 
 ////////////////////////////////////////////////////////////
 
@@ -413,7 +413,7 @@ export class InlineMathExtension extends NodeExtension {
 		};
 	}
 
-	createInputRules() { return [inlineMathInputRule(/(?<!\\)\$(.+)(?<!\\)\$/, this.type)]; }
+	createInputRules() { return [makeInlineMathInputRule(REGEX_INLINE_MATH_DOLLARS_ESCAPED, this.type)]; }
 }
 
 /* -- Block Math --------------------------------------- */
@@ -435,7 +435,7 @@ export class BlockMathExtension extends NodeExtension {
 		};
 	}
 
-	createInputRules() { return [blockMathInputRule(/^\$\$\s+$/, this.type)]; }
+	createInputRules() { return [makeBlockMathInputRule(REGEX_BLOCK_MATH_DOLLARS, this.type)]; }
 }
 
 /* -- Region -------------------------------------------- */

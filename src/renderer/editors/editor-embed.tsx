@@ -12,19 +12,17 @@ import { IPossiblyUntitledFile } from "@common/files";
 import { Editor } from "./editor";
 
 // views
-import mathSelectPlugin from "@root/lib/prosemirror-math/src/plugins/math-select";
+import { mathPlugin, mathBackspaceCmd, mathSelectPlugin } from "@benrbray/prosemirror-math";
 import { MainIpcHandlers } from "@main/MainIPC";
 
 import { SetDocAttrStep } from "@common/prosemirror/steps";
 import { MarkdownDoc } from "@common/doctypes/markdown-doc";
 import { EmbedView } from "@common/nwt/embed-view";
-import { mathPlugin } from "@root/lib/prosemirror-math/src/math-plugin";
 import { markdownSerializer } from "@common/markdown";
 
 // editor commands
 import { insertTab } from "@common/prosemirror/commands/insertTab";
 import { undoInputRule } from "prosemirror-inputrules";
-import { mathBackspace } from "@root/lib/prosemirror-math/src/plugins/math-backspace";
 import { NwtExtension } from "@common/extensions/extension";
 import { EditorConfig } from "@common/extensions/editor-config";
 import {
@@ -139,7 +137,7 @@ export class MarkdownRegionEditor extends Editor<ProseEditorState> {
 
 		let keymap: Keymap = {
 			"Tab" : insertTab,
-			"Backspace" : chainCommands(mathBackspace, undoInputRule),
+			"Backspace" : chainCommands(mathBackspaceCmd, undoInputRule),
 			"Ctrl-s": () => {
 				this.saveCurrentFile(false);
 				return true;
