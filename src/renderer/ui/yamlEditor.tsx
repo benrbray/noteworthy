@@ -1,6 +1,5 @@
 // YAML config
 import YAML from "yaml";
-YAML.defaultOptions.customTags = ["timestamp"];
 
 // solid.js imports
 import { afterEffects, SetStateFunction } from "solid-js";
@@ -83,7 +82,7 @@ function makeYamlEditor(
 	yamlData:{[key:string] : unknown },
 	setYamlMeta:SetStateFunction<{ data : { [key:string]:string } }>
 ){
-	YAML.stringify("", { });
+	YAML.stringify("", { customTags: ["timestamp"] });
 	let schema = new ProseSchema({
 			"nodes" : {
 				"doc" : {
@@ -114,7 +113,7 @@ function makeYamlEditor(
 	// create document
 	let list:ProseNode[] = [];
 	for(let key in yamlData){
-		let value = YAML.stringify(yamlData[key]).trim();
+		let value = YAML.stringify(yamlData[key], { customTags: ["timestamp"] }).trim();
 		let dt = schema.nodes.dt.createAndFill(undefined, schema.text(key));
 		let dd = schema.nodes.dd.createAndFill(undefined, schema.text(value));
 		list.push(dt, dd);
