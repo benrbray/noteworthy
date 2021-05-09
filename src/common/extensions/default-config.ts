@@ -1,15 +1,16 @@
 import { EditorConfig } from "./editor-config";
 import {
 	BlockQuoteExtension, HeadingExtension, HorizontalRuleExtension,
-	CodeBlockExtension, OrderedListExtension, UnorderedListExtension,
-	ListItemExtension, ImageExtension, HardBreakExtension, InlineMathExtension,
-	BlockMathExtension, RegionExtension, EmbedExtension, ParagraphExtension,
+	CodeBlockExtension, /*OrderedListExtension, UnorderedListExtension,*/
+	/*ListItemExtension,*/ ImageExtension, HardBreakExtension, InlineMathExtension,
+	BlockMathExtension, /*RegionExtension, EmbedExtension,*/ ParagraphExtension,
 	CitationExtension
 } from "./node-extensions";
 import {
-	BoldExtension, ItalicExtension, DefinitionExtension, LinkExtension,
-	UnderlineExtension, CodeExtension, StrikethroughExtension,
-	WikilinkExtension, TagExtension
+	BoldExtension, ItalicExtension, CodeExtension, LinkExtension,
+	//UnderlineExtension, DefinitionExtension, StrikethroughExtension,
+	WikilinkExtension,
+	//TagExtension
 } from "./mark-extensions";
 
 ////////////////////////////////////////////////////////////
@@ -26,27 +27,27 @@ export const defaultMarkdownConfig = new EditorConfig([
 	new HeadingExtension(paragraphExt),
 	new HorizontalRuleExtension(),
 	new CodeBlockExtension(),
-	new OrderedListExtension(),
-	new UnorderedListExtension(),
-	new ListItemExtension(),
+	// new OrderedListExtension(),
+	// new UnorderedListExtension(),
+	// new ListItemExtension(),
 	new ImageExtension(),
 	new HardBreakExtension(),
 	// nodes: math
 	new InlineMathExtension(),
 	new BlockMathExtension(),
 	// nodes: special
-	new RegionExtension(),
-	new EmbedExtension(),
+	// new RegionExtension(),
+	// new EmbedExtension(),
 	// marks
 	new BoldExtension(),
 	new ItalicExtension(),
-	new DefinitionExtension(),
+	//new DefinitionExtension(),
 	new LinkExtension(),
-	new UnderlineExtension(),
+	//new UnderlineExtension(),
 	new CodeExtension(),
-	new StrikethroughExtension(),
+	//new StrikethroughExtension(),
 	// plugins: crossrefs
 	new WikilinkExtension(),
-	new TagExtension(),
+	//new TagExtension(),
 	new CitationExtension()
 ], [], { });

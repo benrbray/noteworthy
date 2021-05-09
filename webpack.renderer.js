@@ -1,4 +1,4 @@
-const base = require("./webpack.base");
+const base = require("./webpack.base.js");
 const path = require("path");
 const fsExtra = require("fs-extra");
 
@@ -174,6 +174,7 @@ const config = base({
 						plugins : [
 							require("@babel/plugin-syntax-dynamic-import").default,
 							require("@babel/plugin-proposal-optional-chaining").default,
+							require("@babel/plugin-transform-modules-commonjs").default
 						]
 					}
 				}

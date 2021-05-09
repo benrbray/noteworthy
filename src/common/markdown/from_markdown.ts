@@ -496,8 +496,8 @@ function noOp() {}
 
 /* -- Parser Configuration ------------------------------ */
 
-export function makeMarkdownParser(schema:ProseSchema) { 
-	return  new MarkdownParser(schema, md, {
+export function makeMarkdownParser<S extends ProseSchema>(schema: S) { 
+	return new MarkdownParser(schema, md, {
 		/* -- Blocks ---------------------------------------- */
 		blockquote:   { type:"block", block: "blockquote"  },
 		paragraph:    { type:"block", block: "paragraph"   },

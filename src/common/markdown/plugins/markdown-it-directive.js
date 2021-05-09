@@ -1,10 +1,10 @@
 'use strict';
 
-import parseLinkLabel from 'markdown-it/lib/helpers/parse_link_label';
-import parseLinkTitle from 'markdown-it/lib/helpers/parse_link_title';
-import parseLinkDestination from 'markdown-it/lib/helpers/parse_link_destination';
-import { normalizeReference } from 'markdown-it/lib/common/utils';
-import StateInline from 'markdown-it/lib/rules_inline/state_inline';
+import parseLinkLabel from 'markdown-it/lib/helpers/parse_link_label.js';
+import parseLinkTitle from 'markdown-it/lib/helpers/parse_link_title.js';
+import parseLinkDestination from 'markdown-it/lib/helpers/parse_link_destination.js';
+import { normalizeReference } from 'markdown-it/lib/common/utils.js';
+import StateInline from 'markdown-it/lib/rules_inline/state_inline.js';
 
 function isBlank(code) {
 	switch (code) {

@@ -25,7 +25,7 @@ import { YamlEditor } from "../ui/yamlEditor";
 import { SetDocAttrStep } from "@common/prosemirror/steps";
 import { shallowEqual } from "@common/util/equal";
 import { MarkdownDoc } from "@common/doctypes/markdown-doc";
-import { EmbedView } from "@common/nwt/embed-view";
+//import { EmbedView } from "@common/nwt/embed-view";
 import { makeSuggestionPlugin, SuggestionPopup } from "@renderer/ui/suggestions";
 
 // editor commands
@@ -36,15 +36,17 @@ import { NwtExtension } from "@common/extensions/extension";
 import { citationPlugin } from "@main/plugins/crossref-plugin";
 import {
 	BlockQuoteExtension, HeadingExtension, HorizontalRuleExtension,
-	CodeBlockExtension, OrderedListExtension, UnorderedListExtension,
-	ListItemExtension, ImageExtension, HardBreakExtension, InlineMathExtension,
-	BlockMathExtension, RegionExtension, EmbedExtension, ParagraphExtension,
-	CitationExtension
+	CodeBlockExtension, InlineMathExtension, BlockMathExtension,
+	//OrderedListExtension, UnorderedListExtension, ListItemExtension, 
+	ImageExtension, HardBreakExtension,
+	//RegionExtension, EmbedExtension, 
+	ParagraphExtension, CitationExtension
 } from "@common/extensions/node-extensions";
 import {
-	BoldExtension, ItalicExtension, DefinitionExtension, LinkExtension,
-	UnderlineExtension, CodeExtension, StrikethroughExtension,
-	WikilinkExtension, TagExtension
+	BoldExtension, ItalicExtension, LinkExtension,
+	//DefinitionExtension, UnderlineExtension, StrikethroughExtension,
+	CodeExtension, WikilinkExtension,
+	//TagExtension
 } from "@common/extensions/mark-extensions";
 import { IMetadata } from "@main/plugins/metadata-plugin";
 import { moveSelectionDown, moveSelectionUp } from "@common/prosemirror/commands/moveSelection";
@@ -56,6 +58,7 @@ import { moveSelectionDown, moveSelectionUp } from "@common/prosemirror/commands
 // globally at runtime, and I haven't found clever enough typings yet to express
 // this transformation.  So, we must explicitly declare them here:
 import { WindowAfterPreload } from "@renderer/preload_types";
+import { ProseSchema } from "@common/types";
 declare let window: Window & typeof globalThis & WindowAfterPreload;
 
 ////////////////////////////////////////////////////////////
@@ -66,7 +69,7 @@ const mac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform) : f
 ////////////////////////////////////////////////////////////
 
 // editor class
-export class MarkdownEditor extends Editor<ProseEditorState> {
+export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<ProseEditorState<S>> {
 
 	_proseEditorView: ProseEditorView | null;
 	_initialized:boolean;
@@ -111,27 +114,28 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 			new HeadingExtension(this._paragraphExt),
 			new HorizontalRuleExtension(),
 			new CodeBlockExtension(),
-			new OrderedListExtension(),
-			new UnorderedListExtension(),
-			new ListItemExtension(),
+			// new OrderedListExtension(),
+			// new UnorderedListExtension(),
+			// new ListItemExtension(),
 			(this._imageExt = new ImageExtension()),
 			new HardBreakExtension(),
 			// nodes: math
 			new InlineMathExtension(),
 			new BlockMathExtension(),
 			// nodes: special
-			new RegionExtension(),
-			new EmbedExtension(),
+			// new RegionExtension(),
+			// new EmbedExtension(),
 			// marks
 			new BoldExtension(),
 			new ItalicExtension(),
-			new DefinitionExtension(),
+			//new DefinitionExtension(),
 			new LinkExtension(),
-			new UnderlineExtension(),
+			//new UnderlineExtension(),
 			new CodeExtension(),
-			new StrikethroughExtension(),
+			//new StrikethroughExtension(),
+			// plugins: crossrefs
 			new WikilinkExtension(),
-			new TagExtension(),
+			//new TagExtension(),
 			(this._citationExt = new CitationExtension())
 		];
 
@@ -298,11 +302,12 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
 			state: state,
 			nodeViews: {
-				"embed": (node, view, getPos) => {
-					return new EmbedView(
-						node, view, getPos as (() => number), this._mainProxy
-					);
-				},
+				// TODO: restore embed view?
+				// "embed": (node, view, getPos) => {
+				// 	return new EmbedView(
+				// 		node, view, getPos as (() => number), this._mainProxy
+				// 	);
+				// },
 			},
 			dispatchTransaction: (tr: Transaction): void => {
 				// unsaved changes?
@@ -359,7 +364,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				let clipboardImageURI: string|null = window.clipboardApi.getClipboardImageDataURI();
 
 				if(clipboardImageURI == null){
-					let imgNode = this._imageExt.type.createAndFill({
+					let imgNode = this._imageExt.nodeType.createAndFill({
 						src: clipboardImageURI
 					});
 					

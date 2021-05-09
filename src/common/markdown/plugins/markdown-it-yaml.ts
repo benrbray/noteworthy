@@ -3,7 +3,7 @@
 
 import YAML from "yaml";
 import MarkdownIt from "markdown-it";
-import StateBlock from "markdown-it/lib/rules_block/state_block";
+import StateBlock from "markdown-it/lib/rules_block/state_block.js";
 
 ////////////////////////////////////////////////////////////
 

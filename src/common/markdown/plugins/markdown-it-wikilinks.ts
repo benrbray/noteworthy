@@ -8,10 +8,10 @@
 
 // markdown-it imports
 import MarkdownIt from "markdown-it";
-import Token from "markdown-it/lib/token";
-import { RenderRule } from "markdown-it/lib/renderer";
-import { RuleInline } from "markdown-it/lib/parser_inline";
-import StateInline from "markdown-it/lib/rules_inline/state_inline";
+import Token from "markdown-it/lib/token.js";
+import { RenderRule } from "markdown-it/lib/renderer.js";
+import { RuleInline } from "markdown-it/lib/parser_inline.js";
+import StateInline from "markdown-it/lib/rules_inline/state_inline.js";
 
 ////////////////////////////////////////////////////////////
 

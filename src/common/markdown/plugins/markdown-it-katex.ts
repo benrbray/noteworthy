@@ -8,12 +8,12 @@ import katex, { KatexOptions } from "katex";
 
 // markdown-it imports
 import MarkdownIt from "markdown-it";
-import Token from "markdown-it/lib/token";
-import { RenderRule } from "markdown-it/lib/renderer";
-import { RuleInline } from "markdown-it/lib/parser_inline";
-import { RuleBlock } from "markdown-it/lib/parser_block";
-import StateBlock from "markdown-it/lib/rules_block/state_block";
-import StateInline from "markdown-it/lib/rules_inline/state_inline";
+import Token from "markdown-it/lib/token.js";
+import { RenderRule } from "markdown-it/lib/renderer.js";
+import { RuleInline } from "markdown-it/lib/parser_inline.js";
+import { RuleBlock } from "markdown-it/lib/parser_block.js";
+import StateBlock from "markdown-it/lib/rules_block/state_block.js";
+import StateInline from "markdown-it/lib/rules_inline/state_inline.js";
 
 ////////////////////////////////////////////////////////////
 

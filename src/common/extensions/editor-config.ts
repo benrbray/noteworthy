@@ -1,5 +1,5 @@
 // prosemirror imports
-import { Schema as ProseSchema, Node as ProseNode, NodeSpec, MarkSpec, DOMOutputSpec } from "prosemirror-model";
+import { Schema, Node as ProseNode, NodeSpec, MarkSpec, DOMOutputSpec } from "prosemirror-model";
 import {
 	InputRule, inputRules as makeInputRules,
 } from "prosemirror-inputrules"
@@ -12,17 +12,75 @@ import { Plugin as ProsePlugin } from "prosemirror-state";
 import { keymap as makeKeymap } from "prosemirror-keymap";
 import { DefaultMap } from "@common/util/DefaultMap";
 import { MarkdownParser, makeMarkdownParser } from "@common/markdown";
-import { NwtExtension, NodeExtension, MarkExtension } from "./extension";
+import { NwtExtension, NodeExtension, MarkExtension, MdastNodeMapType, MdastMarkMapType } from "./extension";
+
+// patched prosemirror types 
+import { ProseSchema } from "@common/types";
+import { makeParser, markMapBasic, MdMapper, MdParser, nodeMapBasic, nodeMapLeaf, nodeMapStringLiteral } from "@common/markdown/mdast2prose";
+
+// unist
+import * as Uni from "unist";
+import * as Md from "mdast";
 
 //// EDITOR CONFIG /////////////////////////////////////////
 
-export class EditorConfig {
-	schema:ProseSchema;
+// ---------------------------------------------------------
+// https://github.com/microsoft/TypeScript/issues/27995#issuecomment-441157546
+
+export type ArrayKeys = keyof any[];
+export type Indices<T> = Exclude<keyof T, ArrayKeys>;
+
+type Foo = ['a', 'c'];
+
+interface Bar {
+  a: string;
+  b: number;
+  c: Promise<any>
+  d: boolean;
+}
+
+type Baz = { [K in Indices<Foo>]: Bar[Foo[K]] }; // type is { "0": string, "1": number }
+
+// ---------------------------------------------------------
+
+type Elt<A=any,B=any> = { a:A, b:B }
+
+let item1 = { a: "apple", b: "aardvark" } as const;
+let item2 = { a: "banana", b: "beluga"  } as const;
+let item3 = { a: "cherry", b: "cat"     } as const;
+
+let itemsTuple = [ item1, item2, item3 ] as const
+
+type TTT = Indices<typeof itemsTuple>;
+
+type Three<T extends readonly [ Elt, Elt, Elt ]> = [T[0]["a"], T[1]["a"], T[2]["a"]];
+
+//type Inf<T extends readonly [ ...Elt[] ]> = [ T[0]["a"] ]
+//type Inft<T extends readonly [ A, ...B ], A extends Elt = Elt, B extends Elt[] = Elt[]> = [ T[0]["a"], ...Inft<B> ]
+
+// it works!
+type Inf<T> = { [Idx in Indices<T>] : T[Idx] extends Elt<infer A, any> ? A : never };
+type ItemsT = typeof itemsTuple;
+type Z = Inf<ItemsT> 
+
+//////////
+
+
+type AstNode<BaseT extends Uni.Node> = BaseT | AstParent<BaseT>
+type AstParent<BaseT extends Uni.Node> = Uni.Parent & BaseT & { children: AstNode<BaseT> };
+
+export type UnistMapper<K extends string, S extends ProseSchema> = {
+	[key in K]? : (x: Uni.Node & { type: key }, children: ProseNode<S>[]) => ProseNode<S>[];
+}
+
+export class EditorConfig<S extends ProseSchema = ProseSchema> {
+	schema: S & ProseSchema<"error_block","error_inline">;
 	plugins:ProsePlugin[];
 
-	private _parser: MarkdownParser;
+	private _mdast2prose: UnistMapper<any,any>;
+	private _parser: MdParser<S>;
 
-	constructor(extensions:NwtExtension[], plugins:ProsePlugin[], keymap:Keymap){
+	constructor(extensions:NwtExtension<S>[], plugins:ProsePlugin[], keymap:Keymap){
 		/** Step 1: Build Schema
 		 * @effect Populates the `.type` field of each extension with a
 		 *    ProseMirror NodeType, which can be referenced during plugin creation.
@@ -35,19 +93,37 @@ export class EditorConfig {
 		 */
 		this.plugins = this._buildPlugins(extensions, plugins.concat(makeKeymap(keymap)));
 
-		/** Step 3: Build Parser
+		/** Step 3: Build Mapping from Unist AST -> ProseMirror Document
+		 * @note it is important that this happens AFTER schema creation, so that
+		 *    the necessary NodeType / MarkType objects have been initialized.
+		 */
+		this._mdast2prose = this._buildMdastMap(extensions);
+
+		/** Step 4: Build Parser
 		 * Create a document parser for this configuration.
 		 */
-		this._parser = makeMarkdownParser(this.schema);
+		this._parser = makeParser(this.schema, this._mdast2prose);
+		
+		//makeMarkdownParser(this.schema);
 	}
 
-	parse(text: string): ProseNode | null {
-		return this._parser.parse(text);
+	parse(markdown: string): ProseNode | null {
+		return this._parser(markdown);
+		//return this._parser.parse(text);
 	}
 
-	private _buildSchema(extensions:NwtExtension[]):ProseSchema {
-		// default node and mark specs
-		let markSpecs: { [x:string] : MarkSpec } = {};
+	private _buildSchema(extensions:NwtExtension<S>[]): S & ProseSchema<"error_block","error_inline"> {
+		// default mark specs
+		let markSpecs: { [x:string] : MarkSpec } = {
+			error_inline: {
+				parseDOM: [{tag: "code.parse-error-inline"}],
+				toDOM() {
+					return ["code", { class: "parse-error-inline" }];
+				}
+			}
+		};
+
+		// default node specs
 		let nodeSpecs: { [x:string] : NodeSpec } = { 
 			doc: {
 				content: "block+",
@@ -55,7 +131,27 @@ export class EditorConfig {
 			},
 			text: {
 				group: "inline"
-			}
+			},
+			error_block: {
+				content: "text*",
+				group: "block",
+				code: true,
+				defining: true,
+				marks: "",
+				attrs: {params: {default: ""}},
+				parseDOM: [{
+					tag: "pre.error-block",
+					preserveWhitespace: "full",
+					getAttrs: node => {
+						return {params: (node as HTMLElement).getAttribute("data-params") || ""}
+					}
+				}],
+				toDOM(node) { 
+					let dataParams = node.attrs.params ? {"data-params": node.attrs.params} : {};
+					let attrs = { ...dataParams, class: "error-block" }
+					return ["pre", attrs, ["code", 0]] 
+				}
+			},
 		};
 
 		// create node and mark specs
@@ -65,6 +161,9 @@ export class EditorConfig {
 			if(name in nodeSpecs){ throw new Error(`duplicate node name '${name}'!`); }
 			if(name in markSpecs){ throw new Error(`duplicate mark name '${name}'!`); }
 			
+			// TODO what if extension wants to define both a node and a mark?
+			// TODO what if extension wants to define multiple nodes?
+			// (favor composition over inheritance)
 			if(ext instanceof NodeExtension){
 				nodeSpecs[name] = ext.createNodeSpec();
 			} else if(ext instanceof MarkExtension){
@@ -75,10 +174,12 @@ export class EditorConfig {
 		console.log(JSON.stringify(nodeSpecs, undefined, 2));
 
 		// build schema
-		let schema = new ProseSchema({
+		// TODO: speicalize to ProseSchema<N,M> for some N,M?
+		// TODO: is this cast sound?
+		let schema = new Schema({
 			"nodes" : nodeSpecs,
 			"marks" : markSpecs
-		});
+		}) as S & ProseSchema<"error_block","error_inline">;
 
 		// attach NodeType info to extension stores
 		for(let ext of extensions){
@@ -88,7 +189,7 @@ export class EditorConfig {
 		return schema;
 	}
 
-	private _buildPlugins(extensions:NwtExtension[], plugins:ProsePlugin[] = []): ProsePlugin[] {
+	private _buildPlugins(extensions:NwtExtension<S>[], plugins:ProsePlugin[] = []): ProsePlugin[] {
 		let inputRules: InputRule[] = [];
 
 		// keymap
@@ -125,5 +226,50 @@ export class EditorConfig {
 
 		// provided plugins go last
 		return resultPlugins.concat(plugins);
+	}
+
+	private _buildMdastMap(extensions: NwtExtension<S>[]): UnistMapper<string, S> {
+		let result: UnistMapper<string, S> = { 
+			"text" : (node, children) => {
+				// TODO: eliminate cast?        vvvvvvvvvv
+				return [this.schema.text( (node as Md.Text).value )];
+			},
+		};
+		
+		for(let ext of extensions) {
+			if(ext instanceof NodeExtension) {
+				let mdastMap = ext.createMdastMap();
+				let mapper: (node: Uni.Node, children: ProseNode[]) => ProseNode[];
+
+				if(mdastMap === MdastNodeMapType.NODE_DEFAULT) {
+					mapper = nodeMapBasic(ext.nodeType);
+				} else if(mdastMap === MdastNodeMapType.NODE_EMPTY) {
+					mapper = nodeMapLeaf(ext.nodeType);
+				} else if(mdastMap === MdastNodeMapType.NODE_LITERAL) {
+					// TODO: avoid cast                    vvvv
+					mapper = nodeMapStringLiteral(ext.nodeType) as (node: Uni.Node, children: ProseNode[]) => ProseNode[];
+				} else {
+					mapper = mdastMap.mapNode;
+				}
+
+				result[ext.mdastNodeType] = mapper;
+			} else if(ext instanceof MarkExtension) {
+				let mdastMap = ext.createMdastMap();
+				let mapper: (node: Uni.Node, children: ProseNode[]) => ProseNode[];
+
+				if(mdastMap === MdastMarkMapType.MARK_DEFAULT) {
+					mapper = markMapBasic(ext.markType);
+				} else {
+					mapper = mdastMap.mapMark;
+				}
+
+				result[ext.mdastNodeType] = mapper;
+			}
+		}
+
+		console.log("_buildMdastMap")
+		console.log(Object.keys(result))
+		
+		return result;
 	}
 }
