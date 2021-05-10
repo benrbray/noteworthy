@@ -308,6 +308,10 @@ export class MarkdownSerializerState {
 	// Render the given node as a block.
 	render(node, parent, index) {
 		if (typeof parent == "number") throw new Error("!")
+		if(this.nodes[node.type.name] === undefined) {
+			console.error("no serializer for node", node);
+			throw new Error(`to_markdown :: no serializer for node type '${node.type.name}'`);
+		}
 		this.nodes[node.type.name](this, node, parent, index)
 	}
 

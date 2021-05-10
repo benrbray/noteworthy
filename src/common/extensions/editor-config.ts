@@ -16,7 +16,7 @@ import { NwtExtension, NodeExtension, MarkExtension, MdastNodeMapType, MdastMark
 
 // patched prosemirror types 
 import { ProseSchema } from "@common/types";
-import { makeParser, markMapBasic, MdMapper, MdParser, nodeMapBasic, nodeMapLeaf, nodeMapStringLiteral } from "@common/markdown/mdast2prose";
+import { makeParser, markMapBasic, markMapStringLiteral, MdMapper, MdParser, nodeMapBasic, nodeMapLeaf, nodeMapStringLiteral } from "@common/markdown/mdast2prose";
 
 // unist
 import * as Uni from "unist";
@@ -69,15 +69,18 @@ type Z = Inf<ItemsT>
 type AstNode<BaseT extends Uni.Node> = BaseT | AstParent<BaseT>
 type AstParent<BaseT extends Uni.Node> = Uni.Parent & BaseT & { children: AstNode<BaseT> };
 
-export type UnistMapper<K extends string, S extends ProseSchema> = {
-	[key in K]? : (x: Uni.Node & { type: key }, children: ProseNode<S>[]) => ProseNode<S>[];
+export type UnistNodeTest<S extends ProseSchema = ProseSchema, T extends Uni.Node = Uni.Node> = {
+	test?: (x: T) => boolean;
+	map:  (x: T, children: ProseNode<S>[]) => ProseNode<S>[];
 }
+
+export type UnistMapper<K extends string = string, S extends ProseSchema = ProseSchema> = DefaultMap<K, UnistNodeTest<S>[]>;
 
 export class EditorConfig<S extends ProseSchema = ProseSchema> {
 	schema: S & ProseSchema<"error_block","error_inline">;
 	plugins:ProsePlugin[];
 
-	private _mdast2prose: UnistMapper<any,any>;
+	private _mdast2prose: UnistMapper;
 	private _parser: MdParser<S>;
 
 	constructor(extensions:NwtExtension<S>[], plugins:ProsePlugin[], keymap:Keymap){
@@ -102,9 +105,12 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 		/** Step 4: Build Parser
 		 * Create a document parser for this configuration.
 		 */
-		this._parser = makeParser(this.schema, this._mdast2prose);
 		
-		//makeMarkdownParser(this.schema);
+		// TODO: (2021-05-09) revisit type inference timeout caused by
+		// attempt to thread the ProseSchema type through `makeParser`
+		// @ts-ignore (ts2589) Type instantiation is excessively deep and possibly infinite.
+		let parser = makeParser(this.schema, this._mdast2prose);
+		this._parser = parser as MdParser<S>;
 	}
 
 	parse(markdown: string): ProseNode | null {
@@ -228,42 +234,63 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 		return resultPlugins.concat(plugins);
 	}
 
-	private _buildMdastMap(extensions: NwtExtension<S>[]): UnistMapper<string, S> {
-		let result: UnistMapper<string, S> = { 
-			"text" : (node, children) => {
-				// TODO: eliminate cast?        vvvvvvvvvv
+	private _buildMdastMap(extensions: NwtExtension<S>[]): UnistMapper {
+		// maintain a map from AST nodes -> ProseMirror nodes
+		// each value in the map is an array of mappers, which
+		// are tested in order until one returns `true`
+		let result: UnistMapper
+			= new DefaultMap<string, UnistNodeTest[]>(_ => []);
+
+		result.get("text").push({
+			map: (node, _) => {
 				return [this.schema.text( (node as Md.Text).value )];
-			},
-		};
+			}
+		});
 		
 		for(let ext of extensions) {
+			let nodeType: string|null = null;
+			let mapper: ((node: Uni.Node, children: ProseNode[]) => ProseNode[]) | null = null;
+			let nodeTest: ((node: Uni.Node) => boolean) | null = null;
+			
+			// TODO: (2021-05-09) clean this up
 			if(ext instanceof NodeExtension) {
 				let mdastMap = ext.createMdastMap();
-				let mapper: (node: Uni.Node, children: ProseNode[]) => ProseNode[];
+
+				nodeTest = ext.mdastNodeTest;
+				nodeType = ext.mdastNodeType;
 
 				if(mdastMap === MdastNodeMapType.NODE_DEFAULT) {
 					mapper = nodeMapBasic(ext.nodeType);
 				} else if(mdastMap === MdastNodeMapType.NODE_EMPTY) {
 					mapper = nodeMapLeaf(ext.nodeType);
 				} else if(mdastMap === MdastNodeMapType.NODE_LITERAL) {
-					// TODO: avoid cast                    vvvv
+					// TODO: avoid cast                        vvvv
 					mapper = nodeMapStringLiteral(ext.nodeType) as (node: Uni.Node, children: ProseNode[]) => ProseNode[];
 				} else {
 					mapper = mdastMap.mapNode;
 				}
-
-				result[ext.mdastNodeType] = mapper;
 			} else if(ext instanceof MarkExtension) {
 				let mdastMap = ext.createMdastMap();
-				let mapper: (node: Uni.Node, children: ProseNode[]) => ProseNode[];
+
+				nodeTest = ext.mdastNodeTest;
+				nodeType = ext.mdastNodeType;
 
 				if(mdastMap === MdastMarkMapType.MARK_DEFAULT) {
 					mapper = markMapBasic(ext.markType);
+				} else if(mdastMap === MdastMarkMapType.MARK_LITERAL) {
+					// TODO: avoid cast                        vvvv
+					mapper = markMapStringLiteral(ext.markType) as (node: Uni.Node, children: ProseNode[]) => ProseNode[];
 				} else {
 					mapper = mdastMap.mapMark;
 				}
-
-				result[ext.mdastNodeType] = mapper;
+			}
+			
+			if(mapper && nodeType && nodeTest) {
+				// add this mapper to the list of mappers for nodeType
+				result.get(nodeType).push({
+					map: mapper,
+					test: nodeTest
+				});
 			}
 		}
 

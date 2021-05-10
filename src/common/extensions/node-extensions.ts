@@ -249,144 +249,157 @@ export class CodeBlockExtension extends NodeExtension<Md.Code> {
 // each node in the AST matching its mdastNodeType property
 // so for OrdereDList it would be test(node: Md.List) { return node.ordered === true; } 
 
-// // : (ProseNodeType) → InputRule
-// // Given a list node type, returns an input rule that turns a number
-// // followed by a dot at the start of a textblock into an ordered list.
-// export function orderedListRule<S extends ProseSchema>(nodeType:ProseNodeType<S>) {
-// 	return wrappingInputRule(/^(\d+)\.\s$/, nodeType, match => ({ order: +match[1] }),
-// 		(match, node) => node.childCount + node.attrs.order == +match[1])
-// }
+// : (ProseNodeType) → InputRule
+// Given a list node type, returns an input rule that turns a number
+// followed by a dot at the start of a textblock into an ordered list.
+export function orderedListRule<S extends ProseSchema>(nodeType:ProseNodeType<S>) {
+	return wrappingInputRule(/^(\d+)\.\s$/, nodeType, match => ({ order: +match[1] }),
+		(match, node) => node.childCount + node.attrs.order == +match[1])
+}
 
-// export class OrderedListExtension extends NodeExtension<Md.List> {
+export class OrderedListExtension extends NodeExtension<Md.List> {
 
-// 	get name() { return "ordered_list" as const; }
+	get name() { return "ordered_list" as const; }
 
-// 	createNodeSpec(): NodeSpec {
-// 		return {
-// 			content: "list_item+",
-// 			group: "block",
-// 			attrs: { order: { default: 1 }, tight: { default: false } },
-// 			parseDOM: [{
-// 				tag: "ol", getAttrs(d:string|Node) {
-// 					let dom: HTMLElement = d as HTMLElement;
-// 					return {
-// 						order: +((dom.getAttribute("start")) || 1),
-// 						tight: dom.hasAttribute("data-tight")
-// 					}
-// 				}
-// 			}],
-// 			toDOM(node: ProseNode): DOMOutputSpec {
-// 				return ["ol", {
-// 					...((node.attrs.order == 1) && { start: node.attrs.order }),
-// 					...(node.attrs.tight && { "data-tight": "true" })
-// 				}, 0]
-// 			}
-// 		};
-// 	}
+	createNodeSpec(): NodeSpec {
+		return {
+			content: "list_item+",
+			group: "block",
+			attrs: { order: { default: 1 }, tight: { default: false } },
+			parseDOM: [{
+				tag: "ol", getAttrs(d:string|Node) {
+					let dom: HTMLElement = d as HTMLElement;
+					return {
+						order: +((dom.getAttribute("start")) || 1),
+						tight: dom.hasAttribute("data-tight")
+					}
+				}
+			}],
+			toDOM(node: ProseNode): DOMOutputSpec {
+				return ["ol", {
+					...((node.attrs.order == 1) && { start: node.attrs.order }),
+					...(node.attrs.tight && { "data-tight": "true" })
+				}, 0]
+			}
+		};
+	}
 
-// 	createKeymap(): Keymap { return {
-// 		"Shift-Ctrl-9" : wrapInList(this.type)
-// 	}}
+	createKeymap(): Keymap { return {
+		"Shift-Ctrl-9" : wrapInList(this.nodeType)
+	}}
 	
-// 	createInputRules() { return [orderedListRule(this.type)]; }
-// }
+	createInputRules() { return [orderedListRule(this.nodeType)]; }
 
-// /* -- Unordered List ------------------------------------ */
+	// -- Conversion from Mdast -> ProseMirror ---------- //
 
-// function normalizeBullet(bullet:string|undefined): string|null {
-// 	switch(bullet){
-// 		case "*": return null; // "\u2022";
-// 		case "+": return "+";
-// 		// https://en.wikipedia.org/wiki/Hyphen
-// 		case "\u2010": return "\u002D"; /* hyphen */
-// 		case "\u2011": return "\u002D"; /* non-breaking hyphen */
-// 		case "\u2212": return "\u002D"; /* minus */
-// 		case "\u002D": return "\u002D"; /* hyphen-minus */
-// 		default: return null;
-// 	}
-// }
+	get mdastNodeType() { return "list" as const };
+	mdastNodeTest(node: Md.List) { return node.ordered === true; };
+	createMdastMap() { return MdastNodeMapType.NODE_DEFAULT }
+}
 
-// // : (ProseNodeType) → InputRule
-// // Given a list node type, returns an input rule that turns a bullet
-// // (dash, plush, or asterisk) at the start of a textblock into a
-// // bullet list.
-// export function bulletListRule<S extends ProseSchema>(nodeType:ProseNodeType<S>) {
-// 	return wrappingInputRule(
-// 		/^\s*([-+*])\s$/,
-// 		nodeType,
-// 		// remember bullet type
-// 		(p: string[]) => { console.log(p); return ({ bullet: p[1] }) },
-// 		(p1:string[], p2:ProseNode) => {
-// 			return p1[1] == (p2.attrs.bullet || "*");
-// 		}
-// 	)
-// }
+/* -- Unordered List ------------------------------------ */
 
-// export class UnorderedListExtension extends NodeExtension<Md.List> {
+function normalizeBullet(bullet:string|undefined): string|null {
+	switch(bullet){
+		case "*": return null; // "\u2022";
+		case "+": return "+";
+		// https://en.wikipedia.org/wiki/Hyphen
+		case "\u2010": return "\u002D"; /* hyphen */
+		case "\u2011": return "\u002D"; /* non-breaking hyphen */
+		case "\u2212": return "\u002D"; /* minus */
+		case "\u002D": return "\u002D"; /* hyphen-minus */
+		default: return null;
+	}
+}
 
-// 	get name() { return "bullet_list" as const; }
+// : (ProseNodeType) → InputRule
+// Given a list node type, returns an input rule that turns a bullet
+// (dash, plush, or asterisk) at the start of a textblock into a
+// bullet list.
+export function bulletListRule<S extends ProseSchema>(nodeType:ProseNodeType<S>) {
+	return wrappingInputRule(
+		/^\s*([-+*])\s$/,
+		nodeType,
+		// remember bullet type
+		(p: string[]) => { console.log(p); return ({ bullet: p[1] }) },
+		(p1:string[], p2:ProseNode) => {
+			return p1[1] == (p2.attrs.bullet || "*");
+		}
+	)
+}
 
-// 	createNodeSpec(): NodeSpec {
-// 		return {
-// 			content: "list_item+",
-// 			group: "block",
-// 			attrs: { tight: { default: false }, bullet: { default: undefined } },
-// 			parseDOM: [{
-// 				tag: "ul",
-// 				getAttrs: (dom:string|Node) => ({
-// 					tight: (dom as HTMLElement).hasAttribute("data-tight")
-// 				})
-// 			}],
-// 			toDOM(node: ProseNode): DOMOutputSpec {
-// 				let bullet = normalizeBullet(node.attrs.bullet || "*");
-// 				return ["ul", {
-// 					...(node.attrs.tight && { "data-tight": "true" }),
-// 					...(bullet && { "data-bullet" : bullet })
-// 				}, 0]
-// 			}
-// 		};
-// 	}
+export class UnorderedListExtension extends NodeExtension<Md.List> {
 
-// 	createKeymap(): Keymap { return {
-// 		"Shift-Ctrl-8" : wrapInList(this.type)
-// 	}}
+	get name() { return "bullet_list" as const; }
+
+	createNodeSpec(): NodeSpec {
+		return {
+			content: "list_item+",
+			group: "block",
+			attrs: { tight: { default: false }, bullet: { default: undefined } },
+			parseDOM: [{
+				tag: "ul",
+				getAttrs: (dom:string|Node) => ({
+					tight: (dom as HTMLElement).hasAttribute("data-tight")
+				})
+			}],
+			toDOM(node: ProseNode): DOMOutputSpec {
+				let bullet = normalizeBullet(node.attrs.bullet || "*");
+				return ["ul", {
+					...(node.attrs.tight && { "data-tight": "true" }),
+					...(bullet && { "data-bullet" : bullet })
+				}, 0]
+			}
+		};
+	}
+
+	createKeymap(): Keymap { return {
+		"Shift-Ctrl-8" : wrapInList(this.nodeType)
+	}}
 	
-// 	createInputRules() { return [bulletListRule(this.type)]; }
-// }
+	createInputRules() { return [bulletListRule(this.nodeType)]; }
 
-// /* -- List Item ----------------------------------------- */
+	get mdastNodeType() { return "list" as const };
+	mdastNodeTest(node: Md.List) { return node.ordered === false; };
+	createMdastMap() { return MdastNodeMapType.NODE_DEFAULT }
+}
 
-// export class ListItemExtension extends NodeExtension<Md.ListItem> {
+/* -- List Item ----------------------------------------- */
 
-// 	get name() { return "list_item" as const; }
+export class ListItemExtension extends NodeExtension<Md.ListItem> {
 
-// 	createNodeSpec(): NodeSpec {
-// 		return {
-// 			content: "paragraph block*",
-// 			attrs: { class: { default: undefined }, bullet: { default: undefined } },
-// 			defining: true,
-// 			parseDOM: [{
-// 				tag: "li",
-// 				getAttrs: (dom:string|Node) => ({
-// 					bullet: (dom as HTMLElement).dataset.bullet
-// 				})
-// 			}],
-// 			toDOM(node: ProseNode): DOMOutputSpec {
-// 				let bullet = normalizeBullet(node.attrs.bullet);
-// 				return ["li", {
-// 					...(node.attrs.class && { class: node.attrs.class }),
-// 					...(bullet && { "data-bullet" : bullet })
-// 				}, 0];
-// 			}
-// 		};
-// 	}
+	get name() { return "list_item" as const; }
 
-// 	createKeymap(): Keymap { return {
-// 		"Enter"     : splitListItem(this.type),
-// 		"Shift-Tab" : liftListItem(this.type),
-// 		"Tab"       : sinkListItem(this.type)
-// 	}}
-// }
+	createNodeSpec(): NodeSpec {
+		return {
+			content: "paragraph block*",
+			attrs: { class: { default: undefined }, bullet: { default: undefined } },
+			defining: true,
+			parseDOM: [{
+				tag: "li",
+				getAttrs: (dom:string|Node) => ({
+					bullet: (dom as HTMLElement).dataset.bullet
+				})
+			}],
+			toDOM(node: ProseNode): DOMOutputSpec {
+				let bullet = normalizeBullet(node.attrs.bullet);
+				return ["li", {
+					...(node.attrs.class && { class: node.attrs.class }),
+					...(bullet && { "data-bullet" : bullet })
+				}, 0];
+			}
+		};
+	}
+
+	createKeymap(): Keymap { return {
+		"Enter"     : splitListItem(this.nodeType),
+		"Shift-Tab" : liftListItem(this.nodeType),
+		"Tab"       : sinkListItem(this.nodeType)
+	}}
+
+	get mdastNodeType() { return "listItem" as const };
+	createMdastMap() { return MdastNodeMapType.NODE_DEFAULT }
+}
 
 /* -- Unordered List ------------------------------------ */
 

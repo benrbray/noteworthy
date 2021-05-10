@@ -1,10 +1,11 @@
 import { EditorConfig } from "./editor-config";
 import {
 	BlockQuoteExtension, HeadingExtension, HorizontalRuleExtension,
-	CodeBlockExtension, /*OrderedListExtension, UnorderedListExtension,*/
-	/*ListItemExtension,*/ ImageExtension, HardBreakExtension, InlineMathExtension,
-	BlockMathExtension, /*RegionExtension, EmbedExtension,*/ ParagraphExtension,
-	CitationExtension
+	ListItemExtension, OrderedListExtension, UnorderedListExtension,
+	CodeBlockExtension, InlineMathExtension, BlockMathExtension,
+	ImageExtension, HardBreakExtension, ParagraphExtension,
+	CitationExtension,
+	//RegionExtension, EmbedExtension,
 } from "./node-extensions";
 import {
 	BoldExtension, ItalicExtension, CodeExtension, LinkExtension,
@@ -27,9 +28,9 @@ export const defaultMarkdownConfig = new EditorConfig([
 	new HeadingExtension(paragraphExt),
 	new HorizontalRuleExtension(),
 	new CodeBlockExtension(),
-	// new OrderedListExtension(),
-	// new UnorderedListExtension(),
-	// new ListItemExtension(),
+	new OrderedListExtension(),
+	new UnorderedListExtension(),
+	new ListItemExtension(),
 	new ImageExtension(),
 	new HardBreakExtension(),
 	// nodes: math

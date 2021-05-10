@@ -30,6 +30,7 @@ import { unistIsParent, unistIsStringLiteral, unistSource } from "./unist-utils"
 
 // patched prosemirror types
 import { ProseSchema, ProseMarkType, ProseNodeType } from "@common/types";
+import { UnistMapper } from "@common/extensions/editor-config";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -147,12 +148,6 @@ export const nodeMapBasic = <S extends ProseSchema>(nodeType: ProseNodeType<S>) 
 	return result ? [result] : [];
 }
 
-// export const nodeMapUpdateContext = <S extends ProseSchema, Ctx>(nodeType: ProseNodeType<S>, contextUpdater: (ctx: Ctx) => Ctx) => 
-// 	(node: Uni.Node, children: ProseNode<S>[], ctx: Ctx) => {
-// 		let result = nodeType.createAndFill({}, children || undefined);
-// 		return result ? [result] : [];
-// 	}
-
 export const nodeMapLeaf = <S extends ProseSchema>(nodeType: ProseNodeType<S>) => (node: Uni.Node, _: ProseNode<S>[]) => {
 	let result = nodeType.createAndFill({});
 	return result ? [result] : [];
@@ -167,104 +162,43 @@ export const nodeMapStringLiteral = <S extends ProseSchema>(nodeType: ProseNodeT
 	return result ? [result] : [];
 }
 
-export const markMapBasic = <S extends ProseSchema, T extends Uni.Node>(markType: ProseMarkType<S>, getAttrs?: (node: T) => Record<string,any>) => (node: T, children: ProseNode<S>[]) => {
+export const markMapBasic = <S extends ProseSchema, T extends Uni.Node>(
+	markType: ProseMarkType<S>,
+	getAttrs?: (node: T) => Record<string,any>
+) => (node: T, children: ProseNode<S>[]) => {
 	let attrs = getAttrs ? getAttrs(node) : { };
 
 	return children.flatMap(childNode => {
 		// marks on non-text nodes is unsupported
+		// TODO: (2021-05-09) this should probably return an error node
 		if(!childNode.isText) { return []; }
 		// copy the child, adding a new mark
 		return childNode.mark(childNode.marks.concat([markType.create(attrs)]));
 	});
 }
 
+export const markMapStringLiteral = <S extends ProseSchema, T extends Uni.Node = Uni.Node>(
+	markType: ProseMarkType<S>,
+	getAttrs?: (node: T) => Record<string,any>
+) => (node: T & { value: string }, _: ProseNode<S>[]) => {
+	// it is illegal to create an empty ProseMirror TextNode
+	// TODO: (2021-05-09) this should probably return an error node
+	if(node.value.length < 1) { return []; }
+
+	// compute ProseMirror node attrs from AST node
+	let attrs = getAttrs ? getAttrs(node) : { };
+
+	// create text node and wrap it in the provided markType
+	let textNode = markType.schema.text(node.value)
+	let result = textNode.mark([markType.create(attrs)]);
+	return result ? [result] : [];
+}
+
 type MdContextMapper<Ctx> = {
 	[key in keyof MdTypeMap]? : (x: MdTypeMap[key], ctx: Ctx) => Ctx
 }
 
-// function makeMdastContextMap(schema: typeof editorSchema): MdContextMapper<MdParseContext> {
-// 	return {
-// 		"paragraph" : (node, ctx): MdParseContext => {
-// 			return { ...ctx, inParagraph: true };
-// 		}
-// 	}
-// }
-
-// function makeMdastNodeMap(schema: typeof editorSchema): MdMapper<typeof editorSchema> { 
-// 	return {
-		
-// 		"text" : (node, children) => {
-// 			return [schema.text(node.value)];
-// 		},
-
-// 		/* ---- Marks ----------------------------------- */
-
-// 		"emphasis"   : markMapBasic(schema.marks.em),
-// 		"strong"     : markMapBasic(schema.marks.strong),
-// 		"inlineCode" : markMapBasic(schema.marks.code),
-// 		"link"       : markMapBasic(schema.marks.link, 
-// 			node => ({
-// 				href:  node.url,
-// 				title: node.title
-// 			})
-// 		),
-
-// 		/* ---- Nodes ----------------------------------- */
-
-// 		/* nodes with a straightforward mapping */
-// 		"paragraph"     : nodeMapBasic(schema.nodes.paragraph),
-// 		"blockquote"    : nodeMapBasic(schema.nodes.blockquote),
-// 		"listItem"      : nodeMapBasic(schema.nodes.list_item),
-
-// 		/* leaf nodes */
-// 		"thematicBreak" : nodeMapLeaf(schema.nodes.horizontal_rule),
-// 		"break"         : nodeMapLeaf(schema.nodes.hard_break),
-
-// 		"code" : nodeMapStringLiteral(schema.nodes.code_block),
-
-// 		"heading" : (node, children) => {
-// 			let type = schema.nodes.heading;
-
-// 			// ignore empty headings
-// 			if(children.length < 1) { return []; }
-
-// 			let result = type.createAndFill({ level: node.depth }, children);
-// 			return result ? [result] : [];
-// 		},
-
-// 		"list" : (node, children) => {
-// 			let type = node.ordered ? schema.nodes.ordered_list : schema.nodes.bullet_list;
-// 			let result = type.createAndFill({}, children);
-// 			return result ? [result] : [];
-// 		},
-
-// 		"image" : (node, children) => {
-// 			let type = schema.nodes.image;
-// 			let result = type.createAndFill({
-// 				src: node.url,
-// 				alt: node.alt,
-// 				title: node.title
-// 			});
-// 			return result ? [result] : [];
-// 		},
-
-// 		/* ---- Plugin: Math ---------------------------- */
-
-// 		"math"       : nodeMapStringLiteral(schema.nodes.math_display),
-// 		"inlineMath" : nodeMapStringLiteral(schema.nodes.math_inline),
-
-// 		/* ---- Plugin: Wikilinks ----------------------- */
-
-// 		"wikiLink" : (node, children) => {
-// 			let markType = schema.marks.strong;
-// 			return [schema.text(node.value, [markType.create()])];
-// 		}
-
-// 		/* ---- Plugin: Frontmatter --------------------- */
-// 	}
-// }
-
-type NodeMap<S extends ProseSchema, Ctx=unknown> = (node: Uni.Node, children:ProseNode<S>[], parseContext: Ctx) => ProseNode<S>[];
+type NodeMap<Ctx=unknown, S extends ProseSchema = ProseSchema> = (node: Uni.Node, children:ProseNode<S>[], parseContext: Ctx) => ProseNode<S>[];
 type ContextMap<Ctx=unknown, N extends Uni.Node = Uni.Node> = (node: N, parseContext: Ctx) => Ctx;
 
 function getContextMapper<N extends Md.Content, Ctx>(node: N, mappers: MdContextMapper<Ctx>): ContextMap<Ctx, N>|undefined {
@@ -282,9 +216,9 @@ function getContextMapper<N extends Md.Content, Ctx>(node: N, mappers: MdContext
 export function treeMap<S extends ProseSchema, Ctx>(
 	node: Md.Content,
 	parseContext: Ctx, 
-	nodeMap: MdMapper<S>, 
+	nodeMap: UnistMapper<string, S>, 
 	contextMap: MdContextMapper<Ctx>,
-	errorMap: NodeMap<S, Ctx>
+	errorMap: NodeMap<Ctx, S>
 ): ProseNode<S>[] {
 	// postorder depth-first traversal
 
@@ -305,19 +239,31 @@ export function treeMap<S extends ProseSchema, Ctx>(
 	}
 
 	// 3. map this node ; typescript struggles with the result type, so we simplify
-	let nodeFn = nodeMap[node.type] as NodeMap<S, Ctx>|undefined;
+	let nodeFn: NodeMap<Ctx, S>|null = null;
+
+	for(let test of nodeMap.get(node.type)) {
+		// if no test is present, succeed by default
+		// otherwise, check if the node test passes
+		if(!test.test || test.test(node)) {
+			nodeFn = test.map;
+		}
+	}
 	
 	// if node type not recognized, fail gracefully by wrapping unfamiliar
 	// content in a code block, rather than silently deleting it
-	if(nodeFn === undefined) {
-		console.log(`treeMap :: expected ${node.type}, got undefined`);  
+	if(!nodeFn) {
+		console.log(`treeMap :: expected ${node.type}, got undefined ; node=`, node);
 		nodeFn = errorMap;
 	}
 
 	// return the results of the mapping function
 	// (note: we are using the original parseContext here!)
-	let result = nodeFn(node, nodeContents, parseContext)
-	return result;
+	let result: ProseNode[] = nodeFn(node, nodeContents, parseContext);
+	
+	// TypeScript has trouble threading the schema type through this entire function,
+	// so this cast is our pinky-promise that we will return a node belonging to the
+	// same schema instance as defined by the input
+	return result as ProseNode<S>[];
 }
 
 type MdParseContext = {
@@ -330,7 +276,7 @@ function makeNodeErrorHandler<S extends ProseSchema>(
 	inlineErrorType: ProseMarkType<S>,
 	blockErrorType : ProseNodeType<S>,
 	node2src: (node:Uni.Node)=>string|null
-): NodeMap<S, MdParseContext> {
+): NodeMap<MdParseContext, S> {
 	return (node, _, context) => {
 		// get markdown source for node
 		let nodeSrc = node2src(node);
@@ -371,7 +317,7 @@ export type MdParser<S extends ProseSchema> = (markdown: string) => ProseNode<S>
  *    (to be exact, they will never be created by ProseMirror in the first place)
  */
 export const makeParser = <S extends ProseSchema<"error_block","error_inline">>(
-	proseSchema: S, nodeMap: MdMapper<S>
+	proseSchema: S, nodeMap: UnistMapper<string, S>
 ): MdParser<S> => {
 
 	// markdown parsers
@@ -425,23 +371,3 @@ export const makeParser = <S extends ProseSchema<"error_block","error_inline">>(
 		else         { throw new Error("unable to parse markdown document"); }
 	};
 }
-
-// export const mdast2prose = (document: Md.Root, node2src: (node:Uni.Node)=>string|null, proseSchema: typeof editorSchema): ProseNode => {
-// 	let nodeMappers    = makeMdastNodeMap(proseSchema);
-// 	let contextMappers = makeMdastContextMap(proseSchema);
-// 	let errorMap       = makeNodeErrorHandler(proseSchema.marks.parse_error, proseSchema.nodes.error_block, node2src);
-
-// 	// initial parse context
-// 	let parseContext: MdParseContext = {
-// 		inParagraph: false
-// 	}
-
-// 	// map over root's children
-// 	let rootContent: ProseNode[] = document.children.flatMap(node => treeMap(node, parseContext, nodeMappers, contextMappers, errorMap));
-
-// 	// create top-level node
-// 	let proseDoc = proseSchema.topNodeType.createAndFill({}, rootContent);
-
-// 	if(proseDoc) { return proseDoc; }
-// 	else         { throw new Error("unable to parse markdown document"); }
-// }

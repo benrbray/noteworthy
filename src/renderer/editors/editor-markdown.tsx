@@ -37,7 +37,7 @@ import { citationPlugin } from "@main/plugins/crossref-plugin";
 import {
 	BlockQuoteExtension, HeadingExtension, HorizontalRuleExtension,
 	CodeBlockExtension, InlineMathExtension, BlockMathExtension,
-	//OrderedListExtension, UnorderedListExtension, ListItemExtension, 
+	OrderedListExtension, UnorderedListExtension, ListItemExtension, 
 	ImageExtension, HardBreakExtension,
 	//RegionExtension, EmbedExtension, 
 	ParagraphExtension, CitationExtension
@@ -114,9 +114,10 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 			new HeadingExtension(this._paragraphExt),
 			new HorizontalRuleExtension(),
 			new CodeBlockExtension(),
-			// new OrderedListExtension(),
-			// new UnorderedListExtension(),
-			// new ListItemExtension(),
+			// lists: (order is important -- unordered list should be last, as it is the default)
+			new OrderedListExtension(),
+			new UnorderedListExtension(),
+			new ListItemExtension(),
 			(this._imageExt = new ImageExtension()),
 			new HardBreakExtension(),
 			// nodes: math

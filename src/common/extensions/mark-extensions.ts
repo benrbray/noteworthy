@@ -303,7 +303,7 @@ export class WikilinkExtension extends MarkExtension<MdWikilink> {
 	createInputRules() { return [wikilinkRule(this.markType)]; }
 
 	get mdastNodeType() { return "wikiLink" as const };
-	createMdastMap() { return MdastMarkMapType.MARK_DEFAULT; }
+	createMdastMap() { return MdastMarkMapType.MARK_LITERAL; }
 
 }
 

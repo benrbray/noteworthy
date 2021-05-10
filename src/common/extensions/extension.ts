@@ -70,6 +70,13 @@ export abstract class NodeExtension<T extends Uni.Node, N extends string = strin
 
 	abstract get mdastNodeType(): T["type"];
 	abstract createMdastMap() : MdastNodeMap<T>;
+	
+	/**
+	 * Extensions can override this method to impose additional
+	 * conditions on the Mdast node type, beyond `node.type = T`.
+	 */
+	mdastNodeTest(node: T): boolean { return true; }
+	
 }
 
 export abstract class MarkExtension<T extends Uni.Node, M extends string = string> extends NwtExtension<ProseSchema<string,M>, M> {
@@ -86,6 +93,13 @@ export abstract class MarkExtension<T extends Uni.Node, M extends string = strin
 	abstract createMarkSpec(): MarkSpec;
 
 	abstract get mdastNodeType(): T["type"];
+	
+	/**
+	 * Extensions can override this method to impose additional
+	 * conditions on the Mdast node type, beyond `node.type = T`.
+	 */
+	mdastNodeTest(node: T): boolean { return true; }
+
 	abstract createMdastMap() : MdastMarkMap<T>;
 }
 
@@ -116,7 +130,8 @@ export enum MdastNodeMapType {
 }
 
 export enum MdastMarkMapType {
-	MARK_DEFAULT = "mark_default"
+	MARK_DEFAULT = "mark_default",
+	MARK_LITERAL = "mark_literal"
 }
 
 export type MdastNodeMap<N extends Uni.Node>
