@@ -95,7 +95,7 @@ export class ItalicExtension extends MarkExtension<Md.Emphasis> {
 
 // TODO: (2021/05/09) restore definitions
 
-// export class DefinitionExtension extends MarkExtension {
+// export class DefinitionExtension extends MarkExtension<Md.HTML> {
 	
 // 	get name() { return "definition" as const; }
 	
@@ -111,6 +111,10 @@ export class ItalicExtension extends MarkExtension<Md.Emphasis> {
 // 		"Mod-D" : toggleMark(this.type)
 // 	}}
 
+// 	// -- Conversion from Mdast -> ProseMirror ---------- //
+
+// 	get mdastNodeType() { return "html" as const };
+// 	createMdastMap() { return MdastMarkMapType.MARK_LITERAL; }
 // }
 
 /* -- Link ---------------------------------------- */
@@ -238,7 +242,7 @@ export class CodeExtension extends MarkExtension<Md.InlineCode> {
 	// -- Conversion from Mdast -> ProseMirror ---------- //
 
 	get mdastNodeType() { return "inlineCode" as const };
-	createMdastMap() { return MdastMarkMapType.MARK_DEFAULT; }
+	createMdastMap() { return MdastMarkMapType.MARK_LITERAL; }
 }
 
 /* -- Strikethrough ---------------------------------------- */

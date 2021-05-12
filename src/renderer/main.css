@@ -35,6 +35,9 @@
 
 	--color-outline-emphasis: rgb(88, 172, 179);
 
+	/** Semantic Colors: Background **/
+	--color-bg-error: #ffc6c6;
+
 	/** Semantic Colors **/
 	--color-good: green;
 	--color-bad: darkred;

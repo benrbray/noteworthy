@@ -122,9 +122,9 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 		// default mark specs
 		let markSpecs: { [x:string] : MarkSpec } = {
 			error_inline: {
-				parseDOM: [{tag: "code.parse-error-inline"}],
+				parseDOM: [{tag: "code.error-inline"}],
 				toDOM() {
-					return ["code", { class: "parse-error-inline" }];
+					return ["code", { class: "error-inline" }];
 				}
 			}
 		};
