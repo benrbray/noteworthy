@@ -31,6 +31,70 @@ const mac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform) : f
 
 //// NODE EXTENSIONS ///////////////////////////////////////
 
+/* -- Root ---------------------------------------------- */
+
+export class RootExtension extends NodeExtension<Md.Root> {
+
+	// -- ProseMirror Schema -- //
+
+	get name() { return "doc" as const; }
+
+	createNodeSpec(): NodeSpec {
+		// top-level prosemirror node
+		return {
+			content: "block+",
+			// TODO (2021-05-17) how to handle global document attrs like YAML?
+			// (they probably shouldn't belong to the document root,
+			//  especially now that we have a Markdown AST)
+			attrs: { yamlMeta: { default: {} } }
+		};
+	}
+
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
+	get mdastNodeType() { return "root" as const };
+
+	createMdastMap(): MdastNodeMap<Md.Root> {
+		return {
+			mapType: "node_custom",
+			mapNode: (_node, children, _ctx, state) => {
+				// use yaml
+				// TODO (2021-05-17) avoid cast -- need generics for ctx, state arguments?
+				let attrs = {
+					yamlMeta: (state as MdParseState).yaml || {}
+				}
+
+				// create top-level document node
+				let result = this.nodeType.createAndFill(attrs, children || undefined);
+				return result ? [result] : [];
+			}
+		}
+	}
+}
+
+/* -- YAML Metadata ------------------------------------- */
+
+export class YamlExtension extends NodeExtension<MdFrontmatterYAML> {
+	// -- ProseMirror Schema -- //
+
+	get name() { return "paragraph" as const; }
+
+	createNodeSpec(): NodeSpec {
+		return {
+			content: "inline*",
+			attrs: { class: { default: undefined } },
+			group: "block",
+			parseDOM: [{ tag: "p" }],
+			toDOM(node: ProseNode): DOMOutputSpec { return ["p", { ...(node.attrs.class && { class: node.attrs.class }) }, 0] }
+		};
+	}
+
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
+	get mdastNodeType() { return "yaml" as const };
+	createMdastMap() { return MdastNodeMapType.NODE_DEFAULT }
+}
+
 /* -- Paragraph ----------------------------------------- */
 
 export class ParagraphExtension extends NodeExtension<Md.Paragraph> {
@@ -697,6 +761,7 @@ export function citationRule<S extends ProseSchema>(nodeType: ProseNodeType<S>):
 }
 
 import { InlineCiteNode as MdCite } from "@benrbray/mdast-util-cite";
+import { MdFrontmatterYAML, MdParseState } from "@common/markdown/mdast2prose";
 
 export class CitationExtension extends NodeExtension<MdCite> {
 	

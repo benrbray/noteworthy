@@ -40,7 +40,7 @@ import {
 	OrderedListExtension, UnorderedListExtension, ListItemExtension, 
 	ImageExtension, HardBreakExtension,
 	//RegionExtension, EmbedExtension, 
-	ParagraphExtension, CitationExtension
+	RootExtension, ParagraphExtension, CitationExtension
 } from "@common/extensions/node-extensions";
 import {
 	BoldExtension, ItalicExtension, LinkExtension,
@@ -109,6 +109,7 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 		// editor extensions
 		let extensions:NwtExtension[] = [
 			// nodes: formatting
+			new RootExtension(),
 			(this._paragraphExt = new ParagraphExtension()),
 			new BlockQuoteExtension(),
 			new HeadingExtension(this._paragraphExt),

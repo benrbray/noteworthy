@@ -90,6 +90,11 @@ export const markdownSerializer = new MarkdownSerializer({
 		state.write("```")
 		state.closeBlock(node)
 	},
+	error_block(state, node) {
+		state.text(node.textContent, false)
+		state.ensureNewLine()
+		state.closeBlock(node)
+	},
 	region(state, node) {
 		// ::::: region { #regionName } ::::::::::::::::::::
 		let region_open = "::::: region { #" + (node.attrs.region || "") + " } ";
@@ -182,6 +187,7 @@ export const markdownSerializer = new MarkdownSerializer({
 	tag: {open: "#[", close: "]", mixable: true, expelEnclosingWhitespace: true, escape:false},
 	definition: {open: "<dfn>", close: "</dfn>", mixable: true, expelEnclosingWhitespace: true, escape:false},
 	wikilink: {open: "[[", close: "]]", mixable: true, expelEnclosingWhitespace: true, escape:false},
+	error_inline: {open: "", close: "", mixable: true, expelEnclosingWhitespace: false},
 	link: {
 		open(_state, mark, parent, index) {
 			return isPlainURL(mark, parent, index, 1) ? "<" : "["
@@ -191,9 +197,12 @@ export const markdownSerializer = new MarkdownSerializer({
 				: "](" + state.esc(mark.attrs.href) + (mark.attrs.title ? " " + state.quote(mark.attrs.title) : "") + ")"
 		}
 	},
-	code: {open(_state, _mark, parent, index) { return backticksFor(parent.child(index), -1) },
-				 close(_state, _mark, parent, index) { return backticksFor(parent.child(index - 1), 1) },
-				 escape: false}
+	code: {
+		escape: false,
+		open(_state, _mark, parent, index) { return backticksFor(parent.child(index), -1) },
+		close(_state, _mark, parent, index) { return backticksFor(parent.child(index - 1), 1) },
+	},
+	
 })
 
 function backticksFor(node, side) {

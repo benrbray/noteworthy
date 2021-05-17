@@ -30,51 +30,18 @@ import * as Md from "mdast";
 export type ArrayKeys = keyof any[];
 export type Indices<T> = Exclude<keyof T, ArrayKeys>;
 
-type Foo = ['a', 'c'];
-
-interface Bar {
-  a: string;
-  b: number;
-  c: Promise<any>
-  d: boolean;
-}
-
-type Baz = { [K in Indices<Foo>]: Bar[Foo[K]] }; // type is { "0": string, "1": number }
-
-// ---------------------------------------------------------
-
-type Elt<A=any,B=any> = { a:A, b:B }
-
-let item1 = { a: "apple", b: "aardvark" } as const;
-let item2 = { a: "banana", b: "beluga"  } as const;
-let item3 = { a: "cherry", b: "cat"     } as const;
-
-let itemsTuple = [ item1, item2, item3 ] as const
-
-type TTT = Indices<typeof itemsTuple>;
-
-type Three<T extends readonly [ Elt, Elt, Elt ]> = [T[0]["a"], T[1]["a"], T[2]["a"]];
-
-//type Inf<T extends readonly [ ...Elt[] ]> = [ T[0]["a"] ]
-//type Inft<T extends readonly [ A, ...B ], A extends Elt = Elt, B extends Elt[] = Elt[]> = [ T[0]["a"], ...Inft<B> ]
-
-// it works!
-type Inf<T> = { [Idx in Indices<T>] : T[Idx] extends Elt<infer A, any> ? A : never };
-type ItemsT = typeof itemsTuple;
-type Z = Inf<ItemsT> 
-
-//////////
-
+////////////////////////////////////////////////////////////////////////////////
 
 type AstNode<BaseT extends Uni.Node> = BaseT | AstParent<BaseT>
 type AstParent<BaseT extends Uni.Node> = Uni.Parent & BaseT & { children: AstNode<BaseT> };
 
 export type UnistNodeTest<S extends ProseSchema = ProseSchema, T extends Uni.Node = Uni.Node> = {
 	test?: (x: T) => boolean;
-	map:  (x: T, children: ProseNode<S>[]) => ProseNode<S>[];
+	map:  (x: T, children: ProseNode<S>[], ctx: unknown, state: unknown) => ProseNode<S>[];
 }
 
-export type UnistMapper<K extends string = string, S extends ProseSchema = ProseSchema> = DefaultMap<K, UnistNodeTest<S>[]>;
+export type UnistMapper<K extends string = string, S extends ProseSchema = ProseSchema>
+	= DefaultMap<K, UnistNodeTest<S>[]>;
 
 export class EditorConfig<S extends ProseSchema = ProseSchema> {
 	schema: S & ProseSchema<"error_block","error_inline">;
@@ -131,10 +98,6 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 
 		// default node specs
 		let nodeSpecs: { [x:string] : NodeSpec } = { 
-			doc: {
-				content: "block+",
-				attrs: { yamlMeta: { default: {} } }
-			},
 			text: {
 				group: "inline"
 			},
@@ -246,10 +209,17 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 				return [this.schema.text( (node as Md.Text).value )];
 			}
 		});
+
+		// TODO (2021-05-17) we should be able to ignore YAML nodes with an extension,
+		// rather than defining this special handler here
+		result.get("yaml").push({
+			map: (node, _) => []
+		});
 		
+		// accumulate node maps
 		for(let ext of extensions) {
 			let nodeType: string|null = null;
-			let mapper: ((node: Uni.Node, children: ProseNode[]) => ProseNode[]) | null = null;
+			let mapper: ((node: Uni.Node, children: ProseNode[], ctx:unknown, state:unknown) => ProseNode[]) | null = null;
 			let nodeTest: ((node: Uni.Node) => boolean) | null = null;
 			
 			// TODO: (2021-05-09) clean this up

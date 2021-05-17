@@ -52,8 +52,6 @@ export abstract class NwtExtension<S extends ProseSchema = ProseSchema, N extend
 	createKeymap(): Keymap          { return {}; }
 }
 
-export abstract class PlainExtension<N extends string = string> extends NwtExtension<ProseSchema<string,string>, N> { }
-
 export abstract class NodeExtension<T extends Uni.Node, N extends string = string> extends NwtExtension<ProseSchema<N,string>, N> {
 	/** 
 	 * Returns the ProseMirror NodeType defined by this extension.
@@ -100,6 +98,13 @@ export abstract class MarkExtension<T extends Uni.Node, M extends string = strin
 	 */
 	mdastNodeTest(node: T): boolean { return true; }
 
+	/**
+	 * Extensions can override this method to impose additional
+	 * conditions on the Mdast node type, beyond `node.type = T`.
+	 * 
+	 * TODO MarkExtension and NodeExtension should inherit from a common parent,
+	 *   or they should both include an optional `mapper` field
+	 */
 	abstract createMdastMap() : MdastMarkMap<T>;
 }
 
@@ -112,7 +117,7 @@ export type MdNodeMap_Custom<
 	S extends ProseSchema = ProseSchema
 > = {
 	mapType: "node_custom",
-	mapNode: (node: N, children: ProseNode<S>[]) => ProseNode<S>[];
+	mapNode: (node: N, children: ProseNode<S>[], ctx: unknown, state: unknown) => ProseNode<S>[];
 }
 
 export type MdMarkMap_Custom<

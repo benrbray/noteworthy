@@ -5,6 +5,7 @@ import {
 	CodeBlockExtension, InlineMathExtension, BlockMathExtension,
 	ImageExtension, HardBreakExtension, ParagraphExtension,
 	CitationExtension,
+	RootExtension,
 	//RegionExtension, EmbedExtension,
 } from "./node-extensions";
 import {
@@ -23,6 +24,7 @@ let paragraphExt: ParagraphExtension;
  * behind-the-scenes parsing (e.g. when file is added/changed) */
 export const defaultMarkdownConfig = new EditorConfig([
 	// nodes: formatting
+	new RootExtension(),
 	(paragraphExt = new ParagraphExtension()),
 	new BlockQuoteExtension(),
 	new HeadingExtension(paragraphExt),

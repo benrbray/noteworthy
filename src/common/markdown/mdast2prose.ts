@@ -32,11 +32,16 @@ import { unistIsParent, unistIsStringLiteral, unistSource } from "./unist-utils"
 import { ProseSchema, ProseMarkType, ProseNodeType } from "@common/types";
 import { UnistMapper } from "@common/extensions/editor-config";
 
+// yaml / toml 
+import YAML from "yaml";
+
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
- * When T is a union type discriminated by S, returns a mapping from
- * possible values of S to the corresponding union members.
+ * (https://stackoverflow.com/a/50125960/1444650)
+ * 
+ * When T is a union type discriminated by K, returns a mapping from
+ * possible values of K to the corresponding union members.
  * 
  * For instance, if we have the following union type:
  *     
@@ -48,21 +53,11 @@ import { UnistMapper } from "@common/extensions/editor-config";
  *
  * The result should be equivalent to:
  *     
- *     UnionMap<"name", Fruits> = {
+ *     MapDiscriminatedUnion<"name", Fruits> = {
  *         apple  :  Honeycrisp | GrannySmith
  *         banana : Banana
  *         cherry : Cherry
  *      }
- * 
- * In practice, TypeScript will infer a redundant Record<,> constraint
- * on the types, but we can think of the type as being equivalent to the above.
- */
-type UnionTypeMap<S extends string, T extends Record<S, string>> = {
-	[key in T[S]] : T & Record<S, key>
-}
-
-/**
- * https://stackoverflow.com/a/50125960/1444650
  */
 
 export type DiscriminateUnion<T, K extends keyof T, V extends T[K]> = 
@@ -100,17 +95,17 @@ interface MdWikilink extends Md.Literal {
 
 // -- remark-frontmatter -----------------------------------
 
-interface MdFrontmatterYAML extends Md.Literal { type: "yaml" }
-interface MdFrontmatterTOML extends Md.Literal { type: "toml" }
-interface MdFrontmatterJSON extends Md.Literal { type: "json" }
+export interface MdFrontmatterYAML extends Md.Literal { type: "yaml" }
+export interface MdFrontmatterTOML extends Md.Literal { type: "toml" }
+export interface MdFrontmatterJSON extends Md.Literal { type: "json" }
 
-type MdFrontmatter = MdFrontmatterYAML | MdFrontmatterTOML | MdFrontmatterJSON;
+export type MdFrontmatter = MdFrontmatterYAML | MdFrontmatterTOML | MdFrontmatterJSON;
 
 // ---------------------------------------------------------
 
-export type MdNodes = Md.Content | MdMath | MdWikilink | MdFrontmatter;
+export type MdNode = Md.Root | Md.Content | MdMath | MdWikilink | MdFrontmatter;
 
-export type MdTypeMap = MapDiscriminatedUnion<MdNodes, "type"> //UnionTypeMap<"type", MdNodes>
+export type MdTypeMap = MapDiscriminatedUnion<MdNode, "type"> //UnionTypeMap<"type", MdNodes>
 
 export type MdMapper<S extends ProseSchema> = {
 	[key in keyof MdTypeMap]? : (x: MdTypeMap[key], children: ProseNode<S>[]) => ProseNode<S>[];
@@ -138,13 +133,7 @@ declare module "prosemirror-model" {
 // TODO (2021/05/09) these functions should all be relocated
 
 export const nodeMapBasic = <S extends ProseSchema>(nodeType: ProseNodeType<S>) => (node: Uni.Node, children: ProseNode<S>[]) => {
-	console.log(`nodeMapBasic -- nodeType=${nodeType.name}, mdastType=${node.type}`);
-	console.log("mdast", node);
-	console.log("children", children);
-
 	let result = nodeType.createAndFill({}, children || undefined);
-	console.log("result", result);
-
 	return result ? [result] : [];
 }
 
@@ -194,14 +183,53 @@ export const markMapStringLiteral = <S extends ProseSchema, T extends Uni.Node =
 	return result ? [result] : [];
 }
 
+////////////////////////////////////////////////////////////
+
 type MdContextMapper<Ctx> = {
 	[key in keyof MdTypeMap]? : (x: MdTypeMap[key], ctx: Ctx) => Ctx
 }
 
-type NodeMap<Ctx=unknown, S extends ProseSchema = ProseSchema> = (node: Uni.Node, children:ProseNode<S>[], parseContext: Ctx) => ProseNode<S>[];
-type ContextMap<Ctx=unknown, N extends Uni.Node = Uni.Node> = (node: N, parseContext: Ctx) => Ctx;
+type MdStateMapper<St> = {
+	[key in keyof MdTypeMap]? : (x: MdTypeMap[key], state: St) => St
+}
 
-function getContextMapper<N extends Md.Content, Ctx>(node: N, mappers: MdContextMapper<Ctx>): ContextMap<Ctx, N>|undefined {
+// ---------------------------------------------------------
+
+/**
+ * Create a ProseMirror node from a Unist node and its list of 
+ * children, which have already been converted to ProseMirror nodes.
+
+ * TODO (2021-05-17) should the node map return new context/state,
+ *   instead of context/state being specified by separate maps?
+ */
+type NodeMap<Ctx=unknown, St=unknown, S extends ProseSchema = ProseSchema>
+	= (node: Uni.Node, children:ProseNode<S>[], parseContext: Ctx, parseState: St) => ProseNode<S>[];
+
+/**
+ * Returns a new local parse context based on the contents of `node`.
+ * 
+ * TODO (2021-05-17) enforce immutability here?
+ *
+ * @note Should **not** modify the input context in-place, but
+ *     instead return a copy with the necessary changes.
+ */
+type ContextMap<Ctx=unknown, N extends Uni.Node = Uni.Node> 
+	= (node: N, parseContext: Ctx) => Ctx;
+
+/**
+ * Describes how the global parse state should change upon visiting `node`.
+ * 
+ * TODO (2021-05-17) enforce immutability here?
+ * 
+ * @note Should **not** modify the input context in-place, but
+ *     instead return a copy with the necessary changes.
+ */
+type StateMap<St=unknown, N extends Uni.Node = Uni.Node>
+	= (node: N, parseState: St) => St;
+
+// ---------------------------------------------------------
+
+function getContextMapper<N extends MdNode, Ctx>(node: N, mappers: MdContextMapper<Ctx>): ContextMap<Ctx, N>|undefined {
 	// without correlated record types, we must use a cast to
 	// explicitly guarantee that the returned mapper can accept
 	// the same node type as input that was passed to this function
@@ -213,33 +241,61 @@ function getContextMapper<N extends Md.Content, Ctx>(node: N, mappers: MdContext
 	// co-dependently typed arguments: https://github.com/microsoft/TypeScript/issues/35873
 }
 
-export function treeMap<S extends ProseSchema, Ctx>(
-	node: Md.Content,
+function getStateMapper<N extends MdNode, St>(node: N, mappers: MdStateMapper<St>): StateMap<St, N>|undefined {
+	// without correlated record types, we must use a cast to
+	// explicitly guarantee that the returned mapper can accept
+	// the same node type as input that was passed to this function
+	//                        vv                vvv
+	return mappers[node.type] as StateMap<St, N> | undefined;
+
+	// relevant TypeScript issues
+	// correlated record types: https://github.com/microsoft/TypeScript/issues/35873
+	// co-dependently typed arguments: https://github.com/microsoft/TypeScript/issues/35873
+}
+
+////////////////////////////////////////////////////////////
+
+export function treeMap<S extends ProseSchema, Ctx, St>(
+	node: MdNode,
 	parseContext: Ctx, 
+	parseState: St,
 	nodeMap: UnistMapper<string, S>, 
 	contextMap: MdContextMapper<Ctx>,
-	errorMap: NodeMap<Ctx, S>
-): ProseNode<S>[] {
+	stateMap: MdStateMapper<St>,
+	errorMap: NodeMap<Ctx, St, S>
+): [ProseNode<S>[], St] {
 	// postorder depth-first traversal
 
 	// 1. use what we know about the parent Mdast node to update the parse context
 	// (at this point, the parent ProseNode as NOT yet been constructed yet)
 	let contextMapper = getContextMapper(node, contextMap);
 	let newParseContext = contextMapper ? contextMapper(node, parseContext) : parseContext; 
-	
-	// 2. visit the children, from left to right
+
+	// 2. visit the children, from left to right, accumulating global state
 	let nodeContents: ProseNode<S>[] = [];
+	let newParseState = parseState;
 
 	if(unistIsParent(node)) {
 		// flatmap the results of traversing this node's children
 		for(let idx = 0; idx < node.children.length; idx++) {
-			let child: ProseNode<S>[] = treeMap(node.children[idx], newParseContext, nodeMap, contextMap, errorMap);
+			let [child, state] = treeMap(
+				node.children[idx], 
+				newParseContext, newParseState,
+				nodeMap, contextMap, stateMap, errorMap
+			);
+
+			newParseState = state;
 			if(child !== null) { nodeContents = nodeContents.concat(child); }
 		}
 	}
 
+	// 3. update the global parse state, as a way
+	// of propagating information up the tree
+	let stateMapper = getStateMapper(node, stateMap);
+	newParseState = stateMapper ? stateMapper(node, newParseState) : newParseState; 
+
 	// 3. map this node ; typescript struggles with the result type, so we simplify
-	let nodeFn: NodeMap<Ctx, S>|null = null;
+	let nodeFn: NodeMap<Ctx, St, S>|null = null;
 
 	for(let test of nodeMap.get(node.type)) {
 		// if no test is present, succeed by default
@@ -252,22 +308,33 @@ export function treeMap<S extends ProseSchema, Ctx>(
 	// if node type not recognized, fail gracefully by wrapping unfamiliar
 	// content in a code block, rather than silently deleting it
 	if(!nodeFn) {
-		console.log(`treeMap :: expected ${node.type}, got undefined ; node=`, node);
+		console.error(`treeMap :: expected ${node.type}, got undefined ; node=`, node);
 		nodeFn = errorMap;
 	}
 
 	// return the results of the mapping function
-	// (note: we are using the original parseContext here!)
-	let result: ProseNode[] = nodeFn(node, nodeContents, parseContext);
+	// (note: we intentionally use the original parseContext here!)
+	let result: ProseNode[] = nodeFn(node, nodeContents, parseContext, newParseState);
 	
 	// TypeScript has trouble threading the schema type through this entire function,
 	// so this cast is our pinky-promise that we will return a node belonging to the
 	// same schema instance as defined by the input
-	return result as ProseNode<S>[];
+	return [result as ProseNode<S>[], newParseState];
 }
 
-type MdParseContext = {
+/**
+ * Local context is used for sending information *down* the tree.
+ * TODO: 
+ */
+export type MdParseContext = {
 	inParagraph: boolean;
+}
+
+/**
+ * Global state is used for propagating information *up* the tree.
+ */
+export type MdParseState = {
+	yaml: { [key:string] : unknown };
 }
 
 ////////////////////////////////////////////////////////////
@@ -276,7 +343,7 @@ function makeNodeErrorHandler<S extends ProseSchema>(
 	inlineErrorType: ProseMarkType<S>,
 	blockErrorType : ProseNodeType<S>,
 	node2src: (node:Uni.Node)=>string|null
-): NodeMap<MdParseContext, S> {
+): NodeMap<MdParseContext, MdParseState, S> {
 	return (node, _, context) => {
 		// get markdown source for node
 		let nodeSrc = node2src(node);
@@ -301,6 +368,8 @@ function makeNodeErrorHandler<S extends ProseSchema>(
 		}
 	}
 }
+
+////////////////////////////////////////////////////////////
 
 export type MdParser<S extends ProseSchema> = (markdown: string) => ProseNode<S>;
 
@@ -329,16 +398,50 @@ export const makeParser = <S extends ProseSchema<"error_block","error_inline">>(
 		.use(remarkFootnotes, { inlineNotes: true })
 		.use(remarkWikilinkPlugin)
 		.use(remarkFrontMatter, ['yaml', 'toml']);
+
+	// context map for managing local state
+	let contextMap: MdContextMapper<MdParseContext> = {
+		"paragraph" : (node, ctx): MdParseContext => {
+			return { ...ctx, inParagraph: true };
+		}
+	}
+
+	// some nodes (e.g. YAML) can modify global state
+	// TODO (2021-05-17) allow plugins to specify global state maps?
+	// TODO (2021-05-17) can YAML support be implemented entirely as a plugin?
+	// TODO (2021-05-17) instead of returning the entire state object,
+	//   perhaps each mapper can return a minimal set of changes that
+	//   automatically get merged with the current state by the caller
+	//   (or, even safer -- each plugin gets its own global state object?)  
+	let stateMap: MdStateMapper<MdParseState> = {
+		"yaml" : (node, state): MdParseState => {
+			// parse yaml
+			let yamlData = YAML.parse(node.value);
+			console.warn("found yaml node with data", yamlData);
+			// merge state
+			return { 
+				...state,
+				// TODO (2021-05-17) deep merge yaml?
+				yaml: { ...state.yaml, ...yamlData }
+			};
+		}
+	}
 	
+	// make parser
 	return (markdown:string) => {
 		// Step 1: Use Remark to convert markdown to AST
-		let ast: Md.Root = md2ast.parse(markdown) as Md.Root; // TODO: remove cast?
+		// TODO: remove cast?
+		let ast: Md.Root = md2ast.parse(markdown) as Md.Root;
 
 		// Step 2: Use nodeMap to convert AST to ProseMirror Doc
 
 		// initialize parse context
 		let parseContext: MdParseContext = {
 			inParagraph: false
+		}
+		// initialize parse state
+		let parseState: MdParseState = {
+			yaml: {}
 		}
 
 		// handle unfamiliar nodes
@@ -348,26 +451,30 @@ export const makeParser = <S extends ProseSchema<"error_block","error_inline">>(
 			node => unistSource(node, markdown)
 		);
 
-		// make context map
-		let contextMap: MdContextMapper<MdParseContext> = {
-			"paragraph" : (node, ctx): MdParseContext => {
-				return { ...ctx, inParagraph: true };
-			}
-		}
-
 		// map over root's children
-		let rootContent: ProseNode<S>[] = ast.children.flatMap(
-			node => treeMap<S, MdParseContext>(node, parseContext, nodeMap, contextMap, errorMap)
+		let [rootContent, globalState] = treeMap<S, MdParseContext, MdParseState>(
+			ast, parseContext, parseState,
+			nodeMap, contextMap,
+			stateMap, errorMap
 		);
+		
+		console.warn("\nglobalState:", globalState, "\n\n");
+
+		// let [rootContent, globalState] = ast.children.flatMap(
+		// 	node => treeMap<S, MdParseContext, MdParseState>(
+		// 				node, parseContext, parseState,
+		// 				nodeMap, contextMap,
+		// 				stateMap, errorMap
+		// 			)
+		// );
 
 		console.log("\n\n");
 		console.dir(rootContent);
 		console.log("\n\n");
 
-		// create top-level node
-		let proseDoc = proseSchema.topNodeType.createAndFill({}, rootContent);
+		if(rootContent.length == 0) { throw new Error("empty document"); } 
+		if(rootContent.length >  1) { throw new Error("multiple top-level nodes"); }
 
-		if(proseDoc) { return proseDoc; }
-		else         { throw new Error("unable to parse markdown document"); }
+		return rootContent[0];
 	};
 }
