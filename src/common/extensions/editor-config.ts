@@ -25,6 +25,7 @@ import * as Md from "mdast";
 //// EDITOR CONFIG /////////////////////////////////////////
 
 // ---------------------------------------------------------
+// TODO (2021-05-17) these are unused, remove them?
 // https://github.com/microsoft/TypeScript/issues/27995#issuecomment-441157546
 
 export type ArrayKeys = keyof any[];
@@ -100,27 +101,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 		let nodeSpecs: { [x:string] : NodeSpec } = { 
 			text: {
 				group: "inline"
-			},
-			error_block: {
-				content: "text*",
-				group: "block",
-				code: true,
-				defining: true,
-				marks: "",
-				attrs: {params: {default: ""}},
-				parseDOM: [{
-					tag: "pre.error-block",
-					preserveWhitespace: "full",
-					getAttrs: node => {
-						return {params: (node as HTMLElement).getAttribute("data-params") || ""}
-					}
-				}],
-				toDOM(node) { 
-					let dataParams = node.attrs.params ? {"data-params": node.attrs.params} : {};
-					let attrs = { ...dataParams, class: "error-block" }
-					return ["pre", attrs, ["code", 0]] 
-				}
-			},
+			}
 		};
 
 		// create node and mark specs
@@ -137,6 +118,30 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 				nodeSpecs[name] = ext.createNodeSpec();
 			} else if(ext instanceof MarkExtension){
 				markSpecs[name] = ext.createMarkSpec();
+			}
+		}
+
+		// error block spec must be created last,
+		// to avoid becoming the default top-level block node
+		// TODO (2021-05-17) can error blocks be defined as an extension instead?
+		nodeSpecs["error_block"] = {
+			content: "text*",
+			group: "block",
+			code: true,
+			defining: true,
+			marks: "",
+			attrs: {params: {default: ""}},
+			parseDOM: [{
+				tag: "pre.error-block",
+				preserveWhitespace: "full",
+				getAttrs: node => {
+					return {params: (node as HTMLElement).getAttribute("data-params") || ""}
+				}
+			}],
+			toDOM(node) { 
+				let dataParams = node.attrs.params ? {"data-params": node.attrs.params} : {};
+				let attrs = { ...dataParams, class: "error-block" }
+				return ["pre", attrs, ["code", 0]] 
 			}
 		}
 
