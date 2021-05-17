@@ -72,29 +72,6 @@ export class RootExtension extends NodeExtension<Md.Root> {
 	}
 }
 
-/* -- YAML Metadata ------------------------------------- */
-
-export class YamlExtension extends NodeExtension<MdFrontmatterYAML> {
-	// -- ProseMirror Schema -- //
-
-	get name() { return "paragraph" as const; }
-
-	createNodeSpec(): NodeSpec {
-		return {
-			content: "inline*",
-			attrs: { class: { default: undefined } },
-			group: "block",
-			parseDOM: [{ tag: "p" }],
-			toDOM(node: ProseNode): DOMOutputSpec { return ["p", { ...(node.attrs.class && { class: node.attrs.class }) }, 0] }
-		};
-	}
-
-	// -- Conversion from Mdast -> ProseMirror ---------- //
-
-	get mdastNodeType() { return "yaml" as const };
-	createMdastMap() { return MdastNodeMapType.NODE_DEFAULT }
-}
-
 /* -- Paragraph ----------------------------------------- */
 
 export class ParagraphExtension extends NodeExtension<Md.Paragraph> {
