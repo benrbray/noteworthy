@@ -36,7 +36,8 @@
     "build:win": "npm run compile && electron-builder --win",
     "build:linux": "npm run compile && electron-builder --linux",
     "build:all": "npm run clean:releases && npm run compile && electron-builder -mwl && npm run script:build:fixlatestwin && npm run script:build:fixlatestlinux",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "test": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -P tests/tsconfig.tests.json -r ts-node/register -r tsconfig-paths/register 'tests/**/*.test.ts'"
   },
   "build": {
     "productName": "Noteworthy",
@@ -120,6 +121,7 @@
     "@types/lodash": "^4.14.158",
     "@types/markdown-it": "^12.0.1",
     "@types/mdast": "^3.0.3",
+    "@types/mocha": "^8.2.2",
     "@types/prosemirror-commands": "^1.0.4",
     "@types/prosemirror-gapcursor": "^1.0.2",
     "@types/prosemirror-history": "^1.0.2",
@@ -147,10 +149,13 @@
     "html-loader": "^2.1.1",
     "html-webpack-plugin": "^5.2.0",
     "less-loader": "^8.0.0",
+    "mocha": "^8.4.0",
     "path-browserify": "^1.0.1",
     "remark-stringify": "^9.0.1",
     "source-map-support": "^0.5.19",
     "ts-loader": "^8.0.17",
+    "ts-node": "^9.1.1",
+    "tsconfig-paths": "^3.9.0",
     "tsconfig-paths-webpack-plugin": "^3.3.0",
     "typescript": "^4.2.3",
     "url-loader": "^4.1.1",
