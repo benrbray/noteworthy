@@ -205,8 +205,8 @@ export class LinkExtension extends MarkExtension<Md.Link> {
 			// create mdast node
 			let linkNode: AnyChildren<Md.Link> = {
 				type: this.mdastNodeType,
+				url: linkAttrs.href,
 				children: [node],
-				href: linkAttrs.href,
 				...(linkAttrs.title ? { title : linkAttrs.title } : {}),
 			};
 

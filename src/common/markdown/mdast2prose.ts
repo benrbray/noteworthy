@@ -98,7 +98,7 @@ export type MdFrontmatter = MdFrontmatterYAML | MdFrontmatterTOML | MdFrontmatte
 // ---------------------------------------------------------
 
 export type AnyChildren<T extends Uni.Parent, ChildT=Uni.Node>
-	= Omit<T, "children"> & { children: ChildT[] };
+	= { [K in keyof T as Exclude<K, "children">] : T[K] } & { children: ChildT[] };
 
 // ---------------------------------------------------------
 
@@ -355,7 +355,7 @@ function makeNodeErrorHandler<S extends ProseSchema>(
 
 ////////////////////////////////////////////////////////////
 
-export type MdParser<S extends ProseSchema> = (markdown: string) => ProseNode<S>;
+export type MdParser<S extends ProseSchema> = (markdown: string) => ProseNode<S> | null;
 
 /**
  * Uses the given configuration to create a parser capable of converting
