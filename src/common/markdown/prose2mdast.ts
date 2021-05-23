@@ -119,16 +119,8 @@ export const markMapLiteral: (type:string) => ProseMarkMap
 export type MdSerializer = (doc: ProseNode) => string;
 
 /**
- * Uses the given configuration to create a parser capable of converting
- * markdown strings to ProseMirror documents.
- *
- * @precondition So that the parser can gracefully fail on unrecognized
- *    AST nodes, the given schema must have an "error" node and "error" mark,
- *    for block-level and inline-level errors, respectively.
- *
- * @warning The `nodeMap` maps AST nodes to ProseMirror nodes, but performs
- *    no validation.  Nodes which violate the schema will silently disappear.
- *    (to be exact, they will never be created by ProseMirror in the first place)
+ * Uses the given configuration to create a serializer capable of converting
+ * ProseMirror documents to markdown strings.
  */
 export const makeSerializer = (
 	prose2mdast: ProseMapper<string>
