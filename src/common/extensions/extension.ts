@@ -1,22 +1,15 @@
 // prosemirror imports
-import { Node as ProseNode, NodeSpec, MarkSpec, DOMOutputSpec } from "prosemirror-model";
-import {
-	InputRule, inputRules as makeInputRules,
-} from "prosemirror-inputrules"
-import {
-	chainCommands, baseKeymap, Keymap, Command as ProseCommand,
-} from "prosemirror-commands"
-import { Plugin as ProsePlugin } from "prosemirror-state";
+import { Node as ProseNode, NodeSpec, MarkSpec } from "prosemirror-model";
+import { InputRule } from "prosemirror-inputrules"
+import { Keymap } from "prosemirror-commands"
 import { NodeView } from "prosemirror-view";
 
 // project imports
-import { keymap as makeKeymap } from "prosemirror-keymap";
-import { DefaultMap } from "@common/util/DefaultMap";
-import { MarkdownParser, makeMarkdownParser } from "@common/markdown";
 import { ProseSchema, ProseNodeType, ProseMarkType } from "@common/types";
 
 // unist
 import * as Uni from "unist";
+import { ProseMarkMap, ProseNodeMap } from "./editor-config";
 
 ////////////////////////////////////////////////////////////
 
@@ -74,7 +67,8 @@ export abstract class NodeExtension<T extends Uni.Node, N extends string = strin
 	 * conditions on the Mdast node type, beyond `node.type = T`.
 	 */
 	mdastNodeTest(node: T): boolean { return true; }
-	
+
+	abstract prose2mdast(): Prose2Mdast_NodeMap;
 }
 
 export abstract class MarkExtension<T extends Uni.Node, M extends string = string> extends NwtExtension<ProseSchema<string,M>, M> {
@@ -106,7 +100,17 @@ export abstract class MarkExtension<T extends Uni.Node, M extends string = strin
 	 *   or they should both include an optional `mapper` field
 	 */
 	abstract createMdastMap() : MdastMarkMap<T>;
+
+	abstract prose2mdast(): Prose2Mdast_MarkMap;
 }
+
+//// PROSEMIRROR HELPERS ///////////////////////////////////
+
+/** Get the attributes of the ProseMirror Node defined by the `NE` extension. */
+export type ExtensionNodeAttrs<
+	NE extends NodeExtension<any>,
+	RT=ReturnType<NE["createNodeSpec"]>["attrs"]
+> = { [K in keyof RT] : RT[K] extends { default: infer D } ? D : unknown };
 
 //// MARKDOWN SYNTAX EXTENSIONS ////////////////////////////
 
@@ -147,4 +151,23 @@ export type MdastMarkMap<N extends Uni.Node>
 	= MdMarkMap_Custom<N>
 	| MdastMarkMapType
 
-//export type MdastNodeType<E extends MdSyntaxExtension<any>> = E extends MdSyntaxExtension<infer N> ? N : never;
+// -- Describe Mappings from ProseMirror -> Unist ----------
+
+export enum Prose2Mdast_NodeMap_Presets {
+	NODE_DEFAULT = "p2m_node_default",
+	NODE_EMPTY   = "p2m_node_empty",
+	NODE_LIFT_LITERAL = "p2m_node_literal"
+}
+
+export type Prose2Mdast_NodeMap<Ctx=unknown, St=unknown>
+	= Prose2Mdast_NodeMap_Presets
+	| { create : ProseNodeMap<Ctx, St> };
+
+export enum Prose2Mdast_MarkMap_Presets {
+	MARK_DEFAULT = "p2m_mark_default",
+	MARK_LITERAL = "p2m_mark_literal"
+}
+
+export type Prose2Mdast_MarkMap
+	= Prose2Mdast_MarkMap_Presets
+	| { create : ProseMarkMap };

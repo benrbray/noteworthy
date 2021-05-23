@@ -2,14 +2,8 @@
 import unified from "unified";
 import * as Uni from "unist";
 
-// micromark
-import micromark from "micromark/lib";
-import { SyntaxExtension } from "micromark/dist/shared-types";
-import { citeSyntax, citeHtml } from "@benrbray/micromark-extension-cite";
-
 // mdast
 import * as Md from "mdast";
-import toMarkdown from "mdast-util-to-markdown";
 
 // remark and remark plugins
 import remark from "remark-parse";
@@ -17,15 +11,14 @@ import remarkMathPlugin from "remark-math";
 import remarkFrontMatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import remarkFootnotes from "remark-footnotes";
-import { wikiLinkPlugin as remarkWikilinkPlugin } from 'remark-wiki-link';
+import { wikiLinkPlugin as remarkWikilinkPlugin } from './remark-plugins/wikilink/remark-wikilink';
 
 // custom remark plugins
-import { citePlugin, CitePluginOptions } from "@benrbray/remark-cite";
-import { citeToMarkdown } from "@benrbray/mdast-util-cite"; 
+import { citePlugin } from "@benrbray/remark-cite";
 
 // prosemirror imports
 import { Node as ProseNode } from "prosemirror-model";
-import { unistIsParent, unistIsStringLiteral, unistSource } from "./unist-utils";
+import { unistIsParent, unistSource } from "./unist-utils";
 //import { editorSchema } from "./schema";
 
 // patched prosemirror types
@@ -34,6 +27,7 @@ import { UnistMapper } from "@common/extensions/editor-config";
 
 // yaml / toml 
 import YAML from "yaml";
+import { remarkErrorPlugin } from "./remark-plugins/error/remark-error";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -103,6 +97,11 @@ export type MdFrontmatter = MdFrontmatterYAML | MdFrontmatterTOML | MdFrontmatte
 
 // ---------------------------------------------------------
 
+export type AnyChildren<T extends Uni.Parent, ChildT=Uni.Node>
+	= Omit<T, "children"> & { children: ChildT[] };
+
+// ---------------------------------------------------------
+
 export type MdNode = Md.Root | Md.Content | MdMath | MdWikilink | MdFrontmatter;
 
 export type MdTypeMap = MapDiscriminatedUnion<MdNode, "type"> //UnionTypeMap<"type", MdNodes>
@@ -112,21 +111,6 @@ export type MdMapper<S extends ProseSchema> = {
 }
 
 ////////////////////////////////////////////////////////////
-
-declare module "prosemirror-model" {
-	interface Schema<N,M> {
-		// as of (2021-05-04) the return type was incorrect              vvvv
-		text(text: string, marks?: Array<Mark<Schema<N, M>>>): ProseNode<this>;
-		/**
-		* An object mapping the schema's node names to node type objects.
-		*/
-		nodes: { [name in N]: NodeType<Schema<N, M>> } & { [key: string]: NodeType<Schema<N, M>> };
-		/**
-		* A map from mark names to mark type objects.
-		*/
-		marks: { [name in M]: MarkType<Schema<N, M>> } & { [key: string]: MarkType<Schema<N, M>> };
-	}
-}
 
 ////////////////////////////////////////////////////////////
 
@@ -389,12 +373,14 @@ export const makeParser = <S extends ProseSchema<"error_block","error_inline">>(
 	proseSchema: S, nodeMap: UnistMapper<string, S>
 ): MdParser<S> => {
 
+	// TODO (2021-05-18) how to keep this in sync with prose2mdast.makeSerializer?
 	// markdown parsers
 	var md2ast = unified()
 		.use(remark)
 		.use(remarkGfm)
 		.use(remarkMathPlugin)
-		.use(citePlugin, { enableAltSyntax: true })
+		.use(citePlugin, { syntax: { enableAltSyntax: true } })
+		.use(remarkErrorPlugin)
 		.use(remarkFootnotes, { inlineNotes: true })
 		.use(remarkWikilinkPlugin)
 		.use(remarkFrontMatter, ['yaml', 'toml']);
@@ -407,7 +393,7 @@ export const makeParser = <S extends ProseSchema<"error_block","error_inline">>(
 	}
 
 	// some nodes (e.g. YAML) can modify global state
-	// TODO (2021-05-17) allow plugins to specify global state maps?
+	// TODO (2021-05-17) allow plugins to specify global state maps (like for 'yaml' below)?
 	// TODO (2021-05-17) can YAML support be implemented entirely as a plugin?
 	// TODO (2021-05-17) instead of returning the entire state object,
 	//   perhaps each mapper can return a minimal set of changes that
@@ -459,18 +445,6 @@ export const makeParser = <S extends ProseSchema<"error_block","error_inline">>(
 		);
 		
 		console.warn("\nglobalState:", globalState, "\n\n");
-
-		// let [rootContent, globalState] = ast.children.flatMap(
-		// 	node => treeMap<S, MdParseContext, MdParseState>(
-		// 				node, parseContext, parseState,
-		// 				nodeMap, contextMap,
-		// 				stateMap, errorMap
-		// 			)
-		// );
-
-		console.log("\n\n");
-		console.dir(rootContent);
-		console.log("\n\n");
 
 		if(rootContent.length == 0) { throw new Error("empty document"); } 
 		if(rootContent.length >  1) { throw new Error("multiple top-level nodes"); }

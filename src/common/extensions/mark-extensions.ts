@@ -1,16 +1,18 @@
 // prosemirror imports
-import { MarkType, MarkSpec, DOMOutputSpec, Mark } from "prosemirror-model";
+import { MarkType, MarkSpec, DOMOutputSpec, Mark as ProseMark } from "prosemirror-model";
 import { InputRule } from "prosemirror-inputrules"
 import { toggleMark, Keymap } from "prosemirror-commands"
 
 // project imports
 import { markActive, markInputRule } from "@common/prosemirror/util/mark-utils";
 import { openPrompt, TextField } from "@common/prompt/prompt";
-import { MarkExtension, MdastMarkMap, MdastMarkMapType } from "@common/extensions/extension";
+import { MarkExtension, MdastMarkMap, MdastMarkMapType, Prose2Mdast_MarkMap_Presets } from "@common/extensions/extension";
 
 // mdast
+import * as Uni from "unist";
 import * as Md from "mdast";
-import { markMapBasic } from "@common/markdown/mdast2prose";
+import { AnyChildren, markMapBasic } from "@common/markdown/mdast2prose";
+import { unistIsStringLiteral } from "@common/markdown/unist-utils";
 
 //// MARK EXTENSIONS ///////////////////////////////////////
 
@@ -52,6 +54,9 @@ export class BoldExtension extends MarkExtension<Md.Strong> {
 	get mdastNodeType() { return "strong" as const };
 	createMdastMap() { return MdastMarkMapType.MARK_DEFAULT; }
 
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return Prose2Mdast_MarkMap_Presets.MARK_DEFAULT; }
 }
 
 /* -- Italic ---------------------------------------------- */
@@ -88,6 +93,10 @@ export class ItalicExtension extends MarkExtension<Md.Emphasis> {
 
 	get mdastNodeType() { return "emphasis" as const };
 	createMdastMap() { return MdastMarkMapType.MARK_DEFAULT; }
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return Prose2Mdast_MarkMap_Presets.MARK_DEFAULT; }
 
 }
 
@@ -138,7 +147,7 @@ export class LinkExtension extends MarkExtension<Md.Link> {
 					}
 				}
 			}],
-			toDOM(node: Mark): DOMOutputSpec { return ["a", node.attrs] }
+			toDOM(node: ProseMark): DOMOutputSpec { return ["a", node.attrs] }
 		};
 	}
 
@@ -185,6 +194,25 @@ export class LinkExtension extends MarkExtension<Md.Link> {
 			}))
 		}
 	}
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return {
+		create: (mark: ProseMark, node: Uni.Node): Md.Link => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let linkAttrs = mark.attrs as { href: string, title:string|null };
+			
+			// create mdast node
+			let linkNode: AnyChildren<Md.Link> = {
+				type: this.mdastNodeType,
+				children: [node],
+				href: linkAttrs.href,
+				...(linkAttrs.title ? { title : linkAttrs.title } : {}),
+			};
+
+			return (linkNode as Md.Link);
+		}
+	}}
 
 }
 
@@ -243,6 +271,10 @@ export class CodeExtension extends MarkExtension<Md.InlineCode> {
 
 	get mdastNodeType() { return "inlineCode" as const };
 	createMdastMap() { return MdastMarkMapType.MARK_LITERAL; }
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return Prose2Mdast_MarkMap_Presets.MARK_LITERAL; }
 }
 
 /* -- Strikethrough ---------------------------------------- */
@@ -282,9 +314,19 @@ export function wikilinkRule(markType: MarkType): InputRule {
 	return markInputRule(/\[\[([^\s](?:[^\]]*[^\s])?)\]\](.)$/, markType);
 }
 
-/** Block math node from [`mdast-util-math`](https://github.com/syntax-tree/mdast-util-math/blob/main/from-markdown.js#L20). */
+/** Wikilink node from [`mdast-util-wikilink`](https://github.com/landakram/mdast-util-wiki-link). */
 interface MdWikilink extends Md.Literal {
-	type: "wikiLink"
+	type: "wikiLink",
+	/** [[Real Page:Page Alias]] -> "Real Page" */
+	value: string,
+	data: {
+		/** [[Real Page:Page Alias]] -> "Page Alias" */
+		alias: string,
+		/** [[Real Page:Page Alias]] -> "real_page" (sluggified) */
+		permalink: string,
+		/** Whether the wikilink exists in the provided wikilink database. */
+		exists: boolean
+	}
 }
 
 export class WikilinkExtension extends MarkExtension<MdWikilink> {
@@ -296,7 +338,7 @@ export class WikilinkExtension extends MarkExtension<MdWikilink> {
 			attrs: { title: { default: null } },
 			inclusive: false,
 			parseDOM: [{ tag: "span.wikilink" }],
-			toDOM(node: Mark): DOMOutputSpec { return ["span", Object.assign({ class: "wikilink" }, node.attrs)] }
+			toDOM(node: ProseMark): DOMOutputSpec { return ["span", Object.assign({ class: "wikilink" }, node.attrs)] }
 		};
 	}
 
@@ -308,6 +350,32 @@ export class WikilinkExtension extends MarkExtension<MdWikilink> {
 
 	get mdastNodeType() { return "wikiLink" as const };
 	createMdastMap() { return MdastMarkMapType.MARK_LITERAL; }
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return {
+		create: <N extends Uni.Node>(mark: ProseMark, node: N): MdWikilink|N => {
+			// expect string literal node
+			if(!unistIsStringLiteral(node)) {
+				console.error(`mark type ${this.name} can only wrap Literal node ; skipping`);
+				return node;
+			}
+			// TODO (2021-05-17) better solution for casting attrs?
+			let wikiAttrs = mark.attrs as { title: string };
+			
+			// create mdast node
+			// TODO (2021-05-19) how to correctly construct permalink/alias/exists properties for wikilink?
+			return {
+				type: this.mdastNodeType,
+				value: node.value,
+				data: {
+					alias: node.value,
+					permalink: node.value,
+					exists: true
+				}
+			};
+		}
+	}}
 
 }
 

@@ -402,6 +402,11 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 
 	serializeContents(): string {
 		if(!this._proseEditorView){ return ""; }
+
+		// TODO (2021-05-18) finish remark serializer, throw away markdown-it
+		let md = this._config.serialize(this._proseEditorView.state.doc);
+		console.log("SERIALIZED:\n", md);
+
 		return markdownSerializer.serialize(this._proseEditorView.state.doc);
 	}
 

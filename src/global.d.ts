@@ -1,7 +1,7 @@
 // type declarations
 
 declare module NodeJS {
-	declare interface Global {
+	interface Global {
 		isQuitting: boolean;
 	}
 }
@@ -32,4 +32,16 @@ declare module "micromark/dist/util/resolve-all" {
 	import { Construct, Event, Tokenizer } from "micromark/dist/shared-types";
 	function resolveAll(constructs: Construct[], events: Event[], context: Tokenizer): any;
 	export = resolveAll;
+}
+
+declare module "mdast-util-to-markdown/lib/util/safe.js" {
+	import { Context, SafeOptions } from "mdast-util-to-markdown";
+
+	// as of (2021-05-07) this function had no exported typings
+	function safe(context: Context, input: string, config: Partial<SafeOptions> ): string;
+	export = safe
+}
+
+declare module "micromark-extension-wiki-link" {
+	function syntax(opts?: { aliasDivider?: string }): any;
 }

@@ -14,16 +14,15 @@ import * as Uni from "unist";
 import * as Md from "mdast";
 
 // project imports
-import { openPrompt, TextField } from "@common/prompt/prompt";
 import { incrHeadingLevelCmd } from "@common/prosemirror/commands/demoteHeadingCmd";
-import { MdastNodeMap, MdastNodeMapType, NodeExtension } from "@common/extensions/extension";
+import { ExtensionNodeAttrs, MdastNodeMap, MdastNodeMapType, NodeExtension, Prose2Mdast_NodeMap, Prose2Mdast_NodeMap_Presets } from "@common/extensions/extension";
 import {
 	makeInlineMathInputRule, makeBlockMathInputRule,
 	REGEX_INLINE_MATH_DOLLARS_ESCAPED, REGEX_BLOCK_MATH_DOLLARS
 } from "@benrbray/prosemirror-math";
 
 // patched prosemirror types
-import { ProseMarkType, ProseNodeType, ProseSchema } from "@common/types";
+import { ProseNodeType, ProseSchema } from "@common/types";
 
 ////////////////////////////////////////////////////////////
 
@@ -39,7 +38,7 @@ export class RootExtension extends NodeExtension<Md.Root> {
 
 	get name() { return "doc" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		// top-level prosemirror node
 		return {
 			content: "block+",
@@ -70,6 +69,40 @@ export class RootExtension extends NodeExtension<Md.Root> {
 			}
 		}
 	}
+
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return {
+		create: (node: ProseNode, children: Uni.Node[]): [Md.Root] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let rootAttrs = node.attrs as ExtensionNodeAttrs<RootExtension>;
+			
+			// if root yas YAML metadata, create a YAML node
+			// TODO (2021-05-17) revisit conversion of YAML nodes (should not be stored in doc attrs)
+			let rootChildren: Uni.Node[];
+
+			if(Object.keys(rootAttrs.yamlMeta).length > 0) {
+				// create yaml node
+				let yamlNode: Md.YAML = {
+					type: "yaml", // TODO (2021-05-18) support TOML, JSON, etc.
+					value: JSON.stringify(rootAttrs.yamlMeta)
+				};
+				// prepend yaml node to document
+				rootChildren = [yamlNode, ...children];
+			} else {
+				rootChildren = children;
+			}
+			
+			// TODO (2021-05-18) root attrs?
+			let rootNode: AnyChildren<Md.Root> = {
+				type: this.mdastNodeType,
+				children: rootChildren
+			}
+			// TODO (2021-05-17) validate node instead of casting
+			return [rootNode as Md.Root];
+		}
+	}}
 }
 
 /* -- Paragraph ----------------------------------------- */
@@ -80,9 +113,10 @@ export class ParagraphExtension extends NodeExtension<Md.Paragraph> {
 
 	get name() { return "paragraph" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			content: "inline*",
+			// TODO (2021-05-18) handle / parse / serialize paragraph class name
 			attrs: { class: { default: undefined } },
 			group: "block",
 			parseDOM: [{ tag: "p" }],
@@ -94,6 +128,10 @@ export class ParagraphExtension extends NodeExtension<Md.Paragraph> {
 
 	get mdastNodeType() { return "paragraph" as const };
 	createMdastMap() { return MdastNodeMapType.NODE_DEFAULT }
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return Prose2Mdast_NodeMap_Presets.NODE_DEFAULT; }
 }
 
 /* -- Block Quote --------------------------------------- */
@@ -129,6 +167,9 @@ export class BlockQuoteExtension extends NodeExtension<Md.Blockquote> {
 	get mdastNodeType() { return "blockquote" as const };
 	createMdastMap() { return MdastNodeMapType.NODE_DEFAULT }
 
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return Prose2Mdast_NodeMap_Presets.NODE_DEFAULT; }
 }
 
 /* -- Heading ------------------------------------------- */
@@ -153,18 +194,20 @@ export class HeadingExtension extends NodeExtension<Md.Heading> {
 	 */
 	constructor(private _bottomType: NodeExtension<any, any>) { super(); }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			attrs: { level: { default: 1 } },
 			content: "(text | image)*",
 			group: "block",
 			defining: true,
-			parseDOM: [{ tag: "h1", attrs: { level: 1 } },
-			{ tag: "h2", attrs: { level: 2 } },
-			{ tag: "h3", attrs: { level: 3 } },
-			{ tag: "h4", attrs: { level: 4 } },
-			{ tag: "h5", attrs: { level: 5 } },
-			{ tag: "h6", attrs: { level: 6 } }],
+			parseDOM: [
+				{ tag: "h1", attrs: { level: 1 } },
+				{ tag: "h2", attrs: { level: 2 } },
+				{ tag: "h3", attrs: { level: 3 } },
+				{ tag: "h4", attrs: { level: 4 } },
+				{ tag: "h5", attrs: { level: 5 } },
+				{ tag: "h6", attrs: { level: 6 } }
+			],
 			toDOM(node: ProseNode): DOMOutputSpec { return ["h" + node.attrs.level, 0] }
 		};
 	}
@@ -186,7 +229,7 @@ export class HeadingExtension extends NodeExtension<Md.Heading> {
 	
 	createInputRules() { return [headingRule(this.nodeType, 6)]; }
 
-	// -- Markdown Conversion -- //
+	// -- Conversion from Mdast -> ProseMirror ---------- //
 
 	get mdastNodeType() { return "heading" as const };
 
@@ -202,6 +245,26 @@ export class HeadingExtension extends NodeExtension<Md.Heading> {
 			}
 		}
 	}
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return {
+		create: (node: ProseNode, children: Uni.Node[]): [Md.Heading] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let headingAttrs = node.attrs as ExtensionNodeAttrs<HeadingExtension>;
+
+			// create mdast heading, without validating children
+			let headingNode: AnyChildren<Md.Heading> = {
+				type: this.mdastNodeType,
+				children: children,
+				// TODO (2021-05-17) fix this if TypeScript ever gets range types
+				depth: Math.max(0, Math.min(6, headingAttrs.level)) as (1|2|3|4|5|6)
+			};
+
+			// TODO (2021-05-17) validate node instead of casting
+			return [headingNode as Md.Heading];
+		}
+	}}
 }
 
 /* -- Horizontal Rule ----------------------------------- */
@@ -233,6 +296,10 @@ export class HorizontalRuleExtension extends NodeExtension<Md.ThematicBreak> {
 
 	get mdastNodeType() { return "thematicBreak" as const };
 	createMdastMap() { return MdastNodeMapType.NODE_EMPTY }
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return Prose2Mdast_NodeMap_Presets.NODE_EMPTY; }
 }
 
 /* -- Code Block ---------------------------------------- */
@@ -281,6 +348,10 @@ export class CodeBlockExtension extends NodeExtension<Md.Code> {
 
 	get mdastNodeType() { return "code" as const };
 	createMdastMap() { return MdastNodeMapType.NODE_LITERAL }
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return Prose2Mdast_NodeMap_Presets.NODE_LIFT_LITERAL; }
 }
 
 // /* -- Ordered List -------------------------------------- */
@@ -302,7 +373,7 @@ export class OrderedListExtension extends NodeExtension<Md.List> {
 
 	get name() { return "ordered_list" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			content: "list_item+",
 			group: "block",
@@ -336,6 +407,27 @@ export class OrderedListExtension extends NodeExtension<Md.List> {
 	get mdastNodeType() { return "list" as const };
 	mdastNodeTest(node: Md.List) { return node.ordered === true; };
 	createMdastMap() { return MdastNodeMapType.NODE_DEFAULT }
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return {
+		create: (node: ProseNode, children: Uni.Node[]): [Md.List] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let listAttrs = node.attrs as ExtensionNodeAttrs<OrderedListExtension>;
+
+			// create mdast node, without validating children
+			let listNode: AnyChildren<Md.List> = {
+				type: this.mdastNodeType,
+				children: children,
+				ordered: true,
+				spread: !listAttrs.tight,  // TODO (2021-05-17) verify "ol.spread" attribute is correct 
+				start: listAttrs.order,    // TODO (2021-05-17) verify "ol.start" attribute is correct
+			};
+
+			// TODO (2021-05-17) validate node instead of casting
+			return [listNode as Md.List];
+		}
+	}}
 }
 
 /* -- Unordered List ------------------------------------ */
@@ -373,7 +465,7 @@ export class UnorderedListExtension extends NodeExtension<Md.List> {
 
 	get name() { return "bullet_list" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			content: "list_item+",
 			group: "block",
@@ -400,9 +492,32 @@ export class UnorderedListExtension extends NodeExtension<Md.List> {
 	
 	createInputRules() { return [bulletListRule(this.nodeType)]; }
 
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
 	get mdastNodeType() { return "list" as const };
 	mdastNodeTest(node: Md.List) { return node.ordered === false; };
 	createMdastMap() { return MdastNodeMapType.NODE_DEFAULT }
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return {
+		create: (node: ProseNode, children: Uni.Node[]): [Md.List] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let listAttrs = node.attrs as ExtensionNodeAttrs<UnorderedListExtension>;
+			listAttrs
+
+			// create mdast node, without validating children
+			let listNode: AnyChildren<Md.List> = {
+				type: this.mdastNodeType,
+				children: children,
+				ordered: false,
+				spread: !listAttrs.tight,  // TODO (2021-05-17) verify "ul.spread" attribute is correct 
+			};
+
+			// TODO (2021-05-17) validate node instead of casting
+			return [listNode as Md.List];
+		}
+	}}
 }
 
 /* -- List Item ----------------------------------------- */
@@ -411,7 +526,7 @@ export class ListItemExtension extends NodeExtension<Md.ListItem> {
 
 	get name() { return "list_item" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			content: "paragraph block*",
 			attrs: { class: { default: undefined }, bullet: { default: undefined } },
@@ -438,8 +553,31 @@ export class ListItemExtension extends NodeExtension<Md.ListItem> {
 		"Tab"       : sinkListItem(this.nodeType)
 	}}
 
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
 	get mdastNodeType() { return "listItem" as const };
 	createMdastMap() { return MdastNodeMapType.NODE_DEFAULT }
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return {
+		create: (node: ProseNode, children: Uni.Node[]): [Md.ListItem] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let itemAttrs = node.attrs as ExtensionNodeAttrs<ListItemExtension>;
+
+			// create mdast node, without validating children
+			let itemNode: AnyChildren<Md.ListItem> = {
+				type: this.mdastNodeType,
+				children: children,
+				...(itemAttrs?.bullet ? { bullet: itemAttrs.bullet } : {}),  // TODO (2021-05-10) properly handle listItem bullet type
+				//checked: false,  // TODO (2021-05-18) handle listItem.spread
+				//spread: false;   // TODO (2021-05-18) handle listItem.spread
+			};
+
+			// TODO (2021-05-17) validate node instead of casting
+			return [itemNode as Md.ListItem];
+		}
+	}}
 }
 
 /* -- Unordered List ------------------------------------ */
@@ -448,7 +586,7 @@ export class ImageExtension extends NodeExtension<Md.Image> {
 
 	get name() { return "image" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			inline: true,
 			attrs: {
@@ -489,6 +627,23 @@ export class ImageExtension extends NodeExtension<Md.Image> {
 			}
 		}
 	}
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return {
+		create: (node: ProseNode): [Md.Image] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let imageAttrs = node.attrs as { src: string, alt:string|null, title:string|null };
+
+			// create mdast node
+			return [{
+				type: this.mdastNodeType,
+				url: imageAttrs.src as string,
+				...(imageAttrs.alt   ? { alt   : imageAttrs.alt   } : {}),
+				...(imageAttrs.title ? { title : imageAttrs.title } : {}),
+			}];
+		}
+	}}
 }
 
 /* -- Hard Break ---------------------------------------- */
@@ -497,7 +652,7 @@ export class HardBreakExtension extends NodeExtension<Md.Break> {
 
 	get name() { return "hard_break" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			inline: true,
 			group: "inline",
@@ -526,7 +681,10 @@ export class HardBreakExtension extends NodeExtension<Md.Break> {
 
 	get mdastNodeType() { return "break" as const };
 	createMdastMap() { return MdastNodeMapType.NODE_EMPTY }
-	
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return Prose2Mdast_NodeMap_Presets.NODE_EMPTY };
 }
 
 /* -- Inline Math --------------------------------------- */
@@ -545,7 +703,7 @@ export class InlineMathExtension extends NodeExtension<MdInlineMath> {
 
 	get name() { return "math_inline" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			group: "inline math",
 			content: "text*",
@@ -564,6 +722,10 @@ export class InlineMathExtension extends NodeExtension<MdInlineMath> {
 
 	get mdastNodeType() { return "inlineMath" as const };
 	createMdastMap() { return MdastNodeMapType.NODE_LITERAL }
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return Prose2Mdast_NodeMap_Presets.NODE_LIFT_LITERAL; }
 }
 
 /* -- Block Math --------------------------------------- */
@@ -591,6 +753,10 @@ export class BlockMathExtension extends NodeExtension<MdBlockMath> {
 
 	get mdastNodeType() { return "math" as const };
 	createMdastMap() { return MdastNodeMapType.NODE_LITERAL }
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return Prose2Mdast_NodeMap_Presets.NODE_LIFT_LITERAL; }
 }
 
 /* -- Region -------------------------------------------- */
@@ -733,12 +899,12 @@ export function inlineInputRule<S extends ProseSchema>(pattern: RegExp, nodeType
 
 /* -- Citation ----------------------------------------------- */
 
+import { InlineCiteNode as MdCite } from "@benrbray/mdast-util-cite";
+import { MdFrontmatterYAML, MdParseState, AnyChildren } from "@common/markdown/mdast2prose";
+
 export function citationRule<S extends ProseSchema>(nodeType: ProseNodeType<S>): InputRule {
 	return inlineInputRule(/@\[([^\s](?:[^\]]*[^\s])?)\](.)$/, nodeType);
 }
-
-import { InlineCiteNode as MdCite } from "@benrbray/mdast-util-cite";
-import { MdFrontmatterYAML, MdParseState } from "@common/markdown/mdast2prose";
 
 export class CitationExtension extends NodeExtension<MdCite> {
 	
@@ -776,5 +942,23 @@ export class CitationExtension extends NodeExtension<MdCite> {
 			}
 		}
 	}
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return {
+		create: (node: ProseNode): [MdCite] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let imageAttrs = node.attrs as { src: string, alt:string|null, title:string|null };
+
+			// create mdast node
+			return [{
+				type: "cite",
+				value: "FIXME",
+				data: {
+					citeItems: []
+				}
+			}];
+		}
+	}}
 
 }

@@ -1,5 +1,5 @@
 // prosemirror imports
-import { Schema, Node as ProseNode, NodeSpec, MarkSpec, DOMOutputSpec } from "prosemirror-model";
+import { Schema, Node as ProseNode, Mark as ProseMark, NodeSpec, MarkSpec, DOMOutputSpec } from "prosemirror-model";
 import {
 	InputRule, inputRules as makeInputRules,
 } from "prosemirror-inputrules"
@@ -11,16 +11,19 @@ import { Plugin as ProsePlugin } from "prosemirror-state";
 // project imports
 import { keymap as makeKeymap } from "prosemirror-keymap";
 import { DefaultMap } from "@common/util/DefaultMap";
-import { MarkdownParser, makeMarkdownParser } from "@common/markdown";
-import { NwtExtension, NodeExtension, MarkExtension, MdastNodeMapType, MdastMarkMapType } from "./extension";
+import { NwtExtension, NodeExtension, MarkExtension, MdastNodeMapType, MdastMarkMapType, Prose2Mdast_NodeMap_Presets, Prose2Mdast_MarkMap_Presets } from "./extension";
+import * as prose2mdast from "@common/markdown/prose2mdast";
 
 // patched prosemirror types 
 import { ProseSchema } from "@common/types";
-import { makeParser, markMapBasic, markMapStringLiteral, MdMapper, MdParser, nodeMapBasic, nodeMapLeaf, nodeMapStringLiteral } from "@common/markdown/mdast2prose";
+import { makeParser, markMapBasic, markMapStringLiteral, MdParser, nodeMapBasic, nodeMapLeaf, nodeMapStringLiteral } from "@common/markdown/mdast2prose";
 
 // unist
 import * as Uni from "unist";
 import * as Md from "mdast";
+import { MdSerializer } from "@common/markdown/prose2mdast";
+import { MdError } from "@common/markdown/remark-plugins/error/remark-error";
+import { unistIsStringLiteral } from "@common/markdown/unist-utils";
 
 //// EDITOR CONFIG /////////////////////////////////////////
 
@@ -36,6 +39,8 @@ export type Indices<T> = Exclude<keyof T, ArrayKeys>;
 type AstNode<BaseT extends Uni.Node> = BaseT | AstParent<BaseT>
 type AstParent<BaseT extends Uni.Node> = Uni.Parent & BaseT & { children: AstNode<BaseT> };
 
+// -- Mdast2Prose --------------------------------------------------------------
+
 export type UnistNodeTest<S extends ProseSchema = ProseSchema, T extends Uni.Node = Uni.Node> = {
 	test?: (x: T) => boolean;
 	map:  (x: T, children: ProseNode<S>[], ctx: unknown, state: unknown) => ProseNode<S>[];
@@ -44,47 +49,97 @@ export type UnistNodeTest<S extends ProseSchema = ProseSchema, T extends Uni.Nod
 export type UnistMapper<K extends string = string, S extends ProseSchema = ProseSchema>
 	= DefaultMap<K, UnistNodeTest<S>[]>;
 
+// -- Prose2Mdast --------------------------------------------------------------
+
+/**
+ * Create a ProseMirror node from a Unist node and its list of 
+ * children, which have already been converted to ProseMirror nodes.
+
+ * TODO (2021-05-17) should the node map return new context/state,
+ *   instead of context/state being specified by separate maps?
+ */
+export type ProseNodeMap<Ctx=unknown, St=unknown>
+	= (node: ProseNode, children:Uni.Node[], ctx: Ctx, state: St) => Uni.Node[];
+
+/**
+ * The given `node` should have `mark` as one of its marks.  Return an appropriate
+ * node to represent their combination.  (usually a simple wrapper node)   
+ */
+export type ProseMarkMap
+	= (mark: ProseMark, node:Uni.Node) => Uni.Node;
+
+export type ProseNodeTest<S extends ProseSchema = ProseSchema, N extends ProseNode<S> = ProseNode<S>> = {
+	test?: (x: N) => boolean;
+	map: ProseNodeMap<unknown, unknown>
+}
+
+export type ProseMarkTest<M extends ProseMark = ProseMark> = {
+	/** Predicate to decide whether this mapper can be used for the specified mark. */
+	test?: (mark: M) => boolean;
+	map: ProseMarkMap
+}
+
+export type ProseMapper<
+	N extends string = string,
+	M extends string = string,
+	S extends ProseSchema<N,M> = ProseSchema<N,M>
+> = {
+	/** A map from ProseMirror Nodes -> Unist Nodes */
+	nodes: DefaultMap<N, ProseNodeTest<S>[]>;
+	/** A map from ProseMirror Marks -> Unist Nodes */
+	marks: DefaultMap<M, ProseMarkTest[]>;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 export class EditorConfig<S extends ProseSchema = ProseSchema> {
 	schema: S & ProseSchema<"error_block","error_inline">;
 	plugins:ProsePlugin[];
 
 	private _mdast2prose: UnistMapper;
+	private _prose2mdast: ProseMapper;
 	private _parser: MdParser<S>;
+	private _serializer: MdSerializer;
 
 	constructor(extensions:NwtExtension<S>[], plugins:ProsePlugin[], keymap:Keymap){
 		/** Step 1: Build Schema
 		 * @effect Populates the `.type` field of each extension with a
 		 *    ProseMirror NodeType, which can be referenced during plugin creation.
+		 * @note it is important that schema creation happens FIRST, so that
+		 *    the necessary NodeType / MarkType objects are initialized.
 		 */
 		this.schema = this._buildSchema(extensions);
 
-		/** Step 2: Build Plugins
-		 * @note it is important that this happens AFTER schema creation, so that
-		 *    the necessary NodeType / MarkType objects have been initialized.
-		 */
+		/** Step 2: Build Plugins */
 		this.plugins = this._buildPlugins(extensions, plugins.concat(makeKeymap(keymap)));
 
-		/** Step 3: Build Mapping from Unist AST -> ProseMirror Document
-		 * @note it is important that this happens AFTER schema creation, so that
-		 *    the necessary NodeType / MarkType objects have been initialized.
-		 */
-		this._mdast2prose = this._buildMdastMap(extensions);
+		/** Step 3a: Build Mapping from Unist AST -> ProseMirror Document */
+		this._mdast2prose = this._buildMdast2Prose(extensions);
 
-		/** Step 4: Build Parser
-		 * Create a document parser for this configuration.
-		 */
-		
+		/** Step 3b: Build Document Parser for this Configuration */
+
 		// TODO: (2021-05-09) revisit type inference timeout caused by
 		// attempt to thread the ProseSchema type through `makeParser`
 		// @ts-ignore (ts2589) Type instantiation is excessively deep and possibly infinite.
 		let parser = makeParser(this.schema, this._mdast2prose);
 		this._parser = parser as MdParser<S>;
+
+		/** Step 4a: Build Mapping from ProseMirror Document -> Unist AST */
+		this._prose2mdast = this._buildProse2Mdast(extensions);
+
+		/** Step 4b: Build Markdown Serializer for this Configuration */
+		this._serializer = prose2mdast.makeSerializer(this._prose2mdast);
 	}
 
 	parse(markdown: string): ProseNode | null {
 		return this._parser(markdown);
-		//return this._parser.parse(text);
 	}
+
+	serialize(doc: ProseNode): string | null {
+		return this._serializer(doc);
+	}
+
+	// -- Build Schema ------------------------------------------------------ //
 
 	private _buildSchema(extensions:NwtExtension<S>[]): S & ProseSchema<"error_block","error_inline"> {
 		// default mark specs
@@ -99,9 +154,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 
 		// default node specs
 		let nodeSpecs: { [x:string] : NodeSpec } = { 
-			text: {
-				group: "inline"
-			}
+			text: { group: "inline" }
 		};
 
 		// create node and mark specs
@@ -163,6 +216,8 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 		return schema;
 	}
 
+	// -- Build Plugins ----------------------------------------------------- //
+
 	private _buildPlugins(extensions:NwtExtension<S>[], plugins:ProsePlugin[] = []): ProsePlugin[] {
 		let inputRules: InputRule[] = [];
 
@@ -202,13 +257,16 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 		return resultPlugins.concat(plugins);
 	}
 
-	private _buildMdastMap(extensions: NwtExtension<S>[]): UnistMapper {
+	// -- Build Mdast2Prose ------------------------------------------------- //
+
+	private _buildMdast2Prose(extensions: NwtExtension<S>[]): UnistMapper {
 		// maintain a map from AST nodes -> ProseMirror nodes
 		// each value in the map is an array of mappers, which
 		// are tested in order until one returns `true`
 		let result: UnistMapper
 			= new DefaultMap<string, UnistNodeTest[]>(_ => []);
 
+		// provide default handler for text nodes
 		result.get("text").push({
 			map: (node, _) => {
 				return [this.schema.text( (node as Md.Text).value )];
@@ -218,6 +276,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 		// TODO (2021-05-17) we should be able to ignore YAML nodes with an extension,
 		// rather than defining this special handler here
 		result.get("yaml").push({
+			// ignore yaml nodes, as they are handled differently
 			map: (node, _) => []
 		});
 		
@@ -268,9 +327,104 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 				});
 			}
 		}
+		
+		return result;
+	}
 
-		console.log("_buildMdastMap")
-		console.log(Object.keys(result))
+	// -- Build Prose2Mdast ------------------------------------------------- //
+
+	private _buildProse2Mdast(extensions: NwtExtension<S>[]): ProseMapper {
+		// maintain a map from ProseMirror nodes -> AST nodes
+		// each value in the map is an array of mappers, which
+		// are tested in order until one returns `true`
+		let result: ProseMapper = {
+			nodes: new DefaultMap<string, ProseNodeTest[]>(_ => []),
+			marks: new DefaultMap<string, ProseMarkTest[]>(_ => [])
+		}
+
+		// special handler for block errors
+		result.nodes.get("error_block").push({
+			map: (node: ProseNode, children: Uni.Node[]): [MdError] => {
+				// expect children to contain only text nodes
+				if(children.find(n => (n.type !== "text")) !== undefined) {
+					throw new Error("expected error_block to contain only text nodes!");
+				}
+
+				// serialize contents
+				return [{
+					type: "error",
+					value: node.textContent
+				}];
+			}
+		});
+
+		// special handlers for inline errors
+		result.marks.get("error_inline").push({
+			map: (mark: ProseMark, node: Uni.Node): MdError => {
+				// expect literal node
+				if(!unistIsStringLiteral(node)) { throw new Error("expected error_inline to be a text node"); }
+
+				return {
+					type: "error",
+					value: node.value
+				};
+			}
+		});
+		
+		// accumulate node / mark handlers for each extension
+		for(let ext of extensions) {
+
+			// accumulate node handlers
+			if(ext instanceof NodeExtension) {
+				let mapper: ProseNodeMap<unknown, unknown>;
+				let p2m = ext.prose2mdast();
+				let proseNodeType: string = ext.nodeType.name;
+
+				// do not allow plugins to override handling of text nodes
+				if(proseNodeType === "text") {
+					// TODO (2021-05-19) error handling
+					console.error("[prose2mdast] cannot override default handling of text nodes ; ignoring plugin-specified handler!");
+					continue;
+				}
+
+				// TODO: (2021-05-18) clean this up
+				if(p2m === Prose2Mdast_NodeMap_Presets.NODE_DEFAULT) {
+					mapper = prose2mdast.nodeMapDefault(ext.mdastNodeType);
+				} else if(p2m === Prose2Mdast_NodeMap_Presets.NODE_EMPTY) {
+					mapper = prose2mdast.nodeMapEmpty(ext.mdastNodeType);
+				} else if(p2m === Prose2Mdast_NodeMap_Presets.NODE_LIFT_LITERAL) {
+					mapper = prose2mdast.nodeMapLiftLiteral(ext.mdastNodeType);
+				} else {
+					mapper = p2m.create;
+				}
+
+				// add this mapper to the list of mappers for nodeType
+				result.nodes.get(proseNodeType).push({
+					map: mapper,
+				});
+			}
+			// accumulate mark handlers
+			else if(ext instanceof MarkExtension) {
+				let mapper: ProseMarkMap;
+				let p2m = ext.prose2mdast();
+
+				// TODO: (2021-05-18) clean this up
+				if(p2m === Prose2Mdast_MarkMap_Presets.MARK_DEFAULT) {
+					mapper = prose2mdast.markMapDefault(ext.mdastNodeType);
+				} else if(p2m === Prose2Mdast_MarkMap_Presets.MARK_LITERAL) {
+					mapper = prose2mdast.markMapLiteral(ext.mdastNodeType);
+				} else {
+					mapper = p2m.create;
+				}
+
+				// add this mapper to the list of mappers for nodeType
+				let proseMarkType: string = ext.markType.name;
+				result.marks.get(proseMarkType).push({
+					map: mapper,
+				});
+			}
+
+		}
 		
 		return result;
 	}
