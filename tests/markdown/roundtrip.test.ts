@@ -1,14 +1,10 @@
-// // testing
+// testing
 import * as assert from 'assert';
 
-// mdast / unist
-import * as Uni from "unist";
-import fromMarkdown from 'mdast-util-from-markdown';
-import toMarkdown from 'mdast-util-to-markdown';
+// misc
+import dedent from "dedent-js";
 
 // noteworthy
-import { makeParser } from "../../src/common/markdown/mdast2prose";
-import { makeSerializer } from "../../src/common/markdown/prose2mdast";
 import { defaultMarkdownConfig } from "../../src/common/extensions/default-config"
 
 ////////////////////////////////////////////////////////////
@@ -32,6 +28,9 @@ export interface TestSuite<T extends TestCase<any>> {
 ////////////////////////////////////////////////////////////
 
 export const roundtripCases:TestRoundtrip[] = [
+	// blockquote
+	{ markdown: '> this is a blockquote\n> and a second line' },
+	{ markdown: '> this is a blockquote\n\n> and a separate one' },
 	// heading
 	{ markdown: '# heading' },
 	{ markdown: '## heading' },
@@ -39,6 +38,30 @@ export const roundtripCases:TestRoundtrip[] = [
 	{ markdown: '#### heading' },
 	{ markdown: '##### heading' },
 	{ markdown: '###### heading' },
+	// hrule
+	{ markdown: '***' },
+	{ markdown: '---' },
+	{ markdown: '___' },
+	{ markdown: '******' },
+	{ markdown: '- -- - -- - -- - -- - --' },
+	{ markdown: '_	_	     _ _ _ _' },
+	// code block
+	{ markdown: dedent`
+		\`\`\`
+		this is
+		a code block
+		\`\`\`
+		`
+	},{
+		markdown: '    this is\n    a code block\n',
+		expected: '```\nthis is\na code block\n```'
+	},
+	// code inline
+	{ markdown: 'begin `inline code` end' },
+	{ markdown: 'begin `inl*ine* code` end' },
+	{ markdown: 'begin `inl**ine** code` end' },
+	// ordered list
+	// unordered list
 	// link
 	{ markdown: 'begin [Hacker News](https://news.ycombinator.com/) end' },
 	// wikilink
@@ -47,6 +70,20 @@ export const roundtripCases:TestRoundtrip[] = [
 	{ markdown: 'begin [[wad**ler19**89]] end', expected: "begin [[wad\\*\\*ler19\\*\\*89]] end" },
 	// citation
 	{ markdown: 'begin @[wadler1989] end' },
+	// image
+	{ markdown: '![alt image text](https://news.ycombinator.com/)' },
+	// math block
+	{ markdown: 'consider the equation\n\n$$\n\\int_a^b f(x) dx\n$$\n\nwhich follows from' },
+	// math inline
+	{ markdown: 'consider a function $f : \\mathbb{R^*} \\rightarrow \\mathbb{R}$ given by $x \\mapsto 2*x$' },
+	// table (currently unsupported, but should be preserved with an error block)
+	{ markdown: dedent`
+		| Syntax      | Description |
+		| ----------- | ----------- |
+		| Header      | Title       |
+		| Paragraph   | Text        |
+		`
+	}
 ]
 
 export const roundtripSuite: TestSuite<TestRoundtrip> = {
@@ -76,10 +113,6 @@ function runTestSuite<T extends TestCase<O>, O = unknown>(
 }
 
 function runTestSuite_roundtrip(contextMsg: string, descPrefix:string, testSuite: TestSuite<TestRoundtrip>): void {
-	// create parser
-
-	// create serializer
-	
 	return runTestSuite(contextMsg, descPrefix, testSuite, (testCase, options) => {
 		// parse (markdown -> prosemirror)
 		let doc = defaultMarkdownConfig.parse(testCase.markdown);

@@ -3,7 +3,7 @@ import unified from "unified";
 import * as Uni from "unist";
 
 // mdast
-import * as Md from "mdast";
+import * as Md from "@common/markdown/markdown-ast";
 
 // remark and remark plugins
 import remark from "remark-parse";
@@ -28,6 +28,7 @@ import { UnistMapper } from "@common/extensions/editor-config";
 // yaml / toml 
 import YAML from "yaml";
 import { remarkErrorPlugin } from "./remark-plugins/error/remark-error";
+import { remarkConcretePlugin } from "./remark-plugins/concrete/remark-concrete";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -62,39 +63,6 @@ export type MapDiscriminatedUnion<T extends Record<K, string>, K extends keyof T
 
 ////////////////////////////////////////////////////////////
 
-// -- Mdast Math -------------------------------------------
-
-/** Inline math node from [`mdast-util-math`](https://github.com/syntax-tree/mdast-util-math/blob/main/from-markdown.js#L60). */
-interface MdBlockMath extends Md.Literal {
-	type: "math"
-}
-
-/** Block math node from [`mdast-util-math`](https://github.com/syntax-tree/mdast-util-math/blob/main/from-markdown.js#L20). */
-interface MdInlineMath extends Md.Literal {
-	type: "inlineMath"
-}
-
-type MdMath = MdBlockMath | MdInlineMath;
-
-// -- Mdast Wikilinks --------------------------------------
-
-interface MdWikilink extends Md.Literal {
-	type: "wikiLink",
-	data: Uni.Data & {
-		"alias"     : string,
-        "permalink" : string,
-        "exists"    : boolean,
-	}
-}
-
-// -- remark-frontmatter -----------------------------------
-
-export interface MdFrontmatterYAML extends Md.Literal { type: "yaml" }
-export interface MdFrontmatterTOML extends Md.Literal { type: "toml" }
-export interface MdFrontmatterJSON extends Md.Literal { type: "json" }
-
-export type MdFrontmatter = MdFrontmatterYAML | MdFrontmatterTOML | MdFrontmatterJSON;
-
 // ---------------------------------------------------------
 
 export type AnyChildren<T extends Uni.Parent, ChildT=Uni.Node>
@@ -102,9 +70,7 @@ export type AnyChildren<T extends Uni.Parent, ChildT=Uni.Node>
 
 // ---------------------------------------------------------
 
-export type MdNode = Md.Root | Md.Content | MdMath | MdWikilink | MdFrontmatter;
-
-export type MdTypeMap = MapDiscriminatedUnion<MdNode, "type"> //UnionTypeMap<"type", MdNodes>
+export type MdTypeMap = MapDiscriminatedUnion<Md.Node, "type"> //UnionTypeMap<"type", MdNodes>
 
 export type MdMapper<S extends ProseSchema> = {
 	[key in keyof MdTypeMap]? : (x: MdTypeMap[key], children: ProseNode<S>[]) => ProseNode<S>[];
@@ -213,7 +179,7 @@ type StateMap<St=unknown, N extends Uni.Node = Uni.Node>
 
 // ---------------------------------------------------------
 
-function getContextMapper<N extends MdNode, Ctx>(node: N, mappers: MdContextMapper<Ctx>): ContextMap<Ctx, N>|undefined {
+function getContextMapper<N extends Md.Node, Ctx>(node: N, mappers: MdContextMapper<Ctx>): ContextMap<Ctx, N>|undefined {
 	// without correlated record types, we must use a cast to
 	// explicitly guarantee that the returned mapper can accept
 	// the same node type as input that was passed to this function
@@ -225,7 +191,7 @@ function getContextMapper<N extends MdNode, Ctx>(node: N, mappers: MdContextMapp
 	// co-dependently typed arguments: https://github.com/microsoft/TypeScript/issues/35873
 }
 
-function getStateMapper<N extends MdNode, St>(node: N, mappers: MdStateMapper<St>): StateMap<St, N>|undefined {
+function getStateMapper<N extends Md.Node, St>(node: N, mappers: MdStateMapper<St>): StateMap<St, N>|undefined {
 	// without correlated record types, we must use a cast to
 	// explicitly guarantee that the returned mapper can accept
 	// the same node type as input that was passed to this function
@@ -240,7 +206,7 @@ function getStateMapper<N extends MdNode, St>(node: N, mappers: MdStateMapper<St
 ////////////////////////////////////////////////////////////
 
 export function treeMap<S extends ProseSchema, Ctx, St>(
-	node: MdNode,
+	node: Md.Node,
 	parseContext: Ctx, 
 	parseState: St,
 	nodeMap: UnistMapper<string, S>, 
@@ -381,6 +347,7 @@ export const makeParser = <S extends ProseSchema<"error_block","error_inline">>(
 		.use(remarkMathPlugin)
 		.use(citePlugin, { syntax: { enableAltSyntax: true } })
 		.use(remarkErrorPlugin)
+		.use(remarkConcretePlugin)
 		.use(remarkFootnotes, { inlineNotes: true })
 		.use(remarkWikilinkPlugin)
 		.use(remarkFrontMatter, ['yaml', 'toml']);

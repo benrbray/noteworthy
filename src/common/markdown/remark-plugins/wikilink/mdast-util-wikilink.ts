@@ -1,7 +1,7 @@
 // https://github.com/landakram/mdast-util-wiki-link
 
 import * as Uni from "unist";
-import * as Md from "mdast";
+import * as Mdast from "mdast";
 import { Token } from "micromark/dist/shared-types";
 import { MdastExtension } from "mdast-util-from-markdown/types";
 import { Context } from "mdast-util-to-markdown";
@@ -57,7 +57,7 @@ export type MdastWikilinkOptions
 
 ////////////////////////////////////////////////////////////
 
-export interface MdWikilink extends Md.Literal {
+export interface MdWikilink extends Mdast.Literal {
 	value: string,
 	data: {
 		alias: string,

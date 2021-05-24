@@ -23,6 +23,15 @@ export interface IDisposable {
 	dispose():void;
 }
 
+////////////////////////////////////////////////////////////
+
+// ---------------------------------------------------------
+// TODO (2021-05-17) these are unused, remove them?
+// https://github.com/microsoft/TypeScript/issues/27995#issuecomment-441157546
+
+export type ArrayKeys = keyof any[];
+export type Indices<T> = Exclude<keyof T, ArrayKeys>;
+
 //// PROSEMIRROR ///////////////////////////////////////////
 
 // ---- prosemirror-model ----------------------------------
@@ -67,14 +76,3 @@ export interface ProseMarkType<
 }
 
 type SchemaT = ProseSchema<"paragraph" | "heading", "emphasis" | "strong">;
-
-type W = ProseNodeType<SchemaT>
-let node: ProseNodeType<SchemaT> = null as any;
-let mark: ProseMarkType<SchemaT> = null as any;
-
-let schema: SchemaT = null as any;
-let x = schema.nodes.heading;
-let y = x.name;
-
-let name = node.name;
-let name2 = mark.name;

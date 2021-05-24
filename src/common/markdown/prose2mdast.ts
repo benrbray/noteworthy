@@ -3,7 +3,7 @@ import { Node as ProseNode, Mark as ProseMark } from "prosemirror-model";
 
 // unist
 import * as Uni from "unist";
-import * as Md from "mdast";
+import * as Md from "@common/markdown/markdown-ast";
 import unified from "unified";
 
 // remark and remark plugins
@@ -21,6 +21,7 @@ import { citePlugin } from "@benrbray/remark-cite";
 // project imports
 import { ProseMapper, ProseMarkMap, ProseMarkTest, ProseNodeMap } from "@common/extensions/editor-config";
 import { remarkErrorPlugin } from "./remark-plugins/error/remark-error";
+import { remarkConcretePlugin } from "./remark-plugins/concrete/remark-concrete";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -134,6 +135,7 @@ export const makeSerializer = (
 		.use(remarkMathPlugin)
 		.use(citePlugin, { syntax: { enableAltSyntax: true } })
 		.use(remarkErrorPlugin)
+		.use(remarkConcretePlugin)
 		.use(remarkFootnotes, { inlineNotes: true })
 		.use(remarkWikilinkPlugin)
 		.use(remarkFrontMatter, ['yaml', 'toml'])

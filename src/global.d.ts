@@ -45,3 +45,35 @@ declare module "mdast-util-to-markdown/lib/util/safe.js" {
 declare module "micromark-extension-wiki-link" {
 	function syntax(opts?: { aliasDivider?: string }): any;
 }
+
+// -- Required by @common/remark-plugins/concrete/remark-concrete --------------
+
+declare module "mdast-util-to-markdown/lib/util/check-rule-repeat" {
+	import { Context } from "mdast-util-to-markdown";
+
+	/**
+	 * Returns the number of repetitions to use when serializing thematic breaks.
+	 * https://github.com/syntax-tree/mdast-util-to-markdown/blob/f3df7410049ed426ef8734ec762a38aa2feee73f/lib/util/check-rule-repeat.js#L3
+	 */
+	function checkRepeat(context: Context): number;
+	export = checkRepeat;
+}
+
+declare module "mdast-util-to-markdown/lib/util/check-rule" {
+	import { Context } from "mdast-util-to-markdown";
+
+	/**
+	 * Returns the marker that should be used to serialize thematic breaks.
+	 * https://github.com/syntax-tree/mdast-util-to-markdown/blob/f3df7410049ed426ef8734ec762a38aa2feee73f/lib/util/check-rule.js#L3
+	 */
+	function checkRepeat(context: Context): string;
+	export = checkRepeat;
+}
+
+declare module "repeat-string" {
+	/**
+	 * Repeat the given string the specified number of times.
+	 */
+	function repeat(str: string, count: number): string;
+	export = repeat;
+}

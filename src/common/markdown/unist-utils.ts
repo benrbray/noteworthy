@@ -213,3 +213,51 @@ export function unistSource(value: Uni.Node | Uni.Position, file: string): strin
 
   return results.join('')
 }
+
+// -- unist-util-stringify-position --------------------------------------------
+
+var own = {}.hasOwnProperty
+
+/**
+ * Stringify one point, a position (start and end points), or a node’s
+ * positional information.
+ */
+export function stringifyPosition(value: Node | Uni.Position | Uni.Point): string {
+  // Nothing.
+  if (!value || typeof value !== 'object') {
+    return ''
+  }
+
+  // Node.
+  if (own.call(value, 'position') || own.call(value, 'type')) {
+    // @ts-ignore looks like a node.
+    return position(value.position)
+  }
+
+  // Position.
+  if (own.call(value, 'start') || own.call(value, 'end')) {
+    // @ts-ignore looks like a position.
+    return position(value)
+  }
+
+  // Point.
+  if (own.call(value, 'line') || own.call(value, 'column')) {
+    // @ts-ignore looks like a point.
+    return point(value)
+  }
+
+  // ?
+  return ''
+}
+
+function point(point: Uni.Point): string {
+  return index(point && point.line) + ':' + index(point && point.column)
+}
+
+function position(pos: Uni.Position): string {
+  return point(pos && pos.start) + '-' + point(pos && pos.end)
+}
+
+function index(value: number): number {
+  return value && typeof value === 'number' ? value : 1
+}

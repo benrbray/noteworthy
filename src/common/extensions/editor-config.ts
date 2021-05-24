@@ -20,19 +20,12 @@ import { makeParser, markMapBasic, markMapStringLiteral, MdParser, nodeMapBasic,
 
 // unist
 import * as Uni from "unist";
-import * as Md from "mdast";
+import * as Md from "@common/markdown/markdown-ast";
 import { MdSerializer } from "@common/markdown/prose2mdast";
 import { MdError } from "@common/markdown/remark-plugins/error/remark-error";
 import { unistIsStringLiteral } from "@common/markdown/unist-utils";
 
 //// EDITOR CONFIG /////////////////////////////////////////
-
-// ---------------------------------------------------------
-// TODO (2021-05-17) these are unused, remove them?
-// https://github.com/microsoft/TypeScript/issues/27995#issuecomment-441157546
-
-export type ArrayKeys = keyof any[];
-export type Indices<T> = Exclude<keyof T, ArrayKeys>;
 
 ////////////////////////////////////////////////////////////////////////////////
 

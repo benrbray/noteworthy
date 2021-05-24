@@ -11,9 +11,9 @@ import {
 
 // unist imports
 import * as Uni from "unist";
-import * as Md from "mdast";
 
 // project imports
+import * as Md from "@common/markdown/markdown-ast";
 import { incrHeadingLevelCmd } from "@common/prosemirror/commands/demoteHeadingCmd";
 import { ExtensionNodeAttrs, MdastNodeMap, MdastNodeMapType, NodeExtension, Prose2Mdast_NodeMap, Prose2Mdast_NodeMap_Presets } from "@common/extensions/extension";
 import {
@@ -273,9 +273,13 @@ export class HorizontalRuleExtension extends NodeExtension<Md.ThematicBreak> {
 
 	get name() { return "horizontal_rule" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			group: "block",
+			attrs: {
+				/** Stores the user's original hrule syntax. */
+				ruleContent: { default: undefined as string|undefined }
+			},
 			parseDOM: [{ tag: "hr" }],
 			toDOM(): DOMOutputSpec { return ["div", ["hr"]] }
 		};
@@ -295,11 +299,35 @@ export class HorizontalRuleExtension extends NodeExtension<Md.ThematicBreak> {
 	// -- Conversion from Mdast -> ProseMirror ---------- //
 
 	get mdastNodeType() { return "thematicBreak" as const };
-	createMdastMap() { return MdastNodeMapType.NODE_EMPTY }
+	createMdastMap(): MdastNodeMap<Md.ThematicBreak> {
+		// define map from Mdast Node -> ProseMirror Node
+		return {
+			mapType: "node_custom",
+			mapNode: (node: Md.ThematicBreak, children: ProseNode[]): ProseNode[] => {
+				let result = this.nodeType.createAndFill({
+					ruleContent: node.ruleContent
+				});
+				return result ? [result] : [];
+			}
+		}
+	}
 
 	// -- Conversion from ProseMirror -> Mdast ---------- //
 
-	prose2mdast() { return Prose2Mdast_NodeMap_Presets.NODE_EMPTY; }
+	prose2mdast() { return {
+		// TODO (2021-05-24) we only need a custom handler here instead of nodeMapLeaf because
+		// the node has attrs -- create a new handler that takes a getAttrs param
+		create: (node: ProseNode): [Md.ThematicBreak] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let ruleAttrs = node.attrs as ExtensionNodeAttrs<HorizontalRuleExtension>;
+
+			// create mdast node
+			return [{
+				type: this.mdastNodeType,
+				...(ruleAttrs.ruleContent ? { ruleContent : ruleAttrs.ruleContent } : {}),
+			}];
+		}
+	}}
 }
 
 /* -- Code Block ---------------------------------------- */
@@ -689,17 +717,7 @@ export class HardBreakExtension extends NodeExtension<Md.Break> {
 
 /* -- Inline Math --------------------------------------- */
 
-/** Inline math node from [`mdast-util-math`](https://github.com/syntax-tree/mdast-util-math/blob/main/from-markdown.js#L60). */
-interface MdBlockMath extends Md.Literal {
-	type: "math"
-}
-
-/** Block math node from [`mdast-util-math`](https://github.com/syntax-tree/mdast-util-math/blob/main/from-markdown.js#L20). */
-interface MdInlineMath extends Md.Literal {
-	type: "inlineMath"
-}
-
-export class InlineMathExtension extends NodeExtension<MdInlineMath> {
+export class InlineMathExtension extends NodeExtension<Md.InlineMath> {
 
 	get name() { return "math_inline" as const; }
 
@@ -730,7 +748,7 @@ export class InlineMathExtension extends NodeExtension<MdInlineMath> {
 
 /* -- Block Math --------------------------------------- */
 
-export class BlockMathExtension extends NodeExtension<MdBlockMath> {
+export class BlockMathExtension extends NodeExtension<Md.BlockMath> {
 
 	get name() { return "math_display" as const; }
 
@@ -899,14 +917,13 @@ export function inlineInputRule<S extends ProseSchema>(pattern: RegExp, nodeType
 
 /* -- Citation ----------------------------------------------- */
 
-import { InlineCiteNode as MdCite } from "@benrbray/mdast-util-cite";
-import { MdFrontmatterYAML, MdParseState, AnyChildren } from "@common/markdown/mdast2prose";
+import { MdParseState, AnyChildren } from "@common/markdown/mdast2prose";
 
 export function citationRule<S extends ProseSchema>(nodeType: ProseNodeType<S>): InputRule {
 	return inlineInputRule(/@\[([^\s](?:[^\]]*[^\s])?)\](.)$/, nodeType);
 }
 
-export class CitationExtension extends NodeExtension<MdCite> {
+export class CitationExtension extends NodeExtension<Md.Cite> {
 	
 	get name() { return "citation" as const; }
 	
@@ -931,11 +948,11 @@ export class CitationExtension extends NodeExtension<MdCite> {
 	// -- Conversion from Mdast -> ProseMirror ---------- //
 
 	get mdastNodeType() { return "cite" as const };
-	createMdastMap(): MdastNodeMap<MdCite> {
+	createMdastMap(): MdastNodeMap<Md.Cite> {
 		// define map from Md.Heading -> ProseMirror Node
 		return {
 			mapType: "node_custom",
-			mapNode: (node: MdCite, _): ProseNode[] => {
+			mapNode: (node: Md.Cite, _): ProseNode[] => {
 				let text = this.store.schema.text(node.value);
 				let result = this.nodeType.createAndFill({}, [text]);
 				return result ? [result] : [];
@@ -946,7 +963,7 @@ export class CitationExtension extends NodeExtension<MdCite> {
 	// -- Conversion from ProseMirror -> Mdast ---------- //
 
 	prose2mdast() { return {
-		create: (node: ProseNode): [MdCite] => {
+		create: (node: ProseNode): [Md.Cite] => {
 			// TODO (2021-05-17) better solution for casting attrs?
 			let imageAttrs = node.attrs as { src: string, alt:string|null, title:string|null };
 

@@ -4,13 +4,14 @@ import { InputRule } from "prosemirror-inputrules"
 import { toggleMark, Keymap } from "prosemirror-commands"
 
 // project imports
+import * as Md from "@common/markdown/markdown-ast";
 import { markActive, markInputRule } from "@common/prosemirror/util/mark-utils";
 import { openPrompt, TextField } from "@common/prompt/prompt";
 import { MarkExtension, MdastMarkMap, MdastMarkMapType, Prose2Mdast_MarkMap_Presets } from "@common/extensions/extension";
 
 // mdast
 import * as Uni from "unist";
-import * as Md from "mdast";
+import * as Mdast from "mdast";
 import { AnyChildren, markMapBasic } from "@common/markdown/mdast2prose";
 import { unistIsStringLiteral } from "@common/markdown/unist-utils";
 
@@ -314,22 +315,7 @@ export function wikilinkRule(markType: MarkType): InputRule {
 	return markInputRule(/\[\[([^\s](?:[^\]]*[^\s])?)\]\](.)$/, markType);
 }
 
-/** Wikilink node from [`mdast-util-wikilink`](https://github.com/landakram/mdast-util-wiki-link). */
-interface MdWikilink extends Md.Literal {
-	type: "wikiLink",
-	/** [[Real Page:Page Alias]] -> "Real Page" */
-	value: string,
-	data: {
-		/** [[Real Page:Page Alias]] -> "Page Alias" */
-		alias: string,
-		/** [[Real Page:Page Alias]] -> "real_page" (sluggified) */
-		permalink: string,
-		/** Whether the wikilink exists in the provided wikilink database. */
-		exists: boolean
-	}
-}
-
-export class WikilinkExtension extends MarkExtension<MdWikilink> {
+export class WikilinkExtension extends MarkExtension<Md.Wikilink> {
 	
 	get name() { return "wikilink" as const; }
 	
@@ -354,7 +340,7 @@ export class WikilinkExtension extends MarkExtension<MdWikilink> {
 	// -- Conversion from ProseMirror -> Mdast ---------- //
 
 	prose2mdast() { return {
-		create: <N extends Uni.Node>(mark: ProseMark, node: N): MdWikilink|N => {
+		create: <N extends Uni.Node>(mark: ProseMark, node: N): Md.Wikilink|N => {
 			// expect string literal node
 			if(!unistIsStringLiteral(node)) {
 				console.error(`mark type ${this.name} can only wrap Literal node ; skipping`);
