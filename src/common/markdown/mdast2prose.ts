@@ -1,25 +1,11 @@
-// unist
-import unified from "unified";
+// unist / mdast / remark
+import { Processor } from "unified";
 import * as Uni from "unist";
-
-// mdast
 import * as Md from "@common/markdown/markdown-ast";
-
-// remark and remark plugins
-import remark from "remark-parse";
-import remarkMathPlugin from "remark-math";
-import remarkFrontMatter from "remark-frontmatter";
-import remarkGfm from "remark-gfm";
-import remarkFootnotes from "remark-footnotes";
-import { wikiLinkPlugin as remarkWikilinkPlugin } from './remark-plugins/wikilink/remark-wikilink';
-
-// custom remark plugins
-import { citePlugin } from "@benrbray/remark-cite";
+import { unistIsParent, unistSource } from "./unist-utils";
 
 // prosemirror imports
 import { Node as ProseNode } from "prosemirror-model";
-import { unistIsParent, unistSource } from "./unist-utils";
-//import { editorSchema } from "./schema";
 
 // patched prosemirror types
 import { ProseSchema, ProseMarkType, ProseNodeType } from "@common/types";
@@ -27,8 +13,6 @@ import { UnistMapper } from "@common/extensions/editor-config";
 
 // yaml / toml 
 import YAML from "yaml";
-import { remarkErrorPlugin } from "./remark-plugins/error/remark-error";
-import { remarkConcretePlugin } from "./remark-plugins/concrete/remark-concrete";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -336,21 +320,10 @@ export type MdParser<S extends ProseSchema> = (markdown: string) => ProseNode<S>
  *    (to be exact, they will never be created by ProseMirror in the first place)
  */
 export const makeParser = <S extends ProseSchema<"error_block","error_inline">>(
-	proseSchema: S, nodeMap: UnistMapper<string, S>
+	proseSchema: S,
+	nodeMap: UnistMapper<string, S>,
+	md2ast: Processor
 ): MdParser<S> => {
-
-	// TODO (2021-05-18) how to keep this in sync with prose2mdast.makeSerializer?
-	// markdown parsers
-	var md2ast = unified()
-		.use(remark)
-		.use(remarkGfm)
-		.use(remarkMathPlugin)
-		.use(citePlugin, { syntax: { enableAltSyntax: true } })
-		.use(remarkErrorPlugin)
-		.use(remarkConcretePlugin)
-		.use(remarkFootnotes, { inlineNotes: true })
-		.use(remarkWikilinkPlugin)
-		.use(remarkFrontMatter, ['yaml', 'toml']);
 
 	// context map for managing local state
 	let contextMap: MdContextMapper<MdParseContext> = {

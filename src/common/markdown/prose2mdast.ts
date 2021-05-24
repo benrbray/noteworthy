@@ -4,24 +4,10 @@ import { Node as ProseNode, Mark as ProseMark } from "prosemirror-model";
 // unist
 import * as Uni from "unist";
 import * as Md from "@common/markdown/markdown-ast";
-import unified from "unified";
-
-// remark and remark plugins
-import remark from "remark-parse";
-import remarkMathPlugin from "remark-math";
-import remarkFrontMatter from "remark-frontmatter";
-import remarkGfm from "remark-gfm";
-import remarkFootnotes from "remark-footnotes";
-import { wikiLinkPlugin as remarkWikilinkPlugin } from './remark-plugins/wikilink/remark-wikilink';
-import remarkStringify from "remark-stringify";
-
-// custom remark plugins
-import { citePlugin } from "@benrbray/remark-cite";
+import { Processor } from "unified";
 
 // project imports
 import { ProseMapper, ProseMarkMap, ProseMarkTest, ProseNodeMap } from "@common/extensions/editor-config";
-import { remarkErrorPlugin } from "./remark-plugins/error/remark-error";
-import { remarkConcretePlugin } from "./remark-plugins/concrete/remark-concrete";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -124,30 +110,9 @@ export type MdSerializer = (doc: ProseNode) => string;
  * ProseMirror documents to markdown strings.
  */
 export const makeSerializer = (
-	prose2mdast: ProseMapper<string>
+	prose2mdast: ProseMapper<string>,
+	mdProcessor: Processor
 ): MdSerializer => {	
-
-	// TODO (2021-05-18) how to keep this in sync with mdast2prose.makeParser?
-	// markdown parsers
-	var mdProcessor = unified()
-		.use(remark)
-		.use(remarkGfm)
-		.use(remarkMathPlugin)
-		.use(citePlugin, { syntax: { enableAltSyntax: true } })
-		.use(remarkErrorPlugin)
-		.use(remarkConcretePlugin)
-		.use(remarkFootnotes, { inlineNotes: true })
-		.use(remarkWikilinkPlugin)
-		.use(remarkFrontMatter, ['yaml', 'toml'])
-		.use(remarkStringify, {
-			// TODO: (2021-05-18) remember bullet type
-			bullet: '*',
-			fences: true,
-			incrementListMarker: true,
-			// TODO: (2021-05-18) support autolinks
-			resourceLink: true,
-			listItemIndent: "one",
-		});
 
 	// make parser
 	return (doc: ProseNode): string => {

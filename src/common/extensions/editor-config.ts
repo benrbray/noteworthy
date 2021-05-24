@@ -8,22 +8,38 @@ import {
 } from "prosemirror-commands"
 import { Plugin as ProsePlugin } from "prosemirror-state";
 
+// patched prosemirror types 
+import { ProseSchema } from "@common/types";
+import { markMapBasic, markMapStringLiteral, MdParser, nodeMapBasic, nodeMapLeaf, nodeMapStringLiteral } from "@common/markdown/mdast2prose";
+
+// unist / unified
+import * as Uni from "unist";
+import * as Md from "@common/markdown/markdown-ast";
+import unified, { Processor } from "unified";
+import { MdSerializer } from "@common/markdown/prose2mdast";
+import { MdError } from "@common/markdown/remark-plugins/error/remark-error";
+import { unistIsStringLiteral } from "@common/markdown/unist-utils";
+
+// remark and remark plugins
+import remark from "remark-parse";
+import remarkMathPlugin from "remark-math";
+import remarkFrontMatter from "remark-frontmatter";
+import remarkGfm from "remark-gfm";
+import remarkFootnotes from "remark-footnotes";
+import remarkStringify from "remark-stringify";
+
+// custom remark plugins
+import { citePlugin } from "@benrbray/remark-cite";
+import { wikiLinkPlugin as remarkWikilinkPlugin } from '../markdown/remark-plugins/wikilink/remark-wikilink';
+import { remarkErrorPlugin } from "../markdown/remark-plugins/error/remark-error";
+import { remarkConcretePlugin } from "../markdown/remark-plugins/concrete/remark-concrete";
+
 // project imports
 import { keymap as makeKeymap } from "prosemirror-keymap";
 import { DefaultMap } from "@common/util/DefaultMap";
 import { NwtExtension, NodeExtension, MarkExtension, MdastNodeMapType, MdastMarkMapType, Prose2Mdast_NodeMap_Presets, Prose2Mdast_MarkMap_Presets } from "./extension";
 import * as prose2mdast from "@common/markdown/prose2mdast";
-
-// patched prosemirror types 
-import { ProseSchema } from "@common/types";
-import { makeParser, markMapBasic, markMapStringLiteral, MdParser, nodeMapBasic, nodeMapLeaf, nodeMapStringLiteral } from "@common/markdown/mdast2prose";
-
-// unist
-import * as Uni from "unist";
-import * as Md from "@common/markdown/markdown-ast";
-import { MdSerializer } from "@common/markdown/prose2mdast";
-import { MdError } from "@common/markdown/remark-plugins/error/remark-error";
-import { unistIsStringLiteral } from "@common/markdown/unist-utils";
+import * as mdast2prose from "@common/markdown/mdast2prose";
 
 //// EDITOR CONFIG /////////////////////////////////////////
 
@@ -91,6 +107,8 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 
 	private _mdast2prose: UnistMapper;
 	private _prose2mdast: ProseMapper;
+	
+	private _mdastParser: Processor;
 	private _parser: MdParser<S>;
 	private _serializer: MdSerializer;
 
@@ -106,6 +124,27 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 		/** Step 2: Build Plugins */
 		this.plugins = this._buildPlugins(extensions, plugins.concat(makeKeymap(keymap)));
 
+		/** Step 3: Configure Unified / Remark */
+		this._mdastParser = unified()
+			.use(remark)
+			.use(remarkGfm)
+			.use(remarkMathPlugin)
+			.use(citePlugin, { syntax: { enableAltSyntax: true } })
+			.use(remarkErrorPlugin)
+			.use(remarkConcretePlugin)
+			.use(remarkFootnotes, { inlineNotes: true })
+			.use(remarkWikilinkPlugin)
+			.use(remarkFrontMatter, ['yaml', 'toml'])
+			.use(remarkStringify, {
+				// TODO: (2021-05-18) remember bullet type
+				bullet: '*',
+				fences: true,
+				incrementListMarker: true,
+				// TODO: (2021-05-18) support autolinks
+				resourceLink: true,
+				listItemIndent: "one",
+			});
+
 		/** Step 3a: Build Mapping from Unist AST -> ProseMirror Document */
 		this._mdast2prose = this._buildMdast2Prose(extensions);
 
@@ -114,18 +153,24 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 		// TODO: (2021-05-09) revisit type inference timeout caused by
 		// attempt to thread the ProseSchema type through `makeParser`
 		// @ts-ignore (ts2589) Type instantiation is excessively deep and possibly infinite.
-		let parser = makeParser(this.schema, this._mdast2prose);
+		let parser = mdast2prose.makeParser(this.schema, this._mdast2prose, this._mdastParser);
 		this._parser = parser as MdParser<S>;
 
 		/** Step 4a: Build Mapping from ProseMirror Document -> Unist AST */
 		this._prose2mdast = this._buildProse2Mdast(extensions);
 
 		/** Step 4b: Build Markdown Serializer for this Configuration */
-		this._serializer = prose2mdast.makeSerializer(this._prose2mdast);
+		this._serializer = prose2mdast.makeSerializer(this._prose2mdast, this._mdastParser);
 	}
 
 	parse(markdown: string): ProseNode | null {
 		return this._parser(markdown);
+	}
+
+	parseAST(markdown: string): Md.Node | null {
+		let result = this._mdastParser.parse(markdown);
+		if(!result) { return null;              }
+		else        { return result as Md.Node; }
 	}
 
 	serialize(doc: ProseNode): string | null {
