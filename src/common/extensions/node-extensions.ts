@@ -405,7 +405,7 @@ export class OrderedListExtension extends NodeExtension<Md.List> {
 		return {
 			content: "list_item+",
 			group: "block",
-			attrs: { order: { default: 1 }, tight: { default: false } },
+			attrs: { order: { default: 1 }, tight: { default: true } },
 			parseDOM: [{
 				tag: "ol", getAttrs(d:string|Node) {
 					let dom: HTMLElement = d as HTMLElement;
@@ -434,7 +434,19 @@ export class OrderedListExtension extends NodeExtension<Md.List> {
 
 	get mdastNodeType() { return "list" as const };
 	mdastNodeTest(node: Md.List) { return node.ordered === true; };
-	createMdastMap() { return MdastNodeMapType.NODE_DEFAULT }
+	createMdastMap(): MdastNodeMap<Md.List> {
+		// define map from Mdast Node -> ProseMirror Node
+		return {
+			mapType: "node_custom",
+			mapNode: (node: Md.List, children: ProseNode[]): ProseNode[] => {
+				let result = this.nodeType.createAndFill({
+					ordered: true,
+					tight: (node.spread !== true)
+				}, children || undefined);
+				return result ? [result] : [];
+			}
+		}
+	}
 
 	// -- Conversion from ProseMirror -> Mdast ---------- //
 
@@ -497,7 +509,7 @@ export class UnorderedListExtension extends NodeExtension<Md.List> {
 		return {
 			content: "list_item+",
 			group: "block",
-			attrs: { tight: { default: false }, bullet: { default: undefined } },
+			attrs: { tight: { default: true }, bullet: { default: undefined } },
 			parseDOM: [{
 				tag: "ul",
 				getAttrs: (dom:string|Node) => ({
@@ -524,7 +536,19 @@ export class UnorderedListExtension extends NodeExtension<Md.List> {
 
 	get mdastNodeType() { return "list" as const };
 	mdastNodeTest(node: Md.List) { return node.ordered === false; };
-	createMdastMap() { return MdastNodeMapType.NODE_DEFAULT }
+	createMdastMap(): MdastNodeMap<Md.List> {
+		// define map from Mdast Node -> ProseMirror Node
+		return {
+			mapType: "node_custom",
+			mapNode: (node: Md.List, children: ProseNode[]): ProseNode[] => {
+				let result = this.nodeType.createAndFill({
+					ordered: false,
+					tight: (node.spread !== true)
+				}, children || undefined);
+				return result ? [result] : [];
+			}
+		}
+	}
 
 	// -- Conversion from ProseMirror -> Mdast ---------- //
 
@@ -584,7 +608,18 @@ export class ListItemExtension extends NodeExtension<Md.ListItem> {
 	// -- Conversion from Mdast -> ProseMirror ---------- //
 
 	get mdastNodeType() { return "listItem" as const };
-	createMdastMap() { return MdastNodeMapType.NODE_DEFAULT }
+	createMdastMap(): MdastNodeMap<Md.ListItem> {
+		// define map from Mdast Node -> ProseMirror Node
+		return {
+			mapType: "node_custom",
+			mapNode: (node: Md.ListItem, children: ProseNode[]): ProseNode[] => {
+				let result = this.nodeType.createAndFill({
+					...(node.marker && { bullet : node.marker })
+				}, children || undefined);
+				return result ? [result] : [];
+			}
+		}
+	}
 
 	// -- Conversion from ProseMirror -> Mdast ---------- //
 
@@ -597,9 +632,9 @@ export class ListItemExtension extends NodeExtension<Md.ListItem> {
 			let itemNode: AnyChildren<Md.ListItem> = {
 				type: this.mdastNodeType,
 				children: children,
-				...(itemAttrs?.bullet ? { bullet: itemAttrs.bullet } : {}),  // TODO (2021-05-10) properly handle listItem bullet type
-				//checked: false,  // TODO (2021-05-18) handle listItem.spread
-				//spread: false;   // TODO (2021-05-18) handle listItem.spread
+				...(itemAttrs?.bullet ? { marker: itemAttrs.bullet } : {}),
+				spread: false,     // TODO (2021-05-18) is there ever a case where `listItem.spread = true`?
+				//checked: false,  // TODO (2021-05-18) handle listItem.checked?
 			};
 
 			// TODO (2021-05-17) validate node instead of casting

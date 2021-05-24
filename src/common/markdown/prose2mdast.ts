@@ -143,9 +143,10 @@ export const makeSerializer = (
 			// TODO: (2021-05-18) remember bullet type
 			bullet: '*',
 			fences: true,
-			incrementListMarker: false,
+			incrementListMarker: true,
 			// TODO: (2021-05-18) support autolinks
-			resourceLink: true
+			resourceLink: true,
+			listItemIndent: "one",
 		});
 
 	// make parser

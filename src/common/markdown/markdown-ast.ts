@@ -45,9 +45,14 @@ export {
 	Footnote, FootnoteDefinition, FootnoteReference,
 } from "mdast";
 
-// concretized node types
+// -- Modified Node Types ----------------------------------
+
+// thematic break
 export { ThematicBreak } from "./remark-plugins/concrete/mdast-util-concrete";
-export { List, ListItem } from "mdast";
+
+// list
+export { List } from "mdast";
+export { ListItem } from "./remark-plugins/concrete/mdast-util-concrete";
 
 // -- Wikilink ---------------------------------------------
 

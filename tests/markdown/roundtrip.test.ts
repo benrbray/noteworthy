@@ -60,8 +60,6 @@ export const roundtripCases:TestRoundtrip[] = [
 	{ markdown: 'begin `inline code` end' },
 	{ markdown: 'begin `inl*ine* code` end' },
 	{ markdown: 'begin `inl**ine** code` end' },
-	// ordered list
-	// unordered list
 	// link
 	{ markdown: 'begin [Hacker News](https://news.ycombinator.com/) end' },
 	// wikilink
@@ -82,6 +80,46 @@ export const roundtripCases:TestRoundtrip[] = [
 		| ----------- | ----------- |
 		| Header      | Title       |
 		| Paragraph   | Text        |
+		`
+	},
+	// unordered list
+	{ markdown: dedent`
+		+ apple
+		+ banana
+		+ cherry
+		`
+	},{ markdown: dedent`
+		* apple
+		* banana
+		* cherry
+		`
+	},{ markdown: dedent`
+		- apple
+
+		- banana
+		  * cavendish
+		  * gros michel
+
+		- cherry
+		`
+	},{ markdown: dedent`
+		- item1
+		- item2
+		- item3
+		  + sub1
+		    * subsub1
+		    * subsub2
+		  + sub2
+		  + sub3
+		- item4
+		- item5
+		`
+	},
+	// ordered list
+	{ markdown: dedent`
+		1. apple
+		2. banana
+		3. cherry
 		`
 	}
 ]

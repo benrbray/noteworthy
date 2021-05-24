@@ -48,6 +48,14 @@ declare module "micromark-extension-wiki-link" {
 
 // -- Required by @common/remark-plugins/concrete/remark-concrete --------------
 
+declare module "repeat-string" {
+	/**
+	 * Repeat the given string the specified number of times.
+	 */
+	function repeat(str: string, count: number): string;
+	export = repeat;
+}
+
 declare module "mdast-util-to-markdown/lib/util/check-rule-repeat" {
 	import { Context } from "mdast-util-to-markdown";
 
@@ -70,10 +78,41 @@ declare module "mdast-util-to-markdown/lib/util/check-rule" {
 	export = checkRepeat;
 }
 
-declare module "repeat-string" {
+declare module "mdast-util-to-markdown/lib/util/check-bullet" {
+	import { Context } from "mdast-util-to-markdown";
 	/**
-	 * Repeat the given string the specified number of times.
+	 * Returns the default bullet style for list items.
+	 * https://github.com/syntax-tree/mdast-util-to-markdown/blob/main/lib/util/check-bullet.js#L3
 	 */
-	function repeat(str: string, count: number): string;
-	export = repeat;
+	function checkBullet(context: Context): "*"|"-"|"+";
+	export = checkBullet;
+}
+
+declare module "mdast-util-to-markdown/lib/util/check-list-item-indent" {
+	import { Context } from "mdast-util-to-markdown";
+	/**
+	 * Returns the default indent style for list items.
+	 * https://github.com/syntax-tree/mdast-util-to-markdown/blob/main/lib/util/check-list-item-indent.js#L3
+	 */
+	function checkListItemIndent(context: Context): 'one'|'tab'|'mixed';
+	export = checkListItemIndent;
+}
+
+declare module "mdast-util-to-markdown/lib/util/container-flow" {
+	import { Context } from "mdast-util-to-markdown";
+	import { Parent } from "unist";
+
+	/**
+	 * https://github.com/syntax-tree/mdast-util-to-markdown/blob/main/lib/util/container-flow.js#L5
+	 */
+	function flow(parent: Parent, context: Context): string ;
+	export = flow;
+}
+
+declare module "mdast-util-to-markdown/lib/util/indent-lines" {
+	/**
+	 * https://github.com/syntax-tree/mdast-util-to-markdown/blob/main/lib/util/indent-lines.js#L5
+	 */
+	function indentLines(value: string, map: (line: string, index: number, blank: boolean) => string): string;
+	export = indentLines;
 }
