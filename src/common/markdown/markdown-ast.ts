@@ -1,58 +1,193 @@
+/**
+ * Abstract syntax tree format for Markdown documents.
+ * 
+ * Based on [MDAST](https://github.com/syntax-tree/mdast),
+ * but extended with custom node types like math and citations.
+ *
+ * TODO: (2021-05-24) Will MDAST accept a PR that improves
+ *   extensibility by adding generics to each node type?
+ */
+
 import * as Mdast from "mdast";
+import * as Uni from "unist";
 
 ////////////////////////////////////////////////////////////
 
-export type Node = Mdast.Root | Content
+export type Node = Root | Content;
 
 export type Content =
 	| TopLevelContent
-	| Mdast.ListContent
-	| Mdast.TableContent
-	| Mdast.RowContent
-	| Mdast.PhrasingContent;
+	| PhrasingContent
+	| ListContent
+	| TableContent
+	| RowContent;
 
 export type TopLevelContent =
 	| BlockContent
 	| FrontmatterContent
-	| Mdast.DefinitionContent;
+	| DefinitionContent;
 
 export type BlockContent =
-	| Mdast.BlockContent
+    | Paragraph
+    | Heading
+    | ThematicBreak
+    | Blockquote
+    | List
+    | Table
+    | Mdast.HTML
+    | Mdast.Code
 	| BlockMath
 
-export type PhrasingContent = StaticPhrasingContent
-	| Mdast.Link | Mdast.LinkReference
+export type PhrasingContent =
+	| StaticPhrasingContent
+	| Link | LinkReference
 	| InlineMath;
 
 export type StaticPhrasingContent =
-	Mdast.StaticPhrasingContent
+    | Text
+    | Emphasis
+    | Strong
+    | Delete
+    | Mdast.HTML
+    | Mdast.InlineCode
+    | Mdast.Break
+    | Mdast.Image
+    | Mdast.ImageReference
+    | Footnote
+    | Mdast.FootnoteReference
 	| Wikilink
-	| Cite
+	| Cite;
 
-export {
-	DefinitionContent, ListContent,
-	TableContent, RowContent,
-	Parent, Literal
-} from "mdast";
+export type DefinitionContent = Definition | FootnoteDefinition;
 
-// blocks
-export {
-	Root, Paragraph, Heading, Blockquote,
-	Table, TableRow, TableCell,
-	HTML, Code, Definition,
-	Text, Emphasis, Strong, Delete, InlineCode, Break,
-	Link, Image, LinkReference, ImageReference,
-	Footnote, FootnoteDefinition, FootnoteReference,
-} from "mdast";
+export { Literal } from "mdast";
 
 // -- Modified Node Types ----------------------------------
 
+export interface Parent extends Uni.Parent {
+	children: Content[];
+}
+
+export interface Root extends Parent {
+	type: "root";
+}
+
+export interface Paragraph extends Parent {
+    type: 'paragraph';
+    children: PhrasingContent[];
+}
+
+export interface Heading extends Parent {
+    type: 'heading';
+    depth: 1 | 2 | 3 | 4 | 5 | 6;
+    children: PhrasingContent[];
+}
+
+export interface Blockquote extends Parent {
+    type: 'blockquote';
+    children: BlockContent[];
+}
 // thematic break
+import { ThematicBreak } from "./remark-plugins/concrete/mdast-util-concrete";
 export { ThematicBreak } from "./remark-plugins/concrete/mdast-util-concrete";
 
+// -- List -------------------------------------------------
+
 // list
-export { List } from "mdast";
+export interface List extends Parent {
+    type: 'list';
+    ordered?: boolean;
+    start?: number;
+    spread?: boolean;
+    children: ListContent[];
+}
+
+
+import { ListItem } from "./remark-plugins/concrete/mdast-util-concrete";
 export { ListItem } from "./remark-plugins/concrete/mdast-util-concrete";
+
+export type ListContent = ListItem;
+
+// -- Table ------------------------------------------------
+
+export type TableContent = TableRow;
+
+export type RowContent = TableCell;
+
+export interface Table extends Parent {
+    type: 'table';
+    align?: Mdast.AlignType[];
+    children: TableContent[];
+}
+
+export interface TableRow extends Parent {
+    type: 'tableRow';
+    children: RowContent[];
+}
+
+export interface TableCell extends Parent {
+    type: 'tableCell';
+    children: PhrasingContent[];
+}
+
+// -- Code / Markup ----------------------------------------
+
+import { HTML, Code } from "mdast";
+export { HTML, Code } from "mdast";
+
+// -- Definitions ------------------------------------------
+
+export interface Definition extends Uni.Node, Mdast.Association, Mdast.Resource {
+    type: 'definition';
+}
+
+// -- Text -------------------------------------------------
+
+import { Text, InlineCode, Break } from "mdast";
+export { Text, InlineCode, Break } from "mdast";
+
+export interface Emphasis extends Parent {
+    type: 'emphasis';
+    children: PhrasingContent[];
+}
+
+export interface Strong extends Parent {
+    type: 'strong';
+    children: PhrasingContent[];
+}
+
+export interface Delete extends Parent {
+    type: 'delete';
+    children: PhrasingContent[];
+}
+
+// -- Links ------------------------------------------------
+
+export { ImageReference, Image } from "mdast";
+
+export interface Link extends Parent, Mdast.Resource {
+    type: 'link';
+    children: StaticPhrasingContent[];
+}
+
+export interface LinkReference extends Parent, Mdast.Reference {
+    type: 'linkReference';
+    children: StaticPhrasingContent[];
+}
+
+// -- Footnotes --------------------------------------------
+
+export { FootnoteReference } from "mdast";
+
+export interface FootnoteDefinition extends Parent, Mdast.Association {
+    type: 'footnoteDefinition';
+    children: BlockContent[];
+}
+
+export interface Footnote extends Parent {
+    type: 'footnote';
+    children: PhrasingContent[];
+}
 
 // -- Wikilink ---------------------------------------------
 
@@ -92,8 +227,10 @@ export type Math = BlockMath | InlineMath;
 
 // -- remark-frontmatter -----------------------------------
 
+import { YAML } from "mdast";
 export { YAML } from "mdast";
+
 export interface TOML extends Mdast.Literal { type: "toml" }
 export interface JSON extends Mdast.Literal { type: "json" }
 
-export type FrontmatterContent = Mdast.FrontmatterContent | TOML | JSON;
+export type FrontmatterContent = YAML | TOML | JSON;

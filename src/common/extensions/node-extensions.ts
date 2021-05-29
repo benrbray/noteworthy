@@ -460,7 +460,7 @@ export class OrderedListExtension extends NodeExtension<Md.List> {
 				type: this.mdastNodeType,
 				children: children,
 				ordered: true,
-				spread: !listAttrs.tight,  // TODO (2021-05-17) verify "ol.spread" attribute is correct 
+				spread: !listAttrs.tight,
 				start: listAttrs.order,    // TODO (2021-05-17) verify "ol.start" attribute is correct
 			};
 
@@ -563,7 +563,7 @@ export class UnorderedListExtension extends NodeExtension<Md.List> {
 				type: this.mdastNodeType,
 				children: children,
 				ordered: false,
-				spread: !listAttrs.tight,  // TODO (2021-05-17) verify "ul.spread" attribute is correct 
+				spread: !listAttrs.tight,
 			};
 
 			// TODO (2021-05-17) validate node instead of casting

@@ -348,7 +348,7 @@ function createCitationView(renderCitation: (id:string) => Promise<string>){
 		* will be bound to `this`.  However, the typings don't reflect this.
 		*/
 		let pluginState = citationPluginKey.getState(view.state);
-		if(!pluginState){ throw new Error("no math plugin!"); }
+		if(!pluginState){ throw new Error("no citation plugin!"); }
 
 		// set up NodeView
 		let nodeView = new CitationView(
@@ -577,12 +577,15 @@ export class CitationView implements NodeView {
 		if (!this._nodeRenderElt) { return; }
 		let renderElt = this._nodeRenderElt;
 
-		// get tex string to render
-		console.log(this._node);
+		// get citation string to render
 		let contentRaw = this._node.content.content;
 		let contentStr = "";
 		if (contentRaw.length > 0 && contentRaw[0].textContent !== null) {
 			contentStr = contentRaw[0].textContent.trim();
+
+			// surround with citation syntax, which is absent in the node itself,
+			// so that the citation will be recognized by the Markdown parser
+			contentStr = `@[${contentStr}]`
 		}
 
 		// empty math?
@@ -598,7 +601,7 @@ export class CitationView implements NodeView {
 
 		// render citation
 		this.dom.setAttribute("title", contentStr);
-		this._nodeRenderElt.innerText = "...";
+		renderElt.innerText = "...";
 
 		this._renderCitation(contentStr).then((val:string) => {
 			console.log(`citation-view :: setting text ${val}`);

@@ -12,6 +12,7 @@ import { Editor } from "./editor";
 
 // markdown
 import { markdownSerializer } from "@common/markdown";
+import * as Md from "@common/markdown/markdown-ast";
 
 // solidjs
 import { render } from "solid-js/dom";
@@ -152,8 +153,29 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 				},
 				renderCitation: async (id:string): Promise<string> => {
 					console.log(`renderCitation ::`, id);
+
+					// handle multiple citations?
+					let root = this._config.parseAST(id) as Md.Root;
+					console.log("parsed citation", root);
+					if(!root) { return id; }
+
+
+					// expect root -> paragraph -> citation
+					// otherwise, return the raw id itself
+					if(root.type !== "root" || root.children.length !== 1) { return id; }
+					let par = root.children[0];
+					if(par.type !== "paragraph" || par.children.length !== 1) { return id; }
+					let cite = par.children[0];
+					if(cite.type !== "cite") { return id; }
+					
+					// look up each item in the citation
+					for(let item of cite.data.citeItems) {
+						console.log("found key", item);
+					}
+
 					// treat id as tag, and find hash as corresponding file
-					let hash: string | null = await this._mainProxy.tag.getHashForTag({ tag: id , create: false });
+					let key: string = cite.data.citeItems[0].key;
+					let hash: string | null = await this._mainProxy.tag.getHashForTag({ tag: key , create: false });
 
 					if(hash === null) {
 						console.warn(`renderCitation :: tag @[${id}] does not correspond to a hash`);

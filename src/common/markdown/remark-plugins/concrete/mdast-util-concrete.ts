@@ -1,18 +1,25 @@
 // unist / micromark / mdast
 import * as Uni from "unist";
-import * as Mdast from "mdast";
+import * as Md from "@common/markdown/markdown-ast";
 import { Token } from "micromark/dist/shared-types";
-import { MdastExtension } from "mdast-util-from-markdown/types";
 import { Context } from "mdast-util-to-markdown";
-import { stringifyPosition } from "@common/markdown/unist-utils";
 
 ////////////////////////////////////////////////////////////
 
-export interface ThematicBreak extends Mdast.ThematicBreak {
+export interface ThematicBreak extends Uni.Node {
+	// from mdast
+    type: 'thematicBreak';
+	// concrete syntax
 	ruleContent?: string
 }
 
-export interface ListItem extends Mdast.ListItem {
+export interface ListItem extends Md.Parent {
+	// from mdast
+    type: 'listItem';
+    checked?: boolean;
+    spread?: boolean;
+    children: Md.BlockContent[];
+	// concrete syntax
 	marker?: string | undefined;
 }
 
@@ -65,8 +72,8 @@ export function concreteFromMarkdown() {
 		// get the token used for the list marker
 		let marker = this.sliceSerialize(token);
 		// for unordered lists, save the marker in the ListItem node
-		let listItem = top(this.stack) as Mdast.ListItem;
-		let listNode = this.stack[this.stack.length - 2] as Mdast.List;
+		let listItem = top(this.stack) as Md.ListItem;
+		let listNode = this.stack[this.stack.length - 2] as Md.List;
 
 		if(!listNode.ordered) { 
 			listItem.marker = marker;
@@ -126,7 +133,7 @@ export function concreteToMarkdown() {
 	 *
 	 * https://github.com/syntax-tree/mdast-util-to-markdown/blob/main/lib/handle/list-item.js#L9
 	 */
-	function handleListItem(node: ListItem, parent: Mdast.List, context: Context) {
+	function handleListItem(node: ListItem, parent: Md.List, context: Context) {
 		// determine which bullet to use
 		var bullet: string = node.marker || checkBullet(context)
 
