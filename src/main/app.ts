@@ -16,7 +16,7 @@ import {
 	MainIpc_MetadataHandlers,
 	MainIpc_NavigationHandlers
 } from "./MainIPC";
-import FSALSystem from "./fsal/fsal-system";
+import { FSAL } from "./fsal/fsal";
 import { invokerFor, FunctionPropertyNames } from "@common/ipc";
 import { IDirEntryMeta } from "@common/files";
 import { FsalEvents, AppEvents, ChokidarEvents, IpcEvents } from "@common/events";
@@ -38,7 +38,7 @@ export default class NoteworthyApp extends EventEmitter {
 
 	constructor(
 		/** file system abstraction layer */
-		private _fsal:FSALSystem,
+		private _fsal: FSAL,
 		private _workspaceService:WorkspaceService,
 		private _pluginService:PluginService,
 		private _themeService:ThemeService
@@ -82,13 +82,13 @@ export default class NoteworthyApp extends EventEmitter {
 	makeHandlers(): MainIpcHandlers {
 		// handlers with no dependencies
 		let lifecycleHandlers  = new MainIpc_LifecycleHandlers(this);
-		let fileHandlers       = new MainIpc_FileHandlers(this, this._fsal, this._workspaceService, this._pluginService);
 		let shellHandlers      = new MainIpc_ShellHandlers();
 
 		// handlers with a single dependency
+		let fileHandlers       = new MainIpc_FileHandlers(this, this._fsal, this._workspaceService, this._pluginService);
 		let tagHandlers        = new MainIpc_TagHandlers(this, this._workspaceService, this._pluginService, fileHandlers);
 		let navigationHandlers = new MainIpc_NavigationHandlers(this, this._workspaceService, this._pluginService, fileHandlers, tagHandlers);
-		let dialogHandlers     = new MainIpc_DialogHandlers(this, this._workspaceService, navigationHandlers);
+		let dialogHandlers     = new MainIpc_DialogHandlers(this, this._fsal, this._workspaceService);
 		let outlineHandlers    = new MainIpc_OutlineHandlers(this._pluginService);
 		let themeHandlers      = new MainIpc_ThemeHandlers(this._themeService);
 		let metadataHandlers   = new MainIpc_MetadataHandlers(this._pluginService);

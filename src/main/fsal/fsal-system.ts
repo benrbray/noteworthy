@@ -1,5 +1,5 @@
 import { EventEmitter } from "events";
-import { promises as fs } from "fs";
+import { promises as fs, writeFileSync, readFileSync } from "fs";
 import * as pathlib from "path";
 
 // project imports
@@ -11,7 +11,7 @@ import { ignoreFile } from "@common/util/ignore-file";
 import { IFileDesc, IDirectory } from "@common/files";
 import { FsalEvents, ChokidarEvents } from "@common/events";
 import FSALWatchdog from "@main/fsal/fsal-watcher";
-import FSAL from "@main/fsal/fsal";
+import { FSAL } from "@main/fsal/fsal";
 
 ////////////////////////////////////////////////////////////
 
@@ -35,6 +35,34 @@ export default class FSALSystem extends EventEmitter implements FSAL {
 		// bind event listeners
 		this.handleChokidarEvent = this.handleChokidarEvent.bind(this);
 		this.handleGlobalChokidarEvent = this.handleGlobalChokidarEvent.bind(this);
+	}
+
+	// == READ / SAVE =================================== //
+
+	readFile(filePath: string): string | null {
+		let fileText = null;
+		try {
+			fileText = readFileSync(filePath, { encoding: "utf8" });
+		} catch (err) {
+			console.log(err);
+		}
+		return fileText;
+	}
+
+	saveFile(filePath: string, fileText: string): void {
+		console.log("saveFile ::", filePath, fileText);
+		try {
+			writeFileSync(filePath, fileText, 'UTF-8');
+		} catch (err) {
+			console.log(err);
+		}
+	}
+
+	async createFile(path: string, contents: string = ""): Promise<void> {
+		// normalize path (in an attempt to prevent different hashes for the same path)
+		path = pathlib.normalize(path);
+		// write file if doesn't exist
+		return await fs.writeFile(path, contents, {flag : "wx" });
 	}
 
 	// == FILE / DIR METADATA =========================== //
@@ -199,15 +227,5 @@ export default class FSALSystem extends EventEmitter implements FSAL {
 	unwatchGlobal(p:string) {
 		if(!this._resources){ throw FsalNotInitializedError() };
 		this._resources.globalWatchdog.unwatch(p);
-	}
-
-	// == OPEN/CLOSE FILES ============================== //
-
-	/** @todo (9/14/20) this probably doesn't belong inside FSAL */
-	async createFile(path: string, contents: string = ""): Promise<void> {
-		// normalize path (in an attempt to prevent different hashes for the same path)
-		path = pathlib.normalize(path);
-		// write file if doesn't exist
-		return fs.writeFile(path, contents, {flag : "wx" });
 	}
 }

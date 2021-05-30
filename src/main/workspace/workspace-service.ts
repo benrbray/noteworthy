@@ -1,5 +1,5 @@
 // project imports
-import FSALSystem from "@main/fsal/fsal-system";
+import { FSAL } from "@main/fsal/fsal";
 import { IDirectory, IFileMeta, IDirEntryMeta, getFileMetadata, IFileDesc } from "@common/files";
 import { WorkspacePlugin } from "@main/plugins/plugin";
 import { CrossRefPlugin } from "@main/plugins/crossref-plugin";
@@ -11,7 +11,6 @@ import { EventEmitter } from "events";
 import { FsalEvents, ChokidarEvents } from "@common/events";
 import { OutlinePlugin } from "@main/plugins/outline-plugin";
 import { MetadataPlugin } from "@main/plugins/metadata-plugin";
-import { readFile } from "@common/fileio";
 
 ////////////////////////////////////////////////////////////
 
@@ -19,10 +18,12 @@ export enum WorkspaceEvent {
 	FILETREE_CHANGED = "filetree-changed",
 }
 
+type WW = WorkspaceService["addListener"]
+
 export class WorkspaceService extends EventEmitter {
 	_workspace:Workspace|null;
 
-	constructor(private _fsal:FSALSystem) {
+	constructor(private _fsal: FSAL) {
 		super();
 
 		// on startup, there is no workspace open
@@ -30,7 +31,8 @@ export class WorkspaceService extends EventEmitter {
 
 		// events
 		this.handleChokidarEvent = this.handleChokidarEvent.bind(this);
-		this._fsal.on(FsalEvents.CHOKIDAR_EVENT, this.handleChokidarEvent);
+		this._fsal.addListener(FsalEvents.CHOKIDAR_EVENT, this.handleChokidarEvent);
+
 	}
 
 	// == Directory ===================================== //
@@ -120,12 +122,12 @@ export class WorkspaceService extends EventEmitter {
 		let workspace = await this.loadWorkspaceFromPath(dir.path, plugins);
 		if(!workspace && !create){ return null; }
 		// create new workspace from directory
-		return workspace || new Workspace(dir, undefined, plugins, this);
+		return workspace || new Workspace(dir, undefined, plugins, this, this._fsal);
 	}
 
 	private async loadWorkspaceFromPath(workspacePath:string, plugins:WorkspacePlugin[]):Promise<Workspace|null> {
 		// read workspace data from file
-		let contents = readFile(Workspace.getDataPath(workspacePath));
+		let contents = this._fsal.readFile(Workspace.getDataPath(workspacePath));
 		if(!contents){ return null; }
 		// parse workspace data
 		return this.loadWorkspaceFromJSON(workspacePath, contents, plugins);
@@ -144,7 +146,7 @@ export class WorkspaceService extends EventEmitter {
 
 		if (!data.pluginData || !data.files) {
 			console.error("Workspace.fromJSON() :: invalid data :: creating fresh workspace");
-			return new Workspace(dir, {}, [], this);
+			return new Workspace(dir, {}, [], this, this._fsal);
 		}
 
 		// deserialize plugins
@@ -156,7 +158,7 @@ export class WorkspaceService extends EventEmitter {
 		}
 
 		// construct workspace
-		return new Workspace(dir, data.files, plugins, this);
+		return new Workspace(dir, data.files, plugins, this, this._fsal);
 	}
 
 	// == Events ======================================== //

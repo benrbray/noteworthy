@@ -5,10 +5,9 @@ import { dialog, shell } from "electron";
 import * as pathlib from "path";
 
 // noteworthy imports
-import FSALSystem from "./fsal/fsal-system";
+import { FSAL } from "./fsal/fsal";
 import NoteworthyApp from "./app"
 import { IFileWithContents, IPossiblyUntitledFile, IDirEntryMeta, IFileMeta } from "@common/files";
-import { readFile, saveFile } from "@common/fileio";
 import { DialogSaveDiscardOptions } from "@common/dialog";
 import { to } from "@common/util/to";
 import { filterNonVoid } from "@common/util/non-void";
@@ -54,10 +53,10 @@ export class MainIpc_LifecycleHandlers {
 
 export class MainIpc_FileHandlers {
 	constructor(
-		private _app:NoteworthyApp,
-		private _fsal:FSALSystem,
-		private _workspaceService:WorkspaceService,
-		private _pluginService:PluginService
+		private _app: NoteworthyApp,
+		private _fsal: FSAL,
+		private _workspaceService: WorkspaceService,
+		private _pluginService: PluginService
 	){ }
 
 	// -- Request File Create --------------------------- //
@@ -76,7 +75,7 @@ export class MainIpc_FileHandlers {
 	async requestFileSave(file: IFileWithContents): Promise<boolean> {
 		if (!this._app.window) { return false; }
 
-		saveFile(file.path, file.contents);
+		this._fsal.saveFile(file.path, file.contents);
 		/** @todo (7/12/20) check for file save errors? */
 		this._app._renderProxy?.fileDidSave({saveas: false, path: file.path });
 		return true;
@@ -100,7 +99,7 @@ export class MainIpc_FileHandlers {
 		}
 
 		// read file contents
-		const fileContents: string | null = readFile(fileMeta.path);
+		const fileContents: string | null = this._fsal.readFile(fileMeta.path);
 		if (fileContents === null) { throw new Error("MainIPC :: failed to read file"); }
 
 		let file: IFileWithContents = {
@@ -118,9 +117,9 @@ export class MainIpc_FileHandlers {
 export class MainIpc_DialogHandlers {
 	/** @todo (9/13/20) break app into multiple parts so we don't need to consume the whole thing */
 	constructor(
-		private _app:NoteworthyApp,
-		private _workspaceService:WorkspaceService,
-		private _navigationHandlers:MainIpc_NavigationHandlers
+		private _app: NoteworthyApp,
+		private _fsal: FSAL,
+		private _workspaceService: WorkspaceService
 	){ }
 
 	// -- Show Notification ----------------------------- //
@@ -187,7 +186,7 @@ export class MainIpc_DialogHandlers {
 			}
 		);
 		if (!newFilePath) return null;
-		saveFile(newFilePath, file.contents);
+		this._fsal.saveFile(newFilePath, file.contents);
 
 		// send new file path to renderer
 		this._app._renderProxy?.fileDidSave({ saveas: true, path: newFilePath});

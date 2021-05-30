@@ -10,10 +10,11 @@ import { IDoc } from "@common/doctypes/doctypes";
 import hash from "@common/util/hash";
 import { WorkspacePlugin } from "@main/plugins/plugin";
 import { CrossRefPlugin } from "@main/plugins/crossref-plugin";
-import { loadAST } from "@common/doctypes/parse-doc";
+import { parseAST } from "@common/doctypes/parse-doc";
 import { OutlinePlugin } from "@main/plugins/outline-plugin";
 import { MetadataPlugin } from "@main/plugins/metadata-plugin";
 import { WorkspaceService } from "./workspace-service";
+import { FSAL } from "@main/fsal/fsal";
 
 ////////////////////////////////////////////////////////////
 
@@ -36,7 +37,9 @@ export class Workspace implements IDisposable {
 		private _dir: IDirectory,
 		private _files: { [hash: string]: IFileMeta } = {},
 		plugins: WorkspacePlugin[] = [],
-		private _workspaceService: WorkspaceService
+		private _workspaceService: WorkspaceService,
+		/** TODO (2021-05-30) workspace shouldn't need FSAL -- move to WorkspaceService */
+		private _fsal: FSAL
 	) {
 		// register plugins
 		this._plugins = [];
@@ -85,6 +88,9 @@ export class Workspace implements IDisposable {
 	/**
 	 * Called when the workspace should be re-synchronized
 	 * with files on disk.  Notifies plugins of any changes.
+	 *
+	 * TODO (2021-05-30) does workspace.update() work as intended?
+	 *     it is currently only called immediately after workspace opens
 	 */
 	async update(): Promise<boolean> {
 		// check for changes between workspace state and files on disk
@@ -198,21 +204,28 @@ export class Workspace implements IDisposable {
 			return this.handleFileDeleted(file);
 		}
 
-		// read file contents
 		/** @todo (6/28/20) rather than reading EVERY file that changed,
 		 * read a file only if a plugin requests its contents (based on ext/filename)
 		 */
-		let contents:IDoc|null = loadAST(fileMeta);
-		if (contents === null) {
+		
+		// read file contents
+		let fileContents = this._fsal.readFile(fileMeta.path);
+		if (fileContents === null) {
 			console.error(`workspace :: handleFileCreated() :: error reading file :: ${file.path}`);
-			/** @todo (7/28/20) gracefully handle parse errors which cause contents to be null */
 			return this.handleFileDeleted(file);
 		}
 
-		// parse file contents and notify plugins
+		// parse file to ast
+		let fileAst:IDoc|null = parseAST(fileMeta.ext, fileContents);
+		if (fileAst === null) {
+			console.error(`workspace :: handleFileCreated() :: error parsing file :: ${file.path}`);
+			return this.handleFileDeleted(file);
+		}
+
+		// notify plugins of updated file
 		for (let plugin of this._plugins) {
-			if(created){ plugin.handleFileCreated(fileMeta, contents); }
-			else       { plugin.handleFileChanged(fileMeta, contents); }
+			if(created){ plugin.handleFileCreated(fileMeta, fileAst); }
+			else       { plugin.handleFileChanged(fileMeta, fileAst); }
 		}
 	}
 
