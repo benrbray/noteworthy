@@ -67,6 +67,7 @@
     ]
   },
   "dependencies": {
+    "@benrbray/mdast-util-cite": "^1.1.0",
     "@benrbray/prosemirror-math": "^0.1.4",
     "@benrbray/remark-cite": "^1.1.0",
     "buffer": "^6.0.3",
