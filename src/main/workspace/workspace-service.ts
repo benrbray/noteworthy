@@ -1,10 +1,9 @@
 // project imports
-import FSAL from "@main/fsal/fsal";
-import * as FSALDir from "@main/fsal/fsal-dir";
-import { IDirectory, IFileMeta, IDirEntryMeta } from "@common/files";
+import FSALSystem from "@main/fsal/fsal-system";
+import { IDirectory, IFileMeta, IDirEntryMeta, getFileMetadata, IFileDesc } from "@common/files";
 import { WorkspacePlugin } from "@main/plugins/plugin";
 import { CrossRefPlugin } from "@main/plugins/crossref-plugin";
-import { Workspace } from "./workspace";
+import { IWorkspaceData, Workspace } from "./workspace";
 
 // node.js imports
 import * as pathlib from "path";
@@ -12,6 +11,7 @@ import { EventEmitter } from "events";
 import { FsalEvents, ChokidarEvents } from "@common/events";
 import { OutlinePlugin } from "@main/plugins/outline-plugin";
 import { MetadataPlugin } from "@main/plugins/metadata-plugin";
+import { readFile } from "@common/fileio";
 
 ////////////////////////////////////////////////////////////
 
@@ -22,7 +22,7 @@ export enum WorkspaceEvent {
 export class WorkspaceService extends EventEmitter {
 	_workspace:Workspace|null;
 
-	constructor(private _fsal:FSAL) {
+	constructor(private _fsal:FSALSystem) {
 		super();
 
 		// on startup, there is no workspace open
@@ -56,14 +56,14 @@ export class WorkspaceService extends EventEmitter {
 		 * > might help to make dependencies more clear
 		 * > more mockable
 		 */
-		let dir:IDirectory = await FSALDir.parseDir(dirPath);
+		let dir:IDirectory = await this._fsal.parseDir(dirPath);
 
 		// load (possibly stale) workspace metadata from file
 		/** @todo (9/12/20) replace static call with "WorkspaceService" object
 		 * > might help to make dependencies more clear
 		 * > more mockable
 		 */
-		this._workspace = await Workspace.fromDir(dir, plugins, true);
+		this._workspace = await this.loadWorkspaceFromDir(dir, plugins, true);
 		if (!this._workspace) {
 			console.error("fsal :: unknown error opening workspace")
 			return false;
@@ -82,17 +82,96 @@ export class WorkspaceService extends EventEmitter {
 		return true === result;
 	}
 
+	/**
+	 * @returns The active workspace.
+	 */
 	get workspace():Workspace|null {
 		return this._workspace;
 	}
 
+	/**
+	 * Closes the active workspace.
+	 *
+	 * @caution Attempting to use the workspace object after
+	 *     it has been closed may result in mysterious bugs.
+	 */
 	async closeWorkspace(persist:boolean = true): Promise<boolean> {
 		if(!this._workspace){ return true; }
-		this._fsal.unwatch(this._workspace.dir.path);
-		this._fsal.unloadAll();
+		this._fsal.close();
 		this._workspace.close(persist);
 		this._workspace = null;
 		return true;
+	}
+
+	// == Load Workspace from Disk ====================== //
+
+	/**
+	 * Load a workspace from the given folder.  Uses the hidden `.noteworthy`
+	 * metadata folder if it exists, or optionally creates it if missing.
+	 *
+	 * @param dir The directory to open.
+	 * @param plugins A list of workspace plugins, which will be
+	 *   notified of any changes to files in the workspace. 
+	 * @param create If TRUE and no data folder found, a
+	 *   new workspace will be created for this directory.
+	 */
+	private async loadWorkspaceFromDir(dir:IDirectory, plugins:WorkspacePlugin[], create:boolean = false):Promise<Workspace|null> {
+		// restore existing workspace if data folder is present
+		let workspace = await this.loadWorkspaceFromPath(dir.path, plugins);
+		if(!workspace && !create){ return null; }
+		// create new workspace from directory
+		return workspace || new Workspace(dir, undefined, plugins, this);
+	}
+
+	private async loadWorkspaceFromPath(workspacePath:string, plugins:WorkspacePlugin[]):Promise<Workspace|null> {
+		// read workspace data from file
+		let contents = readFile(Workspace.getDataPath(workspacePath));
+		if(!contents){ return null; }
+		// parse workspace data
+		return this.loadWorkspaceFromJSON(workspacePath, contents, plugins);
+	}
+
+	private async loadWorkspaceFromJSON(workspacePath:string, json: string, plugins: WorkspacePlugin[]): Promise<Workspace | null> {
+		/** @todo (6/27/20) validate incoming workspace/plugin json */
+		let data: IWorkspaceData = JSON.parse(json);
+		/** @todo (2/27/20) handle renamed workspace path */
+		if(data.path !== undefined && workspacePath !== data.path){
+			throw new Error("workspace path does not match path in data folder");
+		}
+
+		// get directory info
+		let dir: IDirectory = await this._fsal.parseDir(workspacePath);
+
+		if (!data.pluginData || !data.files) {
+			console.error("Workspace.fromJSON() :: invalid data :: creating fresh workspace");
+			return new Workspace(dir, {}, [], this);
+		}
+
+		// deserialize plugins
+		let pluginState:any;
+		for(let plugin of plugins){
+			if(pluginState = data.pluginData[plugin.plugin_name]){
+				plugin.deserialize(pluginState);
+			}
+		}
+
+		// construct workspace
+		return new Workspace(dir, data.files, plugins, this);
+	}
+
+	// == Events ======================================== //
+
+	async updatePath(filePath: string): Promise<IFileMeta | null> {
+		if(!this._workspace) { return null; }
+		
+		/** @todo (6/19/20) check if path is a directory? */
+		let file: IFileDesc | null = await this._fsal.parseFile(filePath);
+		if (file === null) { return null; }
+
+		// store file info in workspace
+		let fileMeta: IFileMeta = getFileMetadata(file);
+		this._workspace.updatePath(fileMeta);
+		return fileMeta;
 	}
 
 	async handleChokidarEvent(event: ChokidarEvents, info: { path: string }): Promise<void> {

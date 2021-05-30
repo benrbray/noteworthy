@@ -8,7 +8,7 @@ import { app } from "electron";
 import * as pathlib from "path";
 import { promises as fs } from "fs";
 import { EventEmitter } from "events";
-import FSAL from "@main/fsal/fsal";
+import FSALSystem from "@main/fsal/fsal-system";
 import { FsalEvents, ChokidarEvents } from "@common/events";
 
 // defined by electron-webpack
@@ -25,7 +25,7 @@ export enum ThemeEvent {
 export type ThemeId = { type: "default", id:string } | { type: "custom", path:string };
 
 export class ThemeService extends EventEmitter {
-	constructor(private _fsal:FSAL){ 
+	constructor(private _fsal:FSALSystem){ 
 		super();
 		this.initThemeFolder();
 	}

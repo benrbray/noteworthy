@@ -16,7 +16,7 @@ import {
 	MainIpc_MetadataHandlers,
 	MainIpc_NavigationHandlers
 } from "./MainIPC";
-import FSAL from "./fsal/fsal";
+import FSALSystem from "./fsal/fsal-system";
 import { invokerFor, FunctionPropertyNames } from "@common/ipc";
 import { IDirEntryMeta } from "@common/files";
 import { FsalEvents, AppEvents, ChokidarEvents, IpcEvents } from "@common/events";
@@ -38,7 +38,7 @@ export default class NoteworthyApp extends EventEmitter {
 
 	constructor(
 		/** file system abstraction layer */
-		private _fsal:FSAL,
+		private _fsal:FSALSystem,
 		private _workspaceService:WorkspaceService,
 		private _pluginService:PluginService,
 		private _themeService:ThemeService
@@ -121,7 +121,7 @@ export default class NoteworthyApp extends EventEmitter {
 		 */
 		this.detach__beforeQuit();
 		this._workspaceService.closeWorkspace()
-		this._fsal.destroy();
+		this._fsal.close();
 		app.quit();
 	}
 

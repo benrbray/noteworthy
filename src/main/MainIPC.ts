@@ -5,7 +5,7 @@ import { dialog, shell } from "electron";
 import * as pathlib from "path";
 
 // noteworthy imports
-import FSAL from "./fsal/fsal";
+import FSALSystem from "./fsal/fsal-system";
 import NoteworthyApp from "./app"
 import { IFileWithContents, IPossiblyUntitledFile, IDirEntryMeta, IFileMeta } from "@common/files";
 import { readFile, saveFile } from "@common/fileio";
@@ -19,7 +19,7 @@ import { IOutline } from "./plugins/outline-plugin";
 import { ITagSearchResult, SearchResult, IFileSearchResult, IHashSearchResult, CrossRefPlugin } from "./plugins/crossref-plugin";
 import { WorkspacePlugin } from "./plugins/plugin";
 import { IMetadata } from "./plugins/metadata-plugin";
-import { getFileMetadata } from "./fsal/fsal-file";
+import { getFileMetadata } from "@common/files";
 
 ////////////////////////////////////////////////////////////
 
@@ -55,7 +55,7 @@ export class MainIpc_LifecycleHandlers {
 export class MainIpc_FileHandlers {
 	constructor(
 		private _app:NoteworthyApp,
-		private _fsal:FSAL,
+		private _fsal:FSALSystem,
 		private _workspaceService:WorkspaceService,
 		private _pluginService:PluginService
 	){ }
@@ -66,7 +66,7 @@ export class MainIpc_FileHandlers {
 		/** @todo (6/26/20) check if path in workspace? */
 		return this._fsal.createFile(path, contents)
 			.then(
-				() => { return this._workspaceService.workspace?.updatePath(path)||null; },
+				() => { return this._workspaceService.updatePath(path)||null; },
 				(reason) => { console.error("error creating file", reason); return null; }
 			)
 	}
