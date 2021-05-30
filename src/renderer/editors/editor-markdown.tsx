@@ -11,7 +11,6 @@ import { IPossiblyUntitledFile } from "@common/files";
 import { Editor } from "./editor";
 
 // markdown
-import { markdownSerializer } from "@common/markdown";
 import * as Md from "@common/markdown/markdown-ast";
 
 // solidjs
@@ -426,14 +425,18 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 
 	// == Document Model ================================ //
 
+	/**
+	 * Serialize the contents of this editor as a string.
+	 */
 	serializeContents(): string {
 		if(!this._proseEditorView){ return ""; }
 
 		// TODO (2021-05-18) finish remark serializer, throw away markdown-it
-		let md = this._config.serialize(this._proseEditorView.state.doc);
-		console.log("SERIALIZED:\n", md);
+		let serialized = this._config.serialize(this._proseEditorView.state.doc);
+		console.log("SERIALIZED:\n", serialized);
 
-		return markdownSerializer.serialize(this._proseEditorView.state.doc);
+		if(!serialized) { throw new Error("serialization error!"); }
+		return serialized;
 	}
 
 	parseContents(contents: string):ProseEditorState {
