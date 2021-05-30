@@ -13,7 +13,7 @@ import { WorkspacePlugin } from "@main/plugins/plugin";
 import { CrossRefPlugin } from "@main/plugins/crossref-plugin";
 import * as FSALFile from "../fsal/fsal-file";
 import * as FSALDir from "../fsal/fsal-dir";
-import { loadFile } from "@common/doctypes/parse-doc";
+import { loadAST } from "@common/doctypes/parse-doc";
 import { OutlinePlugin } from "@main/plugins/outline-plugin";
 import { MetadataPlugin } from "@main/plugins/metadata-plugin";
 
@@ -201,7 +201,7 @@ export class Workspace implements IDisposable {
 		/** @todo (6/28/20) rather than reading EVERY file that changed,
 		 * read a file only if a plugin requests its contents (based on ext/filename)
 		 */
-		let contents:IDoc|null = loadFile(fileMeta);
+		let contents:IDoc|null = loadAST(fileMeta);
 		if (contents === null) {
 			console.error(`workspace :: handleFileCreated() :: error reading file :: ${file.path}`);
 			/** @todo (7/28/20) gracefully handle parse errors which cause contents to be null */

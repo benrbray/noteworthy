@@ -246,7 +246,6 @@ export class CrossRefPlugin implements WorkspacePlugin {
 	}
 
 	getTagsMentionedBy(data: { fileMeta?:IFileMeta, doc?:ICrossRefProvider }):string[] {
-		/** @todo read tags from yaml metadata */
 		let tags:string[] = [];
 
 		// tags mentioned within file

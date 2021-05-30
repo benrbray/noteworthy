@@ -5,6 +5,7 @@ import { chainCommands, Keymap, joinUp, joinDown, lift, selectParentNode } from 
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
 import { history, undo, redo } from "prosemirror-history";
 import { gapCursor } from "prosemirror-gapcursor";
+import { undoInputRule } from "prosemirror-inputrules";
 
 // project imports
 import { IPossiblyUntitledFile } from "@common/files";
@@ -24,16 +25,16 @@ import { MainIpcHandlers } from "@main/MainIPC";
 import { YamlEditor } from "../ui/yamlEditor";
 import { SetDocAttrStep } from "@common/prosemirror/steps";
 import { shallowEqual } from "@common/util/equal";
-import { MarkdownDoc } from "@common/doctypes/markdown-doc";
 //import { EmbedView } from "@common/nwt/embed-view";
 import { makeSuggestionPlugin, SuggestionPopup } from "@renderer/ui/suggestions";
 
 // editor commands
+import { moveSelectionDown, moveSelectionUp } from "@common/prosemirror/commands/moveSelection";
 import { insertTab } from "@common/prosemirror/commands/insertTab";
-import { undoInputRule } from "prosemirror-inputrules";
 import { EditorConfig } from "@common/extensions/editor-config";
 import { NwtExtension } from "@common/extensions/extension";
 import { citationPlugin } from "@main/plugins/crossref-plugin";
+
 import {
 	BlockQuoteExtension, HeadingExtension, HorizontalRuleExtension,
 	CodeBlockExtension, InlineMathExtension, BlockMathExtension,
@@ -48,8 +49,6 @@ import {
 	CodeExtension, WikilinkExtension,
 	//TagExtension
 } from "@common/extensions/mark-extensions";
-import { IMetadata } from "@main/plugins/metadata-plugin";
-import { moveSelectionDown, moveSelectionUp } from "@common/prosemirror/commands/moveSelection";
 
 ////////////////////////////////////////////////////////////
 
@@ -59,6 +58,7 @@ import { moveSelectionDown, moveSelectionUp } from "@common/prosemirror/commands
 // this transformation.  So, we must explicitly declare them here:
 import { WindowAfterPreload } from "@renderer/preload_types";
 import { ProseSchema } from "@common/types";
+import { makeDefaultMarkdownExtensions } from "@common/doctypes/markdown-doc";
 declare let window: Window & typeof globalThis & WindowAfterPreload;
 
 ////////////////////////////////////////////////////////////
@@ -233,6 +233,7 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 			gapCursor()
 		];
 
+		// TODO: (2021-05-30) move default keymap to "makeDefaultMarkdownConfig" function?
 		let keymap: Keymap = {
 			"Tab" : insertTab,
 			"Backspace" : chainCommands(mathBackspaceCmd, undoInputRule),
@@ -439,21 +440,27 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 		return serialized;
 	}
 
-	parseContents(contents: string):ProseEditorState {
+	/**
+	 * Use this editor's configuration to convert a Markdown string to a ProseMirror document.
+	 */
+	parseContents(markdown: string): ProseEditorState {
 		// NOTE: it is important to use this._config to parse, rather than using
 		// MarkdownDoc.parse()!  Otherwise, there will be strange bugs!  
 		// The reason is that the doc and the editor will secretly be using
 		// different schema instances, but the type system has no way of catching this!
-		let node: ProseNode|null = this._config.parse(contents);
-		if(!node){ throw new Error("parse error!"); }
-		let parsed = new MarkdownDoc(node);
+		let proseDoc: ProseNode|null = this._config.parse(markdown);
+		if(!proseDoc){ throw new Error("parse error!"); }
 
 		return ProseEditorState.create({
-			doc: parsed.proseDoc,
-			...this._config
+			doc: proseDoc,
+			plugins: this._config.plugins,
+			schema: this._config.schema,
 		});
 	}
 
+	/**
+	 * Replaces the contents of the ProseMirror editor.
+	 */
 	setContents(contents: ProseEditorState): void {
 		if(!this._proseEditorView){
 			console.warn("editor-markdown :: setContents :: no editor!");

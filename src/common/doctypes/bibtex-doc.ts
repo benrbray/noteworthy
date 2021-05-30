@@ -1,17 +1,18 @@
-import { IDoc, DocMeta, ParserFor } from "./doctypes";
+import { IDoc, DocMeta, DocParser } from "./doctypes";
 
 ////////////////////////////////////////////////////////////
 
 interface IBibTexDoc extends IDoc { }
 
 export class BibTexDoc implements IBibTexDoc {
-	getMeta():DocMeta {
+	getMeta(): DocMeta {
 		return {};
 	}
 	
 	static parse(serialized: string) : BibTexDoc {
+		// TODO
 		return new BibTexDoc();
 	}
 }
 
-export const BibTexParser = new ParserFor(BibTexDoc);
+export const BibTexParser = new DocParser(BibTexDoc);

@@ -3,6 +3,10 @@ import * as Uni from "unist";
 
 ////////////////////////////////////////////////////////////////////////////////
 
+export function unistPredicate<N extends Uni.Node = never>(node: Uni.Node, type: N["type"]): node is N {
+  return (node.type === type);
+}
+
 export function unistIsParent(node: Uni.Node): node is Uni.Parent {
 	return Boolean(node.children);
 }
@@ -37,8 +41,8 @@ enum VisitorAction {
  * is handled as expected without needing to return a new index.
  * Removing the children property of an ancestor still results in them being traversed.
  */
-type VisitorAncestors<V extends Uni.Node = Uni.Node> = (node:V, ancestors: Array<Uni.Parent>) => VisitorAction|void;
-type Visitor<V extends Uni.Node = Uni.Node> = (node:V) => VisitorAction|void;
+export type VisitorAncestors<V extends Uni.Node = Uni.Node> = (node:V, ancestors: Array<Uni.Parent>) => VisitorAction|void;
+export type Visitor<V extends Uni.Node = Uni.Node> = (node:V) => VisitorAction|void;
 
 // depth-first preorder traversal 
 export function visit(tree: Uni.Node, visitor: Visitor): void {
@@ -69,13 +73,25 @@ export function visit(tree: Uni.Node, visitor: Visitor): void {
 	}
 }
 
-// visit a specific node type
-/** @deprecated */
-export function visitNodeType<N extends Uni.Node>(
-	tree: Uni.Node, 
-	typeTest: (node:Uni.Node) => node is N, 
+/**
+ * Visit a specific type of node.
+ */
+export function visitNodeType<N extends Uni.Node = never>(
+	tree: Uni.Node,
+	type: N["type"],
 	visitor: Visitor<N>
-): never { throw new Error("not implemented") }
+): void {
+	// filter nodes by type
+	function predicate(node: Uni.Node): node is N {
+		return (node.type === type);
+	}
+
+	// apply the provided visitor only if type predicate matches
+	visit(tree, node => {
+		if(predicate(node)) { return visitor(node);          }
+		else                { return VisitorAction.CONTINUE; }
+	});
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
