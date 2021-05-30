@@ -129,7 +129,10 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 			.use(remark)
 			.use(remarkGfm)
 			.use(remarkMathPlugin)
-			.use(citePlugin, { syntax: { enableAltSyntax: true } })
+			.use(citePlugin, { 
+				syntax: { enableAltSyntax: true },
+				toMarkdown: { useNodeValue: true }
+			})
 			.use(remarkErrorPlugin)
 			.use(remarkConcretePlugin)
 			.use(remarkFootnotes, { inlineNotes: true })

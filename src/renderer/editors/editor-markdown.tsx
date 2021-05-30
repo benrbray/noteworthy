@@ -151,22 +151,25 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 					let directoryHint = this._currentFile?.dirPath;
 					if (tag) { return this._mainProxy.navigation.navigateToTag({tag, create:true, directoryHint}); }
 				},
-				renderCitation: async (id:string): Promise<string> => {
-					console.log(`renderCitation ::`, id);
+				renderCitation: async (contentStr:string, attrs: { pandocSyntax?: boolean }): Promise<string|null> => {
+					console.log(`renderCitation ::`, contentStr);
+
+					// surround node contents with appropriate brackets,
+					// so that it will be recognized by the Markdown parser
+					let citeSyntax = attrs.pandocSyntax ? `[${contentStr}]` : `@[${contentStr}]`;
 
 					// handle multiple citations?
-					let root = this._config.parseAST(id) as Md.Root;
+					let root = this._config.parseAST(citeSyntax) as Md.Root;
 					console.log("parsed citation", root);
-					if(!root) { return id; }
-
+					if(!root) { return null; }
 
 					// expect root -> paragraph -> citation
 					// otherwise, return the raw id itself
-					if(root.type !== "root" || root.children.length !== 1) { return id; }
+					if(root.type !== "root" || root.children.length !== 1) { return null; }
 					let par = root.children[0];
-					if(par.type !== "paragraph" || par.children.length !== 1) { return id; }
+					if(par.type !== "paragraph" || par.children.length !== 1) { return null; }
 					let cite = par.children[0];
-					if(cite.type !== "cite") { return id; }
+					if(cite.type !== "cite") { return null; }
 					
 					// look up each item in the citation
 					for(let item of cite.data.citeItems) {
@@ -178,20 +181,20 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 					let hash: string | null = await this._mainProxy.tag.getHashForTag({ tag: key , create: false });
 
 					if(hash === null) {
-						console.warn(`renderCitation :: tag @[${id}] does not correspond to a hash`);
-						return id;
+						console.warn(`renderCitation :: tag "${key}" does not correspond to a hash`);
+						return null;
 					}
 
 					if(hash === undefined) {
-						console.error(`renderCitation :: no response from main process when querying for tag @[${id}]`); 
-						return id;
+						console.error(`renderCitation :: no response from main process when querying for tag "${key}"`); 
+						return null;
 					}
 					
 					// get metadata corresponding to this file hash
 					let meta = await this._mainProxy.metadata.getMetadataForHash(hash);
 					if(meta === null) { 
 						console.warn(`renderCitation :: no metadata found for hash ${hash}`);
-						return id;
+						return null;
 					}
 
 					console.log(meta);
@@ -202,6 +205,7 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 					let date: string|string[]|undefined = meta["date"];
 					let year: string|string[]|undefined = meta["year"];
 
+					// TODO (10/2/20) handle multiple authors?
 					/** @todo (10/2/20) these checks can be removed once we properly parse YAML metadata */
 					if(!author && Array.isArray(authors)) { author = authors[0]; }
 					if(!date && !Array.isArray(year))     { date = year;         }
@@ -211,12 +215,12 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 					let parsedDate:Date = new Date(date);
 					if(isNaN(parsedDate.valueOf())){
 						console.warn(`renderCitation :: invalid date ${date}`);
-						return id;
+						return null;
 					}
 
 					if(!author || !date){
 						console.warn(`renderCitation :: not enough fields`);
-						return id;
+						return null;
 					}
 
 					let names = author.split(/\s+/);

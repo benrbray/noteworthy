@@ -68,6 +68,9 @@ export const roundtripCases:TestRoundtrip[] = [
 	{ markdown: 'begin [[wad**ler19**89]] end', expected: "begin [[wad\\*\\*ler19\\*\\*89]] end" },
 	// citation
 	{ markdown: 'begin @[wadler1989] end' },
+	{ markdown: 'begin [@wadler1989] end' },
+	{ markdown: 'begin [see @wadler1989; and @hughes2003] end' },
+	{ markdown: 'begin @[wadler1989; and @hughes2003] end' },
 	// image
 	{ markdown: '![alt image text](https://news.ycombinator.com/)' },
 	// math block

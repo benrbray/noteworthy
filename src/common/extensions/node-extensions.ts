@@ -962,15 +962,33 @@ export class CitationExtension extends NodeExtension<Md.Cite> {
 	
 	get name() { return "citation" as const; }
 	
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			content: "text*",
 			group: "inline",
 			inline: true,
 			atom: true,
-			attrs: { title: { default: null } },
-			parseDOM: [{ tag: "span.citation" }],
-			toDOM(node: ProseNode): DOMOutputSpec { return ["span", Object.assign({ class: "citation" }, node.attrs), 0] }
+			attrs: {
+				/** [@citation] if true, otherwise @[citation] */
+				pandocSyntax: { default: false } 
+			},
+			parseDOM: [{ 
+				tag: "span.citation",
+				getAttrs(node:Node|string) {
+					return {
+						pandocSyntax: (node as Element).classList.contains("citation-pandoc")
+					};
+				}
+			}],
+			toDOM(node: ProseNode): DOMOutputSpec {
+				// NOTE:  this DOM serializer is only used when copy/pasting
+				// any changes made here should also be reflected in the citation NodeView
+				let pandocSytnax = (node.attrs.pandocSyntax === true);
+				let attrs = {
+					class: pandocSytnax ? "citation citation-pandoc" : "citation citation-alt"
+				};
+				return ["span", attrs, 0];
+			}
 		};
 	}
 
@@ -988,8 +1006,24 @@ export class CitationExtension extends NodeExtension<Md.Cite> {
 		return {
 			mapType: "node_custom",
 			mapNode: (node: Md.Cite, _): ProseNode[] => {
-				let text = this.store.schema.text(node.value);
-				let result = this.nodeType.createAndFill({}, [text]);
+				let text = node.value;
+				let attrs: ExtensionNodeAttrs<CitationExtension> = {
+					pandocSyntax: false
+				}
+				// strip open/close bracket
+				// alt: @[wadler1998 pp.82; and @hughes1999 sec 3.1]
+				// pandoc: [see @wadler1998 pp.82; and @hughes1999 sec 3.1]
+				let start = 0;
+				let end = text.length;
+				if(text[0] == "@" && text[1] == "[") { start = 2; attrs.pandocSyntax = false; }
+				else if(text[0] == "[")              { start = 1; attrs.pandocSyntax = true;  }
+				else { console.error(`invalid citation syntax: ${text}`); }
+
+				if(text[end-1] == "]") { end--; }
+
+				// create text node (stripping away open/close bracket)
+				let textNode = this.store.schema.text(text.slice(start, end));
+				let result = this.nodeType.createAndFill(attrs, [textNode]);
 				return result ? [result] : [];
 			}
 		}
@@ -1000,12 +1034,18 @@ export class CitationExtension extends NodeExtension<Md.Cite> {
 	prose2mdast() { return {
 		create: (node: ProseNode): [Md.Cite] => {
 			// TODO (2021-05-17) better solution for casting attrs?
-			let imageAttrs = node.attrs as { src: string, alt:string|null, title:string|null };
+			let citeAttrs = node.attrs as ExtensionNodeAttrs<CitationExtension>;
+
+			// surround node content with appropriate syntax
+			let citeSyntax;
+			if(citeAttrs.pandocSyntax) { citeSyntax = `[${node.textContent}]`; }
+			else                       { citeSyntax = `@[${node.textContent}]`; }
 
 			// create mdast node
 			return [{
 				type: "cite",
-				value: "FIXME",
+				value: citeSyntax,
+				altSyntax: (citeAttrs.pandocSyntax !== true),
 				data: {
 					citeItems: []
 				}
