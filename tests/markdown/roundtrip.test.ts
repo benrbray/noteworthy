@@ -124,6 +124,16 @@ export const roundtripCases:TestRoundtrip[] = [
 		2. banana
 		3. cherry
 		`
+	},
+	// yaml
+	{ markdown: dedent`
+		---
+		title: Beautiful Concurrency
+		author:
+		  - name: Simon Peyton-Jones
+		date: 2007
+		---
+		`
 	}
 ]
 

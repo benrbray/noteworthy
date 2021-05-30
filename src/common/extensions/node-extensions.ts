@@ -21,6 +21,9 @@ import {
 	REGEX_INLINE_MATH_DOLLARS_ESCAPED, REGEX_BLOCK_MATH_DOLLARS
 } from "@benrbray/prosemirror-math";
 
+// yaml
+import YAML from "yaml";
+
 // patched prosemirror types
 import { ProseNodeType, ProseSchema } from "@common/types";
 
@@ -86,7 +89,7 @@ export class RootExtension extends NodeExtension<Md.Root> {
 				// create yaml node
 				let yamlNode: Md.YAML = {
 					type: "yaml", // TODO (2021-05-18) support TOML, JSON, etc.
-					value: JSON.stringify(rootAttrs.yamlMeta)
+					value: YAML.stringify(rootAttrs.yamlMeta).trim()
 				};
 				// prepend yaml node to document
 				rootChildren = [yamlNode, ...children];
