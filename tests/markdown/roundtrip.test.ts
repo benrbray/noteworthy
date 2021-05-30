@@ -5,7 +5,7 @@ import * as assert from 'assert';
 import dedent from "dedent-js";
 
 // noteworthy
-import { defaultMarkdownConfig } from "../../src/common/extensions/default-config"
+import { defaultMarkdownConfig } from "../../src/common/doctypes/markdown-doc"
 
 ////////////////////////////////////////////////////////////
 
@@ -28,6 +28,10 @@ export interface TestSuite<T extends TestCase<any>> {
 ////////////////////////////////////////////////////////////
 
 export const roundtripCases:TestRoundtrip[] = [
+	// strong / emphasis
+	{ markdown: "***bold italic***" },
+	{ markdown: "**bold *italic***" },
+	{ markdown: "***bold** italic*" },
 	// blockquote
 	{ markdown: '> this is a blockquote\n> and a second line' },
 	{ markdown: '> this is a blockquote\n\n> and a separate one' },
