@@ -429,15 +429,17 @@ class Renderer {
 		let prefix = a1.substring(0, i);
 
 		// insert folder markers
+		// TODO (2021-06-01) rewrite file tree code, it's an accident waiting to happen!
 		let directories:[IFolderMarker, IDirEntryMeta[]][] = [];
 		let folderMarker:IFolderMarker|null = null;
 		let fileList:IDirEntryMeta[] = [];
 		let startIdx = 0;
-		let prevDir = null;
-		for(let idx = 0; idx < fileTree.length; idx++){
-			let dirPath:string = pathlib.dirname(fileTree[idx].path);
+		let prevDir:string|null = null;
+		for(let idx = 0; idx < fileTree.length + 1; idx++){
+			let lastIdx = (idx === fileTree.length);
+			let dirPath: string = lastIdx ? (prevDir||"") : pathlib.dirname(fileTree[idx].path);
 
-			if(dirPath !== prevDir){
+			if(lastIdx || dirPath !== prevDir){
 				// add previous folder
 				if(folderMarker && (idx-startIdx > 0)){ 
 					directories.push([folderMarker, fileTree.slice(startIdx, idx)]);
@@ -446,7 +448,7 @@ class Renderer {
 				// set new foldermarker
 				folderMarker = {
 					folderMarker: true,
-					path: dirPath,
+					path: dirPath || "<root>",
 					pathSuffix: dirPath.substring(prefix.length),
 					name: pathlib.basename(dirPath)
 				};
