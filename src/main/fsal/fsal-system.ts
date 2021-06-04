@@ -1,5 +1,5 @@
 import { EventEmitter } from "events";
-import { promises as fs, writeFileSync, readFileSync } from "fs";
+import fs from "fs";
 import * as pathlib from "path";
 
 // project imports
@@ -42,27 +42,39 @@ export default class FSALSystem extends EventEmitter implements FSAL {
 	readFile(filePath: string): string | null {
 		let fileText = null;
 		try {
-			fileText = readFileSync(filePath, { encoding: "utf8" });
+			fileText = fs.readFileSync(filePath, { encoding: "utf8" });
 		} catch (err) {
 			console.log(err);
 		}
 		return fileText;
 	}
 
-	saveFile(filePath: string, fileText: string): void {
+	async saveFile(filePath: string, fileText: string, mkdirs: boolean = false, overwrite: boolean = true): Promise<boolean> {
 		console.log("saveFile ::", filePath, fileText);
 		try {
-			writeFileSync(filePath, fileText, 'UTF-8');
+			// ensure directory exists
+			if(mkdirs) {
+				let dirname = pathlib.dirname(filePath)
+				if (!fs.existsSync(dirname)) {
+					fs.mkdirSync(dirname, { recursive: true });
+				}
+			}
+			
+			// write file
+			fs.writeFileSync(filePath, fileText, {
+				encoding: 'utf8',
+				flag: overwrite ? "w" : "wx"
+			});
 		} catch (err) {
 			console.log(err);
+			return false;
 		}
+
+		return true;
 	}
 
-	async createFile(path: string, contents: string = ""): Promise<void> {
-		// normalize path (in an attempt to prevent different hashes for the same path)
-		path = pathlib.normalize(path);
-		// write file if doesn't exist
-		return await fs.writeFile(path, contents, {flag : "wx" });
+	async createFile(path: string, contents: string = ""): Promise<boolean> {
+		return this.saveFile(path, contents, true, false);
 	}
 
 	// == FILE / DIR METADATA =========================== //
@@ -80,7 +92,7 @@ export default class FSALSystem extends EventEmitter implements FSAL {
 
 		// retrieve directory metadata
 		try {
-			let stats = await fs.lstat(dir.path);
+			let stats = await fs.promises.lstat(dir.path);
 			dir.modTime = stats.ctimeMs;
 		} catch (err){
 			console.error(`fsal-dir :: error reading metadata for directory ${dir.path}`, err);
@@ -88,7 +100,7 @@ export default class FSALSystem extends EventEmitter implements FSAL {
 		}
 
 		// parse directory contents recursively
-		let children:string[] = await fs.readdir(dir.path);
+		let children:string[] = await fs.promises.readdir(dir.path);
 		for(let child of children){
 
 			/** @todo parse settings from .sptz-directory files */
@@ -128,7 +140,7 @@ export default class FSALSystem extends EventEmitter implements FSAL {
 
 		// determine modify / creation time
 		try {
-			let stat = await fs.lstat(filePath);
+			let stat = await fs.promises.lstat(filePath);
 			file.modTime = stat.mtimeMs;
 			file.creationTime = stat.birthtimeMs;
 		} catch(err) {

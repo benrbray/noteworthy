@@ -1,0 +1,26 @@
+{
+	"extends": "../tsconfig.json",
+	"include": [
+		"./**/*",
+		"../global.d.ts",
+		"../src/**/*.d.ts"
+	],
+	"compilerOptions": {
+		"module": "commonjs",
+		"allowJs": true,
+		"checkJs": false,
+		"strict": true,
+		"rootDir": "../",
+		"baseUrl": "./",                       /* Base directory to resolve non-absolute module names. */
+		"paths": {
+			"@common/*": ["../src/common/*"],
+			"@main/*": ["../src/main/*"],
+			"@renderer/*": ["../src/renderer/*"],
+			"@root/*": ["./*"],
+			"@files/*": ["./files/*"],
+			"@lib/*": ["lib/*"]
+		}   
+	},
+	"ts-node": { "files": true },
+	"files": [ "../src/global.d.ts" ],
+}

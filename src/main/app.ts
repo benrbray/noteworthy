@@ -2,8 +2,8 @@
 import * as pathlib from "path";
 
 // electron imports
-import { app, ipcMain, Event, IpcMainInvokeEvent, Menu } from "electron";
-import { enforceMacOSAppLocation, is } from 'electron-util';
+import { app, ipcMain, IpcMainInvokeEvent } from "electron";
+import { enforceMacOSAppLocation } from 'electron-util';
 import { EventEmitter } from "events";
 
 // project imports
@@ -19,9 +19,8 @@ import {
 import { FSAL } from "./fsal/fsal";
 import { invokerFor, FunctionPropertyNames } from "@common/ipc";
 import { IDirEntryMeta } from "@common/files";
-import { FsalEvents, AppEvents, ChokidarEvents, IpcEvents } from "@common/events";
+import { AppEvents, IpcEvents } from "@common/events";
 import { RendererIpcHandlers } from "@renderer/RendererIPC";
-import { promises as fs } from "fs";
 import { WorkspaceService, WorkspaceEvent } from "./workspace/workspace-service";
 import { ThemeService, ThemeEvent } from "./theme/theme-service";
 import { PluginService } from "./plugins/plugin-service";
@@ -110,7 +109,7 @@ export default class NoteworthyApp extends EventEmitter {
 
 	/**
 	 * Perform all steps needed to shut down the application.
-	 * (Note: Actually shuts down!  Doesn't ask about unsaved changes!)
+	 * @caution Actually shuts down!  Doesn't ask about unsaved changes!)
 	 */
 	quit(){
 		// announce globally that we're actually quitting!

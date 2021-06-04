@@ -37,7 +37,7 @@
     "build:linux": "npm run compile && electron-builder --linux",
     "build:all": "npm run clean:releases && npm run compile && electron-builder -mwl && npm run script:build:fixlatestwin && npm run script:build:fixlatestlinux",
     "postinstall": "electron-builder install-app-deps",
-    "test": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -P tests/tsconfig.tests.json -r ts-node/register -r tsconfig-paths/register 'tests/**/*.test.ts'"
+    "test": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' mocha -P tests/tsconfig.json -r ts-node/register -r tsconfig-paths/register 'tests/**/*.test.ts'"
   },
   "build": {
     "productName": "Noteworthy",

@@ -1,6 +1,5 @@
 // node imports
 import * as pathlib from "path";
-import fs from "fs";
 
 // project imports
 import { IFileMeta, IDirectory, IDirEntryMeta, getFlattenedFiles } from "@common/files";
@@ -51,16 +50,11 @@ export class Workspace implements IDisposable {
 	// -- Lifecycle ------------------------------------- //
 
 	dispose(){
-		// TODO: dispose Workspace?
-	}
-
-	/**
-	 * @param persist If true, write workspace metadata to
-	 *     disk, so it can be restored later.
-	 */
-	close(persist:boolean = true){
-		if(persist){ this.writeJSON(); }
-		this.dispose();
+		// dispose plugins
+		for(let plugin of this._plugins) {
+			this.unregisterWorkspacePlugin(plugin);
+			plugin.dispose();
+		}
 	}
 
 	// -- Getters / Setters ----------------------------- //
@@ -119,25 +113,8 @@ export class Workspace implements IDisposable {
 		}
 
 		// write updated workspace data to disk
-		let success = this.writeJSON();
-		return success;
+		return this._workspaceService.writeJSON();
 	}
-
-	/**
-	 * Called when the given path is stale and should be updated,
-	 * including after a file is created, changed, or destroyed.
-	 * @returns file metadata if exists, otherwise NULL
-	//  */
-	// async updatePath(filePath: string): Promise<IFileMeta | null> {
-	// 	/** @todo (6/19/20) check if path is a directory? */
-	// 	let file: IFileDesc | null = await fsalParseFile(filePath);
-	// 	if (file === null) { return null; }
-
-	// 	// store file info in workspace
-	// 	let fileMeta: IFileMeta = getFileMetadata(file);
-	// 	this._files[file.hash] = fileMeta;
-	// 	return fileMeta;
-	// }
 
 	/**
 	 * Updates the workspace entry for the given file.
@@ -151,7 +128,7 @@ export class Workspace implements IDisposable {
 	/**
 	 * Called when a watched folder/file has changed.
 	 */
-	async handleChangeDetected(event:ChokidarEvents, info: {path:string}):Promise<void> {
+	async handleChangeDetected(event:ChokidarEvents, info: {path:string}): Promise<void> {
 		// file info
 		let file = { path: info.path, hash: hash(info.path) };
 		console.log("workspace :: handle chokidar ::", event, info.path);
@@ -269,22 +246,6 @@ export class Workspace implements IDisposable {
 
 	toJSON():string {
 		return JSON.stringify(this.getData(), undefined, 2);
-	}
-
-	writeJSON(): boolean {
-		let dataPath: string = this.dataPath;
-		try {
-			// ensure data directory exists
-			let dirname = pathlib.dirname(dataPath)
-			if (!fs.existsSync(dirname)) { fs.mkdirSync(dirname); }
-			// write metadata
-			fs.writeFileSync(dataPath, this.toJSON());
-		} catch (err) {
-			console.error("fsal :: error writing metadata", err);
-			return false;
-		}
-		console.log("fsal :: workspace metadata saved to", dataPath);
-		return true;
 	}
 
 	/** 

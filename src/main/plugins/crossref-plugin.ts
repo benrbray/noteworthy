@@ -118,7 +118,7 @@ export class CrossRefPlugin implements WorkspacePlugin {
 	attachEvents(){}
 	detachEvents(){}
 
-	destroy():void {
+	dispose():void {
 		this.clear();
 		this.detachEvents();
 	}
@@ -131,11 +131,18 @@ export class CrossRefPlugin implements WorkspacePlugin {
 
 	// == Tag Queries =================================== //
 
+	/**
+	 * Returns a list of hashes for documents which define this tag.
+	 */
 	getDefsForTag(tag:string):string[]{
 		tag = this.normalizeTag(tag);
 		return Array.from(this._tag2defs.get(tag).values());
 	}
 
+	/**
+	 * Returns a list of hashes for documents which mention this tag.
+	 * (defining a tag also counts as mentioning it)
+	 */
 	getTagMentions(tag:string):string[]{
 		tag = this.normalizeTag(tag);
 		let defs = this._tag2defs.get(tag);
@@ -204,9 +211,11 @@ export class CrossRefPlugin implements WorkspacePlugin {
 
 	addWikilinks(fileMeta:IFileMeta, doc: ICrossRefProvider) {
 		// get all tags referenced / created by this file
-		let definedTags: string[] = this.getTagsDefinedBy({ fileMeta, doc });
-		let mentionedTags: string[] = this.getTagsMentionedBy({ fileMeta, doc });
+		let definedTags: string[] = this._getTagsDefinedBy({ fileMeta, doc });
+		let mentionedTags: string[] = this._getTagsMentionedBy({ fileMeta, doc });
 		let tags = new Set<string>([...definedTags, ...mentionedTags]);
+
+		console.log("xref :: addWikilinks ::", tags.values());
 
 		// doc --> tag
 		this._doc2tags.set(fileMeta.hash, tags);
@@ -224,7 +233,7 @@ export class CrossRefPlugin implements WorkspacePlugin {
 
 	// == Tag Discovery ================================= //
 
-	getTagsDefinedBy(data: { fileMeta?:IFileMeta, doc?:ICrossRefProvider }):string[] {
+	private _getTagsDefinedBy(data: { fileMeta?:IFileMeta, doc?:ICrossRefProvider }):string[] {
 		let tags:string[] = [];
 
 		// tags defined within file
@@ -245,7 +254,7 @@ export class CrossRefPlugin implements WorkspacePlugin {
 		return tags;
 	}
 
-	getTagsMentionedBy(data: { fileMeta?:IFileMeta, doc?:ICrossRefProvider }):string[] {
+	private _getTagsMentionedBy(data: { fileMeta?:IFileMeta, doc?:ICrossRefProvider }):string[] {
 		let tags:string[] = [];
 
 		// tags mentioned within file
@@ -255,15 +264,16 @@ export class CrossRefPlugin implements WorkspacePlugin {
 			));
 		}
 
+		// @TODO (2021-06-04) restore tags for specific dates?
 		// tags mentioned by metadata
-		if(data.fileMeta){
-			// tags defined by creation time
-			let creation = data.fileMeta.creationTime;
-			let date = new Date(creation);
-			if(!isNaN(date.valueOf())){
-				tags.push(this.normalizeDate(date));
-			}
-		}
+		// if(data.fileMeta){
+		// 	// tags defined by creation time
+		// 	let creation = data.fileMeta.creationTime;
+		// 	let date = new Date(creation);
+		// 	if(!isNaN(date.valueOf())){
+		// 		tags.push(this.normalizeDate(date));
+		// 	}
+		// }
 
 		return tags;
 	}

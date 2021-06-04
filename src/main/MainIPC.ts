@@ -75,7 +75,7 @@ export class MainIpc_FileHandlers {
 	async requestFileSave(file: IFileWithContents): Promise<boolean> {
 		if (!this._app.window) { return false; }
 
-		this._fsal.saveFile(file.path, file.contents);
+		this._fsal.saveFile(file.path, file.contents, false);
 		/** @todo (7/12/20) check for file save errors? */
 		this._app._renderProxy?.fileDidSave({saveas: false, path: file.path });
 		return true;
@@ -186,7 +186,7 @@ export class MainIpc_DialogHandlers {
 			}
 		);
 		if (!newFilePath) return null;
-		this._fsal.saveFile(newFilePath, file.contents);
+		this._fsal.saveFile(newFilePath, file.contents, false);
 
 		// send new file path to renderer
 		this._app._renderProxy?.fileDidSave({ saveas: true, path: newFilePath});

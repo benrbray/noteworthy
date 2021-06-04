@@ -23,13 +23,13 @@ export interface FSAL {
 	/**
 	 * Save the given text to the given file path.
 	 */
-	saveFile(filePath: string, fileText: string): void;
+	saveFile(filePath: string, fileText: string, mkDirs: boolean): Promise<boolean>;
 
 	/**
 	 * Create a new file.
 	 * TODO should this be merged with saveFile?
 	 */
-	createFile(path: string, contents?: string): Promise<void>
+	createFile(path: string, contents?: string): Promise<boolean>
 
 	/**
 	 * Reads in a file tree recursively, returning the directory descriptor object.

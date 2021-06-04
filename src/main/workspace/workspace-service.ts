@@ -18,8 +18,6 @@ export enum WorkspaceEvent {
 	FILETREE_CHANGED = "filetree-changed",
 }
 
-type WW = WorkspaceService["addListener"]
-
 export class WorkspaceService extends EventEmitter {
 	_workspace:Workspace|null;
 
@@ -32,7 +30,6 @@ export class WorkspaceService extends EventEmitter {
 		// events
 		this.handleChokidarEvent = this.handleChokidarEvent.bind(this);
 		this._fsal.addListener(FsalEvents.CHOKIDAR_EVENT, this.handleChokidarEvent);
-
 	}
 
 	// == Directory ===================================== //
@@ -99,8 +96,12 @@ export class WorkspaceService extends EventEmitter {
 	 */
 	async closeWorkspace(persist:boolean = true): Promise<boolean> {
 		if(!this._workspace){ return true; }
-		this._fsal.close();
-		this._workspace.close(persist);
+
+		// persist workspace?
+		if(persist) { this.writeJSON(); }
+
+		// close workspace
+		this._workspace.dispose();
 		this._workspace = null;
 		return true;
 	}
@@ -185,6 +186,24 @@ export class WorkspaceService extends EventEmitter {
 		await this.workspace?.handleChangeDetected(event, info);
 		// file tree changed
 		this.emit(WorkspaceEvent.FILETREE_CHANGED, this.getFileTree());
+	}
+
+	// == Workspace Persistence ========================= //
+
+	/**
+	 * Save information about the current workspace to a file,
+	 * so the workspace can be closed and restored later.
+	 */
+	async writeJSON(): Promise<boolean> {
+		if(!this._workspace) { return false; }
+
+		let dataPath: string = this._workspace.dataPath;
+		let success = await this._fsal.saveFile(dataPath, this._workspace.toJSON(), true);
+
+		if(success) { console.log("fsal :: workspace metadata saved to", dataPath); }
+		else        { console.error("fsal :: problem writing workspace metadata", dataPath); }
+		
+		return success;
 	}
 
 	// == Files / Paths ================================= //
