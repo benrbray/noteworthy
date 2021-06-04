@@ -1,5 +1,5 @@
 import NoteworthyApp from "./app";
-import FSAL from "./fsal/fsal";
+import FSALSystem from "./fsal/fsal-system";
 import { makeAppMenuTemplate } from "./menus/app-menu";
 import { Menu } from "electron";
 import { WorkspaceService } from "./workspace/workspace-service";
@@ -9,7 +9,7 @@ import { PluginService } from "./plugins/plugin-service";
 //// GLOBAL SERVICES ///////////////////////////////////////
 
 /** FSAL: File System Abstraction Layer */
-const fsal = new FSAL();
+const fsal = new FSALSystem();
 fsal.init();
 
 /** Workspace Service */

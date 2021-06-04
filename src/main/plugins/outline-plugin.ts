@@ -70,7 +70,7 @@ export class OutlinePlugin implements WorkspacePlugin {
 	attachEvents(){}
 	detachEvents(){}
 
-	destroy():void {
+	dispose():void {
 		this.clear();
 		this.detachEvents();
 	}

@@ -1,4 +1,4 @@
-const base = require("./webpack.base");
+const base = require("./webpack.base.js");
 const path = require("path");
 
 const CopyWebpackPlugin = require('copy-webpack-plugin');
@@ -57,7 +57,6 @@ const config = base({
 	},
 	output: {
 		chunkFilename: '[name].bundle.js',
-		libraryTarget: 'commonjs2',
 		path: path.resolve(__dirname, "dist/main")
 	},
 	// Provides a way of excluding dependencies from the output bundles. Instead
@@ -104,6 +103,7 @@ const config = base({
 						plugins : [
 							require("@babel/plugin-syntax-dynamic-import").default,
 							require("@babel/plugin-proposal-optional-chaining").default,
+							require("@babel/plugin-transform-modules-commonjs").default
 						]
 					}
 				}

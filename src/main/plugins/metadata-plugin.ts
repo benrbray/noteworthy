@@ -48,7 +48,7 @@ export class MetadataPlugin implements WorkspacePlugin {
 	attachEvents(){}
 	detachEvents(){}
 
-	destroy():void {
+	dispose():void {
 		this.clear();
 		this.detachEvents();
 	}

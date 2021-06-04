@@ -65,3 +65,7 @@
 .citation { font-family: var(--code-font); font-size: 0.95em; color: seagreen; }
 .citation::before { content: "@["; color: var(--color-inline-delims); letter-spacing: -0.1em; font-family: var(--code-font);}
 .citation::after  { content: "]";  color: var(--color-inline-delims); letter-spacing: -0.1em; font-family: var(--code-font);}
+
+/* citation: pandoc style */
+.citation-pandoc::before { content: "["; color: var(--color-inline-delims); letter-spacing: -0.1em; font-family: var(--code-font);}
+.citation-pandoc::after  { content: "]"; color: var(--color-inline-delims); letter-spacing: -0.1em; font-family: var(--code-font);}

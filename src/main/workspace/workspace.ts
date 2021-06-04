@@ -1,25 +1,23 @@
 // node imports
 import * as pathlib from "path";
-import fs from "fs";
 
 // project imports
-import { IFileMeta, IFileDesc, IDirectory, IDirEntryMeta } from "@common/files";
-import { readFile } from "@common/fileio";
+import { IFileMeta, IDirectory, IDirEntryMeta, getFlattenedFiles } from "@common/files";
 import { IDisposable } from "@common/types";
 import { ChokidarEvents } from "@common/events";
 import { IDoc } from "@common/doctypes/doctypes";
 import hash from "@common/util/hash";
 import { WorkspacePlugin } from "@main/plugins/plugin";
 import { CrossRefPlugin } from "@main/plugins/crossref-plugin";
-import * as FSALFile from "../fsal/fsal-file";
-import * as FSALDir from "../fsal/fsal-dir";
-import { loadFile } from "@common/doctypes/parse-doc";
+import { parseAST } from "@common/doctypes/parse-doc";
 import { OutlinePlugin } from "@main/plugins/outline-plugin";
 import { MetadataPlugin } from "@main/plugins/metadata-plugin";
+import { WorkspaceService } from "./workspace-service";
+import { FSAL } from "@main/fsal/fsal";
 
 ////////////////////////////////////////////////////////////
 
-interface IWorkspaceData {
+export interface IWorkspaceData {
 	path: string,
 	files: { [hash:string]: IFileMeta },
 	pluginData: { [name: string]: any },
@@ -31,24 +29,17 @@ export class Workspace implements IDisposable {
 	 * functionality will break and we will need to manually rerefresh
 	 */
 
-	// workspace info
-	private _dir: IDirectory;
-
-	// files
-	private _files: { [hash: string]: IFileMeta };
-	private _stale: boolean = true;
-
 	/** plugins which need to know about changes to the workspace */
 	private _plugins: WorkspacePlugin[];
 
 	constructor(
-		dir: IDirectory,
-		files: { [hash: string]: IFileMeta } = {},
-		plugins: WorkspacePlugin[] = []
+		private _dir: IDirectory,
+		private _files: { [hash: string]: IFileMeta } = {},
+		plugins: WorkspacePlugin[] = [],
+		private _workspaceService: WorkspaceService,
+		/** TODO (2021-05-30) workspace shouldn't need FSAL -- move to WorkspaceService */
+		private _fsal: FSAL
 	) {
-		this._dir = dir;
-		this._files = files;
-
 		// register plugins
 		this._plugins = [];
 		for(let plugin of plugins){
@@ -59,12 +50,11 @@ export class Workspace implements IDisposable {
 	// -- Lifecycle ------------------------------------- //
 
 	dispose(){
-		// TODO: dispose Workspace?
-	}
-
-	close(persist:boolean = true){
-		if(persist){ this.writeJSON(); }
-		this.dispose();
+		// dispose plugins
+		for(let plugin of this._plugins) {
+			this.unregisterWorkspacePlugin(plugin);
+			plugin.dispose();
+		}
 	}
 
 	// -- Getters / Setters ----------------------------- //
@@ -92,10 +82,13 @@ export class Workspace implements IDisposable {
 	/**
 	 * Called when the workspace should be re-synchronized
 	 * with files on disk.  Notifies plugins of any changes.
+	 *
+	 * TODO (2021-05-30) does workspace.update() work as intended?
+	 *     it is currently only called immediately after workspace opens
 	 */
 	async update(): Promise<boolean> {
 		// check for changes between workspace state and files on disk
-		let currentFiles = FSALDir.getFlattenedFiles(this._dir);
+		let currentFiles = getFlattenedFiles(this._dir);
 		let fileChanges = this.compareFiles(currentFiles);
 
 		// handle deletions
@@ -120,24 +113,14 @@ export class Workspace implements IDisposable {
 		}
 
 		// write updated workspace data to disk
-		let success = this.writeJSON();
-		return success;
+		return this._workspaceService.writeJSON();
 	}
 
 	/**
-	 * Called when the given path is stale and should be updated,
-	 * including after a file is created, changed, or destroyed.
-	 * @returns file metadata if exists, otherwise NULL
+	 * Updates the workspace entry for the given file.
 	 */
-	async updatePath(filePath: string): Promise<IFileMeta | null> {
-		/** @todo (6/19/20) check if path is a directory? */
-		let file: IFileDesc | null = await FSALFile.parseFile(filePath);
-		if (file === null) { return null; }
-
-		// store file info in workspace
-		let fileMeta: IFileMeta = FSALFile.getFileMetadata(file);
-		this._files[file.hash] = fileMeta;
-		return fileMeta;
+	updatePath(fileMeta: IFileMeta): void {
+		this._files[fileMeta.hash] = fileMeta;
 	}
 
 	// -- Events ---------------------------------------- //
@@ -145,7 +128,7 @@ export class Workspace implements IDisposable {
 	/**
 	 * Called when a watched folder/file has changed.
 	 */
-	async handleChangeDetected(event:ChokidarEvents, info: {path:string}):Promise<void> {
+	async handleChangeDetected(event:ChokidarEvents, info: {path:string}): Promise<void> {
 		// file info
 		let file = { path: info.path, hash: hash(info.path) };
 		console.log("workspace :: handle chokidar ::", event, info.path);
@@ -189,29 +172,37 @@ export class Workspace implements IDisposable {
 	 */
 	async handleFileChanged(file: { path: string, hash: string }, created:boolean):Promise<void> {
 		/** @todo (6/19/20) determine if file actually belongs to workspace? */
+		// TODO (2021-05-30) move this function to workspace-service? */
 
 		// add to workspace
-		let fileMeta:IFileMeta|null = await this.updatePath(file.path);
+		let fileMeta:IFileMeta|null = await this._workspaceService.updatePath(file.path);
 		if(fileMeta == null){
 			console.error(`workspace :: handleFileCreated() :: error reading file :: ${file.path}`);
 			return this.handleFileDeleted(file);
 		}
 
-		// read file contents
 		/** @todo (6/28/20) rather than reading EVERY file that changed,
 		 * read a file only if a plugin requests its contents (based on ext/filename)
 		 */
-		let contents:IDoc|null = loadFile(fileMeta);
-		if (contents === null) {
+		
+		// read file contents
+		let fileContents = this._fsal.readFile(fileMeta.path);
+		if (fileContents === null) {
 			console.error(`workspace :: handleFileCreated() :: error reading file :: ${file.path}`);
-			/** @todo (7/28/20) gracefully handle parse errors which cause contents to be null */
 			return this.handleFileDeleted(file);
 		}
 
-		// parse file contents and notify plugins
+		// parse file to ast
+		let fileAst:IDoc|null = parseAST(fileMeta.ext, fileContents);
+		if (fileAst === null) {
+			console.error(`workspace :: handleFileCreated() :: error parsing file :: ${file.path}`);
+			return this.handleFileDeleted(file);
+		}
+
+		// notify plugins of updated file
 		for (let plugin of this._plugins) {
-			if(created){ plugin.handleFileCreated(fileMeta, contents); }
-			else       { plugin.handleFileChanged(fileMeta, contents); }
+			if(created){ plugin.handleFileCreated(fileMeta, fileAst); }
+			else       { plugin.handleFileChanged(fileMeta, fileAst); }
 		}
 	}
 
@@ -242,57 +233,6 @@ export class Workspace implements IDisposable {
 		return pathlib.join(workspacePath, ".noteworthy", "workspace.json");
 	}
 
-	static async fromJSON(workspacePath:string, json: string, plugins: WorkspacePlugin[]): Promise<Workspace | null> {
-		/** @todo (6/27/20) validate incoming workspace/plugin json */
-		let data: IWorkspaceData = JSON.parse(json);
-		/** @todo (2/27/20) handle renamed workspace path */
-		if(data.path !== undefined && workspacePath !== data.path){
-			throw new Error("workspace path does not match path in data folder");
-		}
-
-		// get directory info
-		let dir: IDirectory = await FSALDir.parseDir(workspacePath);
-
-		if (!data.pluginData || !data.files) {
-			console.error("Workspace.fromJSON() :: invalid data :: creating fresh workspace");
-			return new Workspace(dir, {}, []);
-		}
-
-		// deserialize plugins
-		let pluginState:any;
-		for(let plugin of plugins){
-			if(pluginState = data.pluginData[plugin.plugin_name]){
-				plugin.deserialize(pluginState);
-			}
-		}
-
-		// construct workspace
-		return new Workspace(dir, data.files, plugins);
-	}
-
-	static async fromPath(workspacePath:string, plugins:WorkspacePlugin[]):Promise<Workspace|null> {
-		// read workspace data from file
-		let contents = readFile(Workspace.getDataPath(workspacePath));
-		if(!contents){ return null; }
-		// parse workspace data
-		return Workspace.fromJSON(workspacePath, contents, plugins);
-	}
-
-	/**
-	 * Load workspace data for the given directory, assuming
-	 * a `.noteworthy` data folder is present.
-	 * @param dir Directory info object
-	 * @param create If TRUE and no data folder found, a
-	 *     new workspace will be created.
-	 */
-	static async fromDir(dir:IDirectory, plugins:WorkspacePlugin[], create:boolean = false):Promise<Workspace|null> {
-		// restore existing workspace if data folder is present
-		let workspace = await Workspace.fromPath(dir.path, plugins);
-		if(!workspace && !create){ return null; }
-		// create new workspace from directory
-		return workspace || new Workspace(dir, undefined, plugins);
-	}
-
 	getData():IWorkspaceData {
 		// serialize plugins
 		let pluginData: { [name:string] : any } = {};
@@ -306,22 +246,6 @@ export class Workspace implements IDisposable {
 
 	toJSON():string {
 		return JSON.stringify(this.getData(), undefined, 2);
-	}
-
-	writeJSON(): boolean {
-		let dataPath: string = this.dataPath;
-		try {
-			// ensure data directory exists
-			let dirname = pathlib.dirname(dataPath)
-			if (!fs.existsSync(dirname)) { fs.mkdirSync(dirname); }
-			// write metadata
-			fs.writeFileSync(dataPath, this.toJSON());
-		} catch (err) {
-			console.error("fsal :: error writing metadata", err);
-			return false;
-		}
-		console.log("fsal :: workspace metadata saved to", dataPath);
-		return true;
 	}
 
 	/** 

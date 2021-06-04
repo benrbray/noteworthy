@@ -1,4 +1,4 @@
-const base = require("./webpack.base");
+const base = require("./webpack.base.js");
 const path = require("path");
 
 module.exports = base({
@@ -43,6 +43,7 @@ module.exports = base({
 						plugins : [
 							require("@babel/plugin-syntax-dynamic-import").default,
 							require("@babel/plugin-proposal-optional-chaining").default,
+							require("@babel/plugin-transform-modules-commonjs").default
 						]
 					}
 				}

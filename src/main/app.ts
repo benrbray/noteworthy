@@ -2,8 +2,8 @@
 import * as pathlib from "path";
 
 // electron imports
-import { app, ipcMain, Event, IpcMainInvokeEvent, Menu } from "electron";
-import { enforceMacOSAppLocation, is } from 'electron-util';
+import { app, ipcMain, IpcMainInvokeEvent } from "electron";
+import { enforceMacOSAppLocation } from 'electron-util';
 import { EventEmitter } from "events";
 
 // project imports
@@ -16,12 +16,11 @@ import {
 	MainIpc_MetadataHandlers,
 	MainIpc_NavigationHandlers
 } from "./MainIPC";
-import FSAL from "./fsal/fsal";
+import { FSAL } from "./fsal/fsal";
 import { invokerFor, FunctionPropertyNames } from "@common/ipc";
 import { IDirEntryMeta } from "@common/files";
-import { FsalEvents, AppEvents, ChokidarEvents, IpcEvents } from "@common/events";
+import { AppEvents, IpcEvents } from "@common/events";
 import { RendererIpcHandlers } from "@renderer/RendererIPC";
-import { promises as fs } from "fs";
 import { WorkspaceService, WorkspaceEvent } from "./workspace/workspace-service";
 import { ThemeService, ThemeEvent } from "./theme/theme-service";
 import { PluginService } from "./plugins/plugin-service";
@@ -38,7 +37,7 @@ export default class NoteworthyApp extends EventEmitter {
 
 	constructor(
 		/** file system abstraction layer */
-		private _fsal:FSAL,
+		private _fsal: FSAL,
 		private _workspaceService:WorkspaceService,
 		private _pluginService:PluginService,
 		private _themeService:ThemeService
@@ -82,13 +81,13 @@ export default class NoteworthyApp extends EventEmitter {
 	makeHandlers(): MainIpcHandlers {
 		// handlers with no dependencies
 		let lifecycleHandlers  = new MainIpc_LifecycleHandlers(this);
-		let fileHandlers       = new MainIpc_FileHandlers(this, this._fsal, this._workspaceService, this._pluginService);
 		let shellHandlers      = new MainIpc_ShellHandlers();
 
 		// handlers with a single dependency
+		let fileHandlers       = new MainIpc_FileHandlers(this, this._fsal, this._workspaceService, this._pluginService);
 		let tagHandlers        = new MainIpc_TagHandlers(this, this._workspaceService, this._pluginService, fileHandlers);
 		let navigationHandlers = new MainIpc_NavigationHandlers(this, this._workspaceService, this._pluginService, fileHandlers, tagHandlers);
-		let dialogHandlers     = new MainIpc_DialogHandlers(this, this._workspaceService, navigationHandlers);
+		let dialogHandlers     = new MainIpc_DialogHandlers(this, this._fsal, this._workspaceService);
 		let outlineHandlers    = new MainIpc_OutlineHandlers(this._pluginService);
 		let themeHandlers      = new MainIpc_ThemeHandlers(this._themeService);
 		let metadataHandlers   = new MainIpc_MetadataHandlers(this._pluginService);
@@ -110,7 +109,7 @@ export default class NoteworthyApp extends EventEmitter {
 
 	/**
 	 * Perform all steps needed to shut down the application.
-	 * (Note: Actually shuts down!  Doesn't ask about unsaved changes!)
+	 * @caution Actually shuts down!  Doesn't ask about unsaved changes!)
 	 */
 	quit(){
 		// announce globally that we're actually quitting!
@@ -121,7 +120,7 @@ export default class NoteworthyApp extends EventEmitter {
 		 */
 		this.detach__beforeQuit();
 		this._workspaceService.closeWorkspace()
-		this._fsal.destroy();
+		this._fsal.close();
 		app.quit();
 	}
 

@@ -118,7 +118,7 @@ export class CrossRefPlugin implements WorkspacePlugin {
 	attachEvents(){}
 	detachEvents(){}
 
-	destroy():void {
+	dispose():void {
 		this.clear();
 		this.detachEvents();
 	}
@@ -131,11 +131,18 @@ export class CrossRefPlugin implements WorkspacePlugin {
 
 	// == Tag Queries =================================== //
 
+	/**
+	 * Returns a list of hashes for documents which define this tag.
+	 */
 	getDefsForTag(tag:string):string[]{
 		tag = this.normalizeTag(tag);
 		return Array.from(this._tag2defs.get(tag).values());
 	}
 
+	/**
+	 * Returns a list of hashes for documents which mention this tag.
+	 * (defining a tag also counts as mentioning it)
+	 */
 	getTagMentions(tag:string):string[]{
 		tag = this.normalizeTag(tag);
 		let defs = this._tag2defs.get(tag);
@@ -204,9 +211,11 @@ export class CrossRefPlugin implements WorkspacePlugin {
 
 	addWikilinks(fileMeta:IFileMeta, doc: ICrossRefProvider) {
 		// get all tags referenced / created by this file
-		let definedTags: string[] = this.getTagsDefinedBy({ fileMeta, doc });
-		let mentionedTags: string[] = this.getTagsMentionedBy({ fileMeta, doc });
+		let definedTags: string[] = this._getTagsDefinedBy({ fileMeta, doc });
+		let mentionedTags: string[] = this._getTagsMentionedBy({ fileMeta, doc });
 		let tags = new Set<string>([...definedTags, ...mentionedTags]);
+
+		console.log("xref :: addWikilinks ::", tags.values());
 
 		// doc --> tag
 		this._doc2tags.set(fileMeta.hash, tags);
@@ -224,7 +233,7 @@ export class CrossRefPlugin implements WorkspacePlugin {
 
 	// == Tag Discovery ================================= //
 
-	getTagsDefinedBy(data: { fileMeta?:IFileMeta, doc?:ICrossRefProvider }):string[] {
+	private _getTagsDefinedBy(data: { fileMeta?:IFileMeta, doc?:ICrossRefProvider }):string[] {
 		let tags:string[] = [];
 
 		// tags defined within file
@@ -245,8 +254,7 @@ export class CrossRefPlugin implements WorkspacePlugin {
 		return tags;
 	}
 
-	getTagsMentionedBy(data: { fileMeta?:IFileMeta, doc?:ICrossRefProvider }):string[] {
-		/** @todo read tags from yaml metadata */
+	private _getTagsMentionedBy(data: { fileMeta?:IFileMeta, doc?:ICrossRefProvider }):string[] {
 		let tags:string[] = [];
 
 		// tags mentioned within file
@@ -256,15 +264,16 @@ export class CrossRefPlugin implements WorkspacePlugin {
 			));
 		}
 
+		// @TODO (2021-06-04) restore tags for specific dates?
 		// tags mentioned by metadata
-		if(data.fileMeta){
-			// tags defined by creation time
-			let creation = data.fileMeta.creationTime;
-			let date = new Date(creation);
-			if(!isNaN(date.valueOf())){
-				tags.push(this.normalizeDate(date));
-			}
-		}
+		// if(data.fileMeta){
+		// 	// tags defined by creation time
+		// 	let creation = data.fileMeta.creationTime;
+		// 	let date = new Date(creation);
+		// 	if(!isNaN(date.valueOf())){
+		// 		tags.push(this.normalizeDate(date));
+		// 	}
+		// }
 
 		return tags;
 	}
@@ -329,26 +338,34 @@ export class CrossRefPlugin implements WorkspacePlugin {
 
 ////////////////////////////////////////////////////////////
 
+type RenderCitationFn = (contentStr: string, attrs: { pandocSyntax?: boolean }) => Promise<string|null>;
+
 interface ICitationPluginState {
 
 }
 
 interface ICitationPluginOptions {
-	renderCitation: (id:string) => Promise<string>;
+	/**
+	 * Given the contents of a citation node, the plugin can return an
+	 * alternative label to display in place of the raw citation syntax.
+	 * 
+	 * The plugin may decline to relabel the node by returning NULL.
+	 */
+	renderCitation: RenderCitationFn;
 	handleCitationOpen: (citation_text:string) => Promise<void>;
 }
 
 /** 
  * @see https://prosemirror.net/docs/ref/#view.EditorProps.nodeViews
  */
-function createCitationView(renderCitation: (id:string) => Promise<string>){
+function createCitationView(renderCitation: RenderCitationFn){
 	return (node: ProseNode, view: EditorView, getPos:boolean|(()=>number)): CitationView => {
 		/** @todo is this necessary?
 		* Docs says that for any function proprs, the current plugin instance
 		* will be bound to `this`.  However, the typings don't reflect this.
 		*/
 		let pluginState = citationPluginKey.getState(view.state);
-		if(!pluginState){ throw new Error("no math plugin!"); }
+		if(!pluginState){ throw new Error("no citation plugin!"); }
 
 		// set up NodeView
 		let nodeView = new CitationView(
@@ -405,8 +422,12 @@ export const citationPlugin = (options:ICitationPluginOptions): ProsePlugin<ICit
 interface ICitationViewOptions {
 	/** Dom element name to use for this NodeView */
 	tagName?: string;
-	/** Given a citation id, determines the text to display. */
-	renderCitation: (id:string) => Promise<string>;
+	/**
+	 * When rendering a citation node, can return a string to
+	 * render in place of the raw citation syntax.  Returning NULL
+	 * indicates that the raw citation syntax should be used after all.
+	 */
+	renderCitation: RenderCitationFn;
 }
 
 export class CitationView implements NodeView {
@@ -427,7 +448,7 @@ export class CitationView implements NodeView {
 	private _tagName: string;
 	private _isEditing: boolean;
 	private _onDestroy: (() => void) | undefined;
-	private _renderCitation: (id:string) => Promise<string>;
+	private _renderCitation: RenderCitationFn;
 
 	// == Lifecycle ===================================== //
 
@@ -462,7 +483,9 @@ export class CitationView implements NodeView {
 
 		// create dom representation of nodeview
 		this.dom = document.createElement(this._tagName);
-		this.dom.classList.add("citation", "node-wysiwym");
+		// TODO (2021-05-30) what if attrs.pandocSyntax changes?  should update DOM class
+		let citeStyle = (this._node.attrs.pandocSyntax === true) ? "citation-pandoc" : "citation-alt";
+		this.dom.classList.add("citation", "node-wysiwym", citeStyle);
 
 		this._nodeRenderElt = document.createElement("span");
 		this._nodeRenderElt.textContent = "";
@@ -577,10 +600,12 @@ export class CitationView implements NodeView {
 		if (!this._nodeRenderElt) { return; }
 		let renderElt = this._nodeRenderElt;
 
-		// get tex string to render
-		console.log(this._node);
+		// get citation string to render
 		let contentRaw = this._node.content.content;
-		let contentStr = "";
+		console.log("cite node attrs", this._node.attrs);
+		let pandocSyntax = (this._node.attrs.pandocSyntax === true);
+
+		let contentStr = ""; // inner citation text without brackets
 		if (contentRaw.length > 0 && contentRaw[0].textContent !== null) {
 			contentStr = contentRaw[0].textContent.trim();
 		}
@@ -598,15 +623,14 @@ export class CitationView implements NodeView {
 
 		// render citation
 		this.dom.setAttribute("title", contentStr);
-		this._nodeRenderElt.innerText = "...";
+		renderElt.innerText = "...";
 
-		this._renderCitation(contentStr).then((val:string) => {
+		this._renderCitation(contentStr, { pandocSyntax }).then((val:string|null) => {
 			console.log(`citation-view :: setting text ${val}`);
-			renderElt.innerText = val;
+			renderElt.innerText = val || contentStr;
 			renderElt.classList.remove("render-error");
 		}).catch((reason:unknown) => {
-			console.error(`citation-view :: could not render`);
-			console.error(reason);
+			console.error(`citation-view :: could not render`, reason);
 			renderElt.innerText = contentStr;
 			renderElt.classList.add("render-error");
 		});

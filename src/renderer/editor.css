@@ -38,6 +38,10 @@
 #editor h5 code { padding: 0.2rem; }
 #editor h6 code { padding: 0.2rem; }
 
+#editor .error-block code, #editor .error-inline {
+	background-color: var(--color-bg-error);
+}
+
 /* code block */
 #editor code {
 	padding: 0.5em;

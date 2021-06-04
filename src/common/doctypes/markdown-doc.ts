@@ -1,35 +1,138 @@
-// prosemirror imports
-import { Node as ProseNode, Mark } from "prosemirror-model";
-
 // noteworthy imports
 import { ICrossRefProvider } from "@main/plugins/crossref-plugin";
-import { IDoc, DocMeta, ParserFor } from "./doctypes";
+import { IDoc, DocMeta, AstParser } from "./doctypes";
 import { IOutlineProvider, IOutlineEntry } from "@main/plugins/outline-plugin";
-import { defaultMarkdownConfig } from "@common/extensions/default-config";
 import { IMetadataProvider, IMetadata } from "@main/plugins/metadata-plugin";
+import { EditorConfig } from "@common/extensions/editor-config";
+
+// markdown / mdast
+import * as Md from "@common/markdown/markdown-ast";
+
+// node extensions
+import {
+	BlockQuoteExtension, HeadingExtension, HorizontalRuleExtension,
+	ListItemExtension, OrderedListExtension, UnorderedListExtension,
+	CodeBlockExtension, InlineMathExtension, BlockMathExtension,
+	ImageExtension, HardBreakExtension, ParagraphExtension,
+	CitationExtension,
+	RootExtension,
+	//RegionExtension, EmbedExtension,
+} from "@common/extensions/node-extensions";
+
+// mark extensions
+import {
+	BoldExtension, ItalicExtension, CodeExtension, LinkExtension,
+	//UnderlineExtension, DefinitionExtension, StrikethroughExtension,
+	WikilinkExtension,
+	//TagExtension
+} from "@common/extensions/mark-extensions";
+
+// yaml / toml 
+import YAML from "yaml";
+import { unistPredicate, visit, visitNodeType } from "@common/markdown/unist-utils";
+import { NwtExtension } from "@common/extensions/extension";
+import { mdastTextContent } from "@common/markdown/mdast-to-string";
+
+////////////////////////////////////////////////////////////
+
+let paragraphExt: ParagraphExtension;
+
+/**
+ * Initialize a list of all the default Markdown syntax extensions.
+ */
+export function makeDefaultMarkdownExtensions(): NwtExtension[] {
+	return [
+		// nodes: formatting
+		new RootExtension(),
+		(paragraphExt = new ParagraphExtension()),
+		new BlockQuoteExtension(),
+		new HeadingExtension(paragraphExt),
+		new HorizontalRuleExtension(),
+		new CodeBlockExtension(),
+		new OrderedListExtension(),
+		new UnorderedListExtension(),
+		new ListItemExtension(),
+		new ImageExtension(),
+		new HardBreakExtension(),
+		// nodes: math
+		new InlineMathExtension(),
+		new BlockMathExtension(),
+		// nodes: special
+		// new RegionExtension(),
+		// new EmbedExtension(),
+		// marks
+		new BoldExtension(),
+		new ItalicExtension(),
+		//new DefinitionExtension(),
+		new LinkExtension(),
+		//new UnderlineExtension(),
+		new CodeExtension(),
+		//new StrikethroughExtension(),
+		// plugins: crossrefs
+		new WikilinkExtension(),
+		//new TagExtension(),
+		new CitationExtension()
+	];
+}
+
+/** @todo revisit default parser -- is this the best way?
+ * currently, workspaces rely on this object for all
+ * behind-the-scenes parsing (e.g. when file is added/changed) */
+export const defaultMarkdownConfig = new EditorConfig(
+	makeDefaultMarkdownExtensions(), [], {}
+);
 
 ////////////////////////////////////////////////////////////////////////////////
 
-interface IMarkdownDoc extends IDoc { }
-
-export class MarkdownDoc implements IMarkdownDoc, ICrossRefProvider, IOutlineProvider, IMetadataProvider {
+export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, IMetadataProvider {
 	
-	constructor(private _doc:ProseNode){
+	private readonly _yaml: { [key:string] : string|string[] };
 
+	/**
+	 * Representation of a Markdown document as an abstract syntax tree.  Workspace
+	 * plugins use this format to collect document metadata whenever file changes
+	 * are detected on disk.
+	 *
+	 * @param _root Markdown document root.  Do NOT modify it!
+	 */
+	constructor(private readonly _root: Md.Root){
+		/** TODO (2021-05-30) YAML/TOML/JSON metadata should be extracted during parsing.
+		 * At the moment, YAML is only lifted from the doc during the mdast -> prose tree
+		 * transformation phase.  This function is called by workspace plugins, which work
+		 * with the AST directly rather than instantiating a ProseMirror document.  So,
+		 * we have to manually extract the metadata here.  
+		 *
+		 * We shouldn't need to parse the YAML more than once in different places.  This
+		 * will also cause trouble when we want to pass TOML/JSON metadata, or extract
+		 * metadata that might be interspersed throughout the document.
+		 *
+		 * Probably, we should do a metadata collection pass on the tree as part of parsing.
+		 */
+		
+		// expect YAML node at start of document, otherwise return empty metadata
+		let firstChild = this._root.children[0];
+		if(firstChild.type !== "yaml") {
+			this._yaml = {};
+		} else {
+			// parse YAML
+			let parsedYaml = YAML.parse(firstChild.value);
+			// TODO (validate YAML)
+			this._yaml = parsedYaml;
+		}
 	}
 
-	get proseDoc():ProseNode { return this._doc; }
+	get root(): Md.Root { return this._root; }
 	
 	// -- IMarkdownDoc ---------------------------------- //
 
 	getMeta(): DocMeta {
-		return this._doc.attrs["yamlMeta"] || {};
+		return this._yaml;
 	}
 	
-	static parse(serialized: string) : MarkdownDoc|null {
-		let doc = defaultMarkdownConfig.parse(serialized);
-		if(!doc){ return null; }
-		return new MarkdownDoc(doc);
+	static parseAST(serialized: string) : MarkdownAst|null {
+		let ast = defaultMarkdownConfig.parseAST(serialized);
+		if(!ast){ return null; }
+		return new MarkdownAst(ast as Md.Root);
 	}
 
 	// -- IOutlineProvider ------------------------------ //
@@ -40,21 +143,17 @@ export class MarkdownDoc implements IMarkdownDoc, ICrossRefProvider, IOutlinePro
 		let entries:IOutlineEntry[] = [];
 
 		// find all headings
-		this._doc.descendants((node:ProseNode, pos:number, parent:ProseNode) => {
-			// search for headings only
-			if(!(node.type.name == "heading")){ return true; }
+		visitNodeType<Md.Heading>(this._root, "heading", node => {
+			// heading text content
+			let headingText: string = mdastTextContent(node);
 
-			// headings contribute to outline
-			let level = node.attrs["level"];
+			// create outline entry
 			entries.push({
-				depth    : (level===undefined ? 0 : (level-1)),
-				label    : node.textContent,
-				uniqueId : node.textContent, /** @todo ensure uniqueness */
+				depth    : node.depth,
+				label    : headingText,
+				uniqueId : headingText, /** @todo sluggify, ensure uniqueness */
 			});
-
-			// do not recurse within headings
-			return false;
-		})
+		});
 
 		return entries;
 	}
@@ -65,7 +164,7 @@ export class MarkdownDoc implements IMarkdownDoc, ICrossRefProvider, IOutlinePro
 	
 	getMetadata(): IMetadata {
 		/** @todo (10/2/20) unify this function with getMeta() above */
-		return this._doc.attrs["yamlMeta"];
+		return this._yaml;
 	}
 
 	// -- ICrossRefProvider ----------------------------- //
@@ -115,20 +214,23 @@ export class MarkdownDoc implements IMarkdownDoc, ICrossRefProvider, IOutlinePro
 			tags = tags.concat(mentioned);
 		}
 
-		// find all wikilinks, tags, citations
-		this._doc.descendants((node:ProseNode, pos:number, parent:ProseNode) => {
-			if(!node.type.isText){ return true; }
-
-			let markTypes = ["wikilink", "tag", "citation"];
-
-			if(node.marks.find((mark:Mark) => markTypes.includes(mark.type.name))) {
-				tags.push(node.textContent);
+		// find all wikilinks and citations
+		// TODO: (2021-05-30) restore #tag syntax?
+		visit(this._root, node => {
+			if(unistPredicate<Md.Wikilink>(node, "wikiLink")) { 
+				tags.push(node.value);
+			} else if(unistPredicate<Md.Cite>(node, "cite")) {
+				node.data.citeItems.forEach(item => {
+					tags.push(item.key);
+				});
 			}
-			return false;
-		})
+		});
 
 		return tags;
 	}
 }
 
-export const MarkdownParser = new ParserFor(MarkdownDoc);
+////////////////////////////////////////////////////////////
+
+export const MarkdownASTParser = new AstParser(MarkdownAst);
+

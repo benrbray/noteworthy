@@ -5,13 +5,14 @@ import { chainCommands, Keymap, joinUp, joinDown, lift, selectParentNode } from 
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
 import { history, undo, redo } from "prosemirror-history";
 import { gapCursor } from "prosemirror-gapcursor";
+import { undoInputRule } from "prosemirror-inputrules";
 
 // project imports
 import { IPossiblyUntitledFile } from "@common/files";
 import { Editor } from "./editor";
 
 // markdown
-import { markdownSerializer } from "@common/markdown";
+import * as Md from "@common/markdown/markdown-ast";
 
 // solidjs
 import { render } from "solid-js/dom";
@@ -24,30 +25,30 @@ import { MainIpcHandlers } from "@main/MainIPC";
 import { YamlEditor } from "../ui/yamlEditor";
 import { SetDocAttrStep } from "@common/prosemirror/steps";
 import { shallowEqual } from "@common/util/equal";
-import { MarkdownDoc } from "@common/doctypes/markdown-doc";
-import { EmbedView } from "@common/nwt/embed-view";
+//import { EmbedView } from "@common/nwt/embed-view";
 import { makeSuggestionPlugin, SuggestionPopup } from "@renderer/ui/suggestions";
 
 // editor commands
+import { moveSelectionDown, moveSelectionUp } from "@common/prosemirror/commands/moveSelection";
 import { insertTab } from "@common/prosemirror/commands/insertTab";
-import { undoInputRule } from "prosemirror-inputrules";
 import { EditorConfig } from "@common/extensions/editor-config";
 import { NwtExtension } from "@common/extensions/extension";
 import { citationPlugin } from "@main/plugins/crossref-plugin";
+
 import {
 	BlockQuoteExtension, HeadingExtension, HorizontalRuleExtension,
-	CodeBlockExtension, OrderedListExtension, UnorderedListExtension,
-	ListItemExtension, ImageExtension, HardBreakExtension, InlineMathExtension,
-	BlockMathExtension, RegionExtension, EmbedExtension, ParagraphExtension,
-	CitationExtension
+	CodeBlockExtension, InlineMathExtension, BlockMathExtension,
+	OrderedListExtension, UnorderedListExtension, ListItemExtension, 
+	ImageExtension, HardBreakExtension,
+	//RegionExtension, EmbedExtension, 
+	RootExtension, ParagraphExtension, CitationExtension
 } from "@common/extensions/node-extensions";
 import {
-	BoldExtension, ItalicExtension, DefinitionExtension, LinkExtension,
-	UnderlineExtension, CodeExtension, StrikethroughExtension,
-	WikilinkExtension, TagExtension
+	BoldExtension, ItalicExtension, LinkExtension,
+	//DefinitionExtension, UnderlineExtension, StrikethroughExtension,
+	CodeExtension, WikilinkExtension,
+	//TagExtension
 } from "@common/extensions/mark-extensions";
-import { IMetadata } from "@main/plugins/metadata-plugin";
-import { moveSelectionDown, moveSelectionUp } from "@common/prosemirror/commands/moveSelection";
 
 ////////////////////////////////////////////////////////////
 
@@ -56,6 +57,8 @@ import { moveSelectionDown, moveSelectionUp } from "@common/prosemirror/commands
 // globally at runtime, and I haven't found clever enough typings yet to express
 // this transformation.  So, we must explicitly declare them here:
 import { WindowAfterPreload } from "@renderer/preload_types";
+import { ProseSchema } from "@common/types";
+import { makeDefaultMarkdownExtensions } from "@common/doctypes/markdown-doc";
 declare let window: Window & typeof globalThis & WindowAfterPreload;
 
 ////////////////////////////////////////////////////////////
@@ -66,7 +69,7 @@ const mac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform) : f
 ////////////////////////////////////////////////////////////
 
 // editor class
-export class MarkdownEditor extends Editor<ProseEditorState> {
+export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<ProseEditorState<S>> {
 
 	_proseEditorView: ProseEditorView | null;
 	_initialized:boolean;
@@ -106,11 +109,13 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		// editor extensions
 		let extensions:NwtExtension[] = [
 			// nodes: formatting
+			new RootExtension(),
 			(this._paragraphExt = new ParagraphExtension()),
 			new BlockQuoteExtension(),
 			new HeadingExtension(this._paragraphExt),
 			new HorizontalRuleExtension(),
 			new CodeBlockExtension(),
+			// lists: (order is important -- unordered list should be last, as it is the default)
 			new OrderedListExtension(),
 			new UnorderedListExtension(),
 			new ListItemExtension(),
@@ -120,18 +125,19 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 			new InlineMathExtension(),
 			new BlockMathExtension(),
 			// nodes: special
-			new RegionExtension(),
-			new EmbedExtension(),
+			// new RegionExtension(),
+			// new EmbedExtension(),
 			// marks
 			new BoldExtension(),
 			new ItalicExtension(),
-			new DefinitionExtension(),
+			//new DefinitionExtension(),
 			new LinkExtension(),
-			new UnderlineExtension(),
+			//new UnderlineExtension(),
 			new CodeExtension(),
-			new StrikethroughExtension(),
+			//new StrikethroughExtension(),
+			// plugins: crossrefs
 			new WikilinkExtension(),
-			new TagExtension(),
+			//new TagExtension(),
 			(this._citationExt = new CitationExtension())
 		];
 
@@ -144,26 +150,50 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 					let directoryHint = this._currentFile?.dirPath;
 					if (tag) { return this._mainProxy.navigation.navigateToTag({tag, create:true, directoryHint}); }
 				},
-				renderCitation: async (id:string): Promise<string> => {
-					console.log(`renderCitation ::`, id);
+				renderCitation: async (contentStr:string, attrs: { pandocSyntax?: boolean }): Promise<string|null> => {
+					console.log(`renderCitation ::`, contentStr);
+
+					// surround node contents with appropriate brackets,
+					// so that it will be recognized by the Markdown parser
+					let citeSyntax = attrs.pandocSyntax ? `[${contentStr}]` : `@[${contentStr}]`;
+
+					// handle multiple citations?
+					let root = this._config.parseAST(citeSyntax) as Md.Root;
+					console.log("parsed citation", root);
+					if(!root) { return null; }
+
+					// expect root -> paragraph -> citation
+					// otherwise, return the raw id itself
+					if(root.type !== "root" || root.children.length !== 1) { return null; }
+					let par = root.children[0];
+					if(par.type !== "paragraph" || par.children.length !== 1) { return null; }
+					let cite = par.children[0];
+					if(cite.type !== "cite") { return null; }
+					
+					// look up each item in the citation
+					for(let item of cite.data.citeItems) {
+						console.log("found key", item);
+					}
+
 					// treat id as tag, and find hash as corresponding file
-					let hash: string | null = await this._mainProxy.tag.getHashForTag({ tag: id , create: false });
+					let key: string = cite.data.citeItems[0].key;
+					let hash: string | null = await this._mainProxy.tag.getHashForTag({ tag: key , create: false });
 
 					if(hash === null) {
-						console.warn(`renderCitation :: tag @[${id}] does not correspond to a hash`);
-						return id;
+						console.warn(`renderCitation :: tag "${key}" does not correspond to a hash`);
+						return null;
 					}
 
 					if(hash === undefined) {
-						console.error(`renderCitation :: no response from main process when querying for tag @[${id}]`); 
-						return id;
+						console.error(`renderCitation :: no response from main process when querying for tag "${key}"`); 
+						return null;
 					}
 					
 					// get metadata corresponding to this file hash
 					let meta = await this._mainProxy.metadata.getMetadataForHash(hash);
 					if(meta === null) { 
 						console.warn(`renderCitation :: no metadata found for hash ${hash}`);
-						return id;
+						return null;
 					}
 
 					console.log(meta);
@@ -174,6 +204,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 					let date: string|string[]|undefined = meta["date"];
 					let year: string|string[]|undefined = meta["year"];
 
+					// TODO (10/2/20) handle multiple authors?
 					/** @todo (10/2/20) these checks can be removed once we properly parse YAML metadata */
 					if(!author && Array.isArray(authors)) { author = authors[0]; }
 					if(!date && !Array.isArray(year))     { date = year;         }
@@ -183,12 +214,12 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 					let parsedDate:Date = new Date(date);
 					if(isNaN(parsedDate.valueOf())){
 						console.warn(`renderCitation :: invalid date ${date}`);
-						return id;
+						return null;
 					}
 
 					if(!author || !date){
 						console.warn(`renderCitation :: not enough fields`);
-						return id;
+						return null;
 					}
 
 					let names = author.split(/\s+/);
@@ -202,6 +233,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 			gapCursor()
 		];
 
+		// TODO: (2021-05-30) move default keymap to "makeDefaultMarkdownConfig" function?
 		let keymap: Keymap = {
 			"Tab" : insertTab,
 			"Backspace" : chainCommands(mathBackspaceCmd, undoInputRule),
@@ -298,11 +330,12 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
 			state: state,
 			nodeViews: {
-				"embed": (node, view, getPos) => {
-					return new EmbedView(
-						node, view, getPos as (() => number), this._mainProxy
-					);
-				},
+				// TODO: restore embed view?
+				// "embed": (node, view, getPos) => {
+				// 	return new EmbedView(
+				// 		node, view, getPos as (() => number), this._mainProxy
+				// 	);
+				// },
 			},
 			dispatchTransaction: (tr: Transaction): void => {
 				// unsaved changes?
@@ -359,7 +392,7 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 				let clipboardImageURI: string|null = window.clipboardApi.getClipboardImageDataURI();
 
 				if(clipboardImageURI == null){
-					let imgNode = this._imageExt.type.createAndFill({
+					let imgNode = this._imageExt.nodeType.createAndFill({
 						src: clipboardImageURI
 					});
 					
@@ -393,26 +426,37 @@ export class MarkdownEditor extends Editor<ProseEditorState> {
 
 	// == Document Model ================================ //
 
+	/**
+	 * Serialize the contents of this editor as a string.
+	 */
 	serializeContents(): string {
 		if(!this._proseEditorView){ return ""; }
-		return markdownSerializer.serialize(this._proseEditorView.state.doc);
+		let serialized = this._config.serialize(this._proseEditorView.state.doc);
+		if(!serialized) { throw new Error("serialization error!"); }
+		return serialized;
 	}
 
-	parseContents(contents: string):ProseEditorState {
+	/**
+	 * Use this editor's configuration to convert a Markdown string to a ProseMirror document.
+	 */
+	parseContents(markdown: string): ProseEditorState {
 		// NOTE: it is important to use this._config to parse, rather than using
 		// MarkdownDoc.parse()!  Otherwise, there will be strange bugs!  
 		// The reason is that the doc and the editor will secretly be using
 		// different schema instances, but the type system has no way of catching this!
-		let node: ProseNode|null = this._config.parse(contents);
-		if(!node){ throw new Error("parse error!"); }
-		let parsed = new MarkdownDoc(node);
+		let proseDoc: ProseNode|null = this._config.parse(markdown);
+		if(!proseDoc){ throw new Error("parse error!"); }
 
 		return ProseEditorState.create({
-			doc: parsed.proseDoc,
-			...this._config
+			doc: proseDoc,
+			plugins: this._config.plugins,
+			schema: this._config.schema,
 		});
 	}
 
+	/**
+	 * Replaces the contents of the ProseMirror editor.
+	 */
 	setContents(contents: ProseEditorState): void {
 		if(!this._proseEditorView){
 			console.warn("editor-markdown :: setContents :: no editor!");

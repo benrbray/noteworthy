@@ -8,7 +8,7 @@ import { app } from "electron";
 import * as pathlib from "path";
 import { promises as fs } from "fs";
 import { EventEmitter } from "events";
-import FSAL from "@main/fsal/fsal";
+import { FSAL } from "@main/fsal/fsal";
 import { FsalEvents, ChokidarEvents } from "@common/events";
 
 // defined by electron-webpack
@@ -25,7 +25,7 @@ export enum ThemeEvent {
 export type ThemeId = { type: "default", id:string } | { type: "custom", path:string };
 
 export class ThemeService extends EventEmitter {
-	constructor(private _fsal:FSAL){ 
+	constructor(private _fsal: FSAL){ 
 		super();
 		this.initThemeFolder();
 	}
@@ -41,7 +41,7 @@ export class ThemeService extends EventEmitter {
 
 		// watch for changes
 		this._fsal.watchGlobal(themeFolder);
-		this._fsal.on(FsalEvents.GLOBAL_CHOKIDAR_EVENT, (event:ChokidarEvents, info:{ path:string })=>{
+		this._fsal.addListener(FsalEvents.GLOBAL_CHOKIDAR_EVENT, (event:ChokidarEvents, info:{ path:string })=>{
 			console.log("theme-service :: chokidar event");
 			if(info.path.startsWith(themeFolder)){
 				console.log("theme-service :: Theme Folder Changed!");

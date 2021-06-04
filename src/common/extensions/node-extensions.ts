@@ -1,5 +1,5 @@
 // prosemirror imports
-import { NodeType, Node as ProseNode, NodeSpec, DOMOutputSpec } from "prosemirror-model";
+import { Node as ProseNode, NodeSpec, DOMOutputSpec } from "prosemirror-model";
 import { wrapInList, splitListItem, liftListItem, sinkListItem } from "prosemirror-schema-list"
 import {
 	wrappingInputRule, textblockTypeInputRule, InputRule,
@@ -9,14 +9,23 @@ import {
 	Keymap,
 } from "prosemirror-commands"
 
+// unist imports
+import * as Uni from "unist";
+
 // project imports
-import { openPrompt, TextField } from "@common/prompt/prompt";
+import * as Md from "@common/markdown/markdown-ast";
 import { incrHeadingLevelCmd } from "@common/prosemirror/commands/demoteHeadingCmd";
-import { NodeExtension } from "@common/extensions/extension";
+import { ExtensionNodeAttrs, MdastNodeMap, MdastNodeMapType, NodeExtension, Prose2Mdast_NodeMap, Prose2Mdast_NodeMap_Presets } from "@common/extensions/extension";
 import {
 	makeInlineMathInputRule, makeBlockMathInputRule,
 	REGEX_INLINE_MATH_DOLLARS_ESCAPED, REGEX_BLOCK_MATH_DOLLARS
 } from "@benrbray/prosemirror-math";
+
+// yaml
+import YAML from "yaml";
+
+// patched prosemirror types
+import { ProseNodeType, ProseSchema } from "@common/types";
 
 ////////////////////////////////////////////////////////////
 
@@ -24,33 +33,120 @@ const mac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform) : f
 
 //// NODE EXTENSIONS ///////////////////////////////////////
 
+/* -- Root ---------------------------------------------- */
+
+export class RootExtension extends NodeExtension<Md.Root> {
+
+	// -- ProseMirror Schema -- //
+
+	get name() { return "doc" as const; }
+
+	createNodeSpec() {
+		// top-level prosemirror node
+		return {
+			content: "block+",
+			// TODO (2021-05-17) how to handle global document attrs like YAML?
+			// (they probably shouldn't belong to the document root,
+			//  especially now that we have a Markdown AST)
+			attrs: { yamlMeta: { default: {} } }
+		};
+	}
+
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
+	get mdastNodeType() { return "root" as const };
+
+	createMdastMap(): MdastNodeMap<Md.Root> {
+		return {
+			mapType: "node_custom",
+			mapNode: (_node, children, _ctx, state) => {
+				// use yaml
+				// TODO (2021-05-17) avoid cast -- need generics for ctx, state arguments?
+				let attrs = {
+					yamlMeta: (state as MdParseState).yaml || {}
+				}
+
+				// create top-level document node
+				let result = this.nodeType.createAndFill(attrs, children || undefined);
+				return result ? [result] : [];
+			}
+		}
+	}
+
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return {
+		create: (node: ProseNode, children: Uni.Node[]): [Md.Root] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let rootAttrs = node.attrs as ExtensionNodeAttrs<RootExtension>;
+			
+			// if root yas YAML metadata, create a YAML node
+			// TODO (2021-05-17) revisit conversion of YAML nodes (should not be stored in doc attrs)
+			let rootChildren: Uni.Node[];
+
+			if(Object.keys(rootAttrs.yamlMeta).length > 0) {
+				// create yaml node
+				let yamlNode: Md.YAML = {
+					type: "yaml", // TODO (2021-05-18) support TOML, JSON, etc.
+					value: YAML.stringify(rootAttrs.yamlMeta).trim()
+				};
+				// prepend yaml node to document
+				rootChildren = [yamlNode, ...children];
+			} else {
+				rootChildren = children;
+			}
+			
+			// TODO (2021-05-18) root attrs?
+			let rootNode: AnyChildren<Md.Root> = {
+				type: this.mdastNodeType,
+				children: rootChildren
+			}
+			// TODO (2021-05-17) validate node instead of casting
+			return [rootNode as Md.Root];
+		}
+	}}
+}
+
 /* -- Paragraph ----------------------------------------- */
 
-export class ParagraphExtension extends NodeExtension {
+export class ParagraphExtension extends NodeExtension<Md.Paragraph> {
+
+	// -- ProseMirror Schema -- //
 
 	get name() { return "paragraph" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			content: "inline*",
+			// TODO (2021-05-18) handle / parse / serialize paragraph class name
 			attrs: { class: { default: undefined } },
 			group: "block",
 			parseDOM: [{ tag: "p" }],
 			toDOM(node: ProseNode): DOMOutputSpec { return ["p", { ...(node.attrs.class && { class: node.attrs.class }) }, 0] }
 		};
 	}
+
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
+	get mdastNodeType() { return "paragraph" as const };
+	createMdastMap() { return MdastNodeMapType.NODE_DEFAULT }
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return Prose2Mdast_NodeMap_Presets.NODE_DEFAULT; }
 }
 
 /* -- Block Quote --------------------------------------- */
 
-// : (NodeType) → InputRule
+// : (ProseNodeType) → InputRule
 // Given a blockquote node type, returns an input rule that turns `"> "`
 // at the start of a textblock into a blockquote.
-export function blockQuoteRule(nodeType:NodeType) {
+export function blockQuoteRule<S extends ProseSchema>(nodeType:ProseNodeType<S>) {
 	return wrappingInputRule(/^\s*>\s$/, nodeType)
 }
 
-export class BlockQuoteExtension extends NodeExtension {
+export class BlockQuoteExtension extends NodeExtension<Md.Blockquote> {
 
 	get name() { return "blockquote" as const; }
 
@@ -64,42 +160,57 @@ export class BlockQuoteExtension extends NodeExtension {
 	}
 
 	createKeymap(): Keymap {
-		return { "Ctrl->" : setBlockType(this.type) }
+		return { "Ctrl->" : setBlockType(this.nodeType) }
 	}
 	
-	createInputRules() { return [blockQuoteRule(this.type)]; }
+	createInputRules() { return [blockQuoteRule(this.nodeType)]; }
+
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
+	get mdastNodeType() { return "blockquote" as const };
+	createMdastMap() { return MdastNodeMapType.NODE_DEFAULT }
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return Prose2Mdast_NodeMap_Presets.NODE_DEFAULT; }
 }
 
 /* -- Heading ------------------------------------------- */
 
-// : (NodeType, number) → InputRule
+// : (ProseNodeType, number) → InputRule
 // Given a node type and a maximum level, creates an input rule that
 // turns up to that number of `#` characters followed by a space at
 // the start of a textblock into a heading whose level corresponds to
 // the number of `#` signs.
-export function headingRule(nodeType: NodeType, maxLevel:number) {
+export function headingRule<S extends ProseSchema>(nodeType: ProseNodeType<S>, maxLevel:number) {
 	return textblockTypeInputRule(new RegExp("^(#{1," + maxLevel + "})\\s$"),
 		nodeType, match => ({ level: match[1].length }))
 }
 
-export class HeadingExtension extends NodeExtension {
+export class HeadingExtension extends NodeExtension<Md.Heading> {
 
 	get name() { return "heading" as const; }
 
-	constructor(private _bottomType:NodeExtension) { super(); }
+	/**
+	 * @param _bottomType Is the NodeType that should be created when a
+	 *     heading is demoted from H1 (normally, _bottomType = paragraph)
+	 */
+	constructor(private _bottomType: NodeExtension<any, any>) { super(); }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			attrs: { level: { default: 1 } },
 			content: "(text | image)*",
 			group: "block",
 			defining: true,
-			parseDOM: [{ tag: "h1", attrs: { level: 1 } },
-			{ tag: "h2", attrs: { level: 2 } },
-			{ tag: "h3", attrs: { level: 3 } },
-			{ tag: "h4", attrs: { level: 4 } },
-			{ tag: "h5", attrs: { level: 5 } },
-			{ tag: "h6", attrs: { level: 6 } }],
+			parseDOM: [
+				{ tag: "h1", attrs: { level: 1 } },
+				{ tag: "h2", attrs: { level: 2 } },
+				{ tag: "h3", attrs: { level: 3 } },
+				{ tag: "h4", attrs: { level: 4 } },
+				{ tag: "h5", attrs: { level: 5 } },
+				{ tag: "h6", attrs: { level: 6 } }
+			],
 			toDOM(node: ProseNode): DOMOutputSpec { return ["h" + node.attrs.level, 0] }
 		};
 	}
@@ -108,29 +219,70 @@ export class HeadingExtension extends NodeExtension {
 		let keymap:Keymap = {
 			"Tab"       : incrHeadingLevelCmd(+1, { requireTextblockStart: false, requireEmptySelection: false }),
 			"#"         : incrHeadingLevelCmd(+1, { requireTextblockStart: true,  requireEmptySelection: true  }),
-			"Shift-Tab" : incrHeadingLevelCmd(-1, { requireTextblockStart: false, requireEmptySelection: false }, this._bottomType.type),
-			"Backspace" : incrHeadingLevelCmd(-1, { requireTextblockStart: true,  requireEmptySelection: true  }, this._bottomType.type),
+			"Shift-Tab" : incrHeadingLevelCmd(-1, { requireTextblockStart: false, requireEmptySelection: false }, this._bottomType.nodeType),
+			"Backspace" : incrHeadingLevelCmd(-1, { requireTextblockStart: true,  requireEmptySelection: true  }, this._bottomType.nodeType),
 		};
 
 		for(let i = 1; i <= 6; i++){
-			keymap[`Shift-Ctrl-${i}`] = setBlockType(this.type, { level : i });
+			keymap[`Shift-Ctrl-${i}`] = setBlockType(this.nodeType, { level : i });
 		}
 
 		return keymap;
 	}
 	
-	createInputRules() { return [headingRule(this.type, 6)]; }
+	createInputRules() { return [headingRule(this.nodeType, 6)]; }
+
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
+	get mdastNodeType() { return "heading" as const };
+
+	createMdastMap(): MdastNodeMap<Md.Heading> {
+		// define map from Md.Heading -> ProseMirror Node
+		return {
+			mapType: "node_custom",
+			mapNode: (node: Md.Heading, children: ProseNode[]): ProseNode[] => {
+				// ignore empty headings
+				if(children.length < 1) { return []; }
+				let result = this.nodeType.createAndFill({ level: node.depth }, children);
+				return result ? [result] : [];
+			}
+		}
+	}
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return {
+		create: (node: ProseNode, children: Uni.Node[]): [Md.Heading] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let headingAttrs = node.attrs as ExtensionNodeAttrs<HeadingExtension>;
+
+			// create mdast heading, without validating children
+			let headingNode: AnyChildren<Md.Heading> = {
+				type: this.mdastNodeType,
+				children: children,
+				// TODO (2021-05-17) fix this if TypeScript ever gets range types
+				depth: Math.max(0, Math.min(6, headingAttrs.level)) as (1|2|3|4|5|6)
+			};
+
+			// TODO (2021-05-17) validate node instead of casting
+			return [headingNode as Md.Heading];
+		}
+	}}
 }
 
 /* -- Horizontal Rule ----------------------------------- */
 
-export class HorizontalRuleExtension extends NodeExtension {
+export class HorizontalRuleExtension extends NodeExtension<Md.ThematicBreak> {
 
 	get name() { return "horizontal_rule" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			group: "block",
+			attrs: {
+				/** Stores the user's original hrule syntax. */
+				ruleContent: { default: undefined as string|undefined }
+			},
 			parseDOM: [{ tag: "hr" }],
 			toDOM(): DOMOutputSpec { return ["div", ["hr"]] }
 		};
@@ -139,25 +291,58 @@ export class HorizontalRuleExtension extends NodeExtension {
 	createKeymap(): Keymap { return {
 		"Mod-_" : (state, dispatch) => {
 			if(dispatch) { 
-				dispatch(state.tr.replaceSelectionWith(this.type.create()).scrollIntoView())
+				dispatch(state.tr.replaceSelectionWith(this.nodeType.create()).scrollIntoView())
 			}
 			return true
 		} 
 	}}
 	
 	createInputRules() { return [/** @todo (9/27/20) hrule inputRule */]; }
+
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
+	get mdastNodeType() { return "thematicBreak" as const };
+	createMdastMap(): MdastNodeMap<Md.ThematicBreak> {
+		// define map from Mdast Node -> ProseMirror Node
+		return {
+			mapType: "node_custom",
+			mapNode: (node: Md.ThematicBreak, children: ProseNode[]): ProseNode[] => {
+				let result = this.nodeType.createAndFill({
+					ruleContent: node.ruleContent
+				});
+				return result ? [result] : [];
+			}
+		}
+	}
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return {
+		// TODO (2021-05-24) we only need a custom handler here instead of nodeMapLeaf because
+		// the node has attrs -- create a new handler that takes a getAttrs param
+		create: (node: ProseNode): [Md.ThematicBreak] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let ruleAttrs = node.attrs as ExtensionNodeAttrs<HorizontalRuleExtension>;
+
+			// create mdast node
+			return [{
+				type: this.mdastNodeType,
+				...(ruleAttrs.ruleContent ? { ruleContent : ruleAttrs.ruleContent } : {}),
+			}];
+		}
+	}}
 }
 
 /* -- Code Block ---------------------------------------- */
 
-// : (NodeType) → InputRule
+// : (ProseNodeType) → InputRule
 // Given a code block node type, returns an input rule that turns a
 // textblock starting with three backticks into a code block.
-export function codeBlockRule(nodeType: NodeType) {
+export function codeBlockRule<S extends ProseSchema>(nodeType: ProseNodeType<S>) {
 	return textblockTypeInputRule(/^```$/, nodeType)
 }
 
-export class CodeBlockExtension extends NodeExtension {
+export class CodeBlockExtension extends NodeExtension<Md.Code> {
 
 	get name() { return "code_block" as const; }
 
@@ -178,37 +363,52 @@ export class CodeBlockExtension extends NodeExtension {
 				return [
 					"pre",
 					{ ...(node.attrs.params && { "data-params": node.attrs.params }) },
-					["code", 0]]
+					["code", 0]
+				]
 			}
 		};
 	}
 
 	createKeyMap(): Keymap { return {
-		"Shift-Ctrl-\\" : setBlockType(this.type) };
+		"Shift-Ctrl-\\" : setBlockType(this.nodeType) };
 	}
 	
-	createInputRules() { return [codeBlockRule(this.type)]; }
+	createInputRules() { return [codeBlockRule(this.nodeType)]; }
+
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
+	get mdastNodeType() { return "code" as const };
+	createMdastMap() { return MdastNodeMapType.NODE_LITERAL }
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return Prose2Mdast_NodeMap_Presets.NODE_LIFT_LITERAL; }
 }
 
-/* -- Ordered List -------------------------------------- */
+// /* -- Ordered List -------------------------------------- */
 
-// : (NodeType) → InputRule
+// TODO: enabling lists requires a NodeExtension to be able to define multiple schema nodes
+// or.... maybe each NodeExtension can also have a test() that it runs on 
+// each node in the AST matching its mdastNodeType property
+// so for OrdereDList it would be test(node: Md.List) { return node.ordered === true; } 
+
+// : (ProseNodeType) → InputRule
 // Given a list node type, returns an input rule that turns a number
 // followed by a dot at the start of a textblock into an ordered list.
-export function orderedListRule(nodeType:NodeType) {
+export function orderedListRule<S extends ProseSchema>(nodeType:ProseNodeType<S>) {
 	return wrappingInputRule(/^(\d+)\.\s$/, nodeType, match => ({ order: +match[1] }),
 		(match, node) => node.childCount + node.attrs.order == +match[1])
 }
 
-export class OrderedListExtension extends NodeExtension {
+export class OrderedListExtension extends NodeExtension<Md.List> {
 
 	get name() { return "ordered_list" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			content: "list_item+",
 			group: "block",
-			attrs: { order: { default: 1 }, tight: { default: false } },
+			attrs: { order: { default: 1 }, tight: { default: true } },
 			parseDOM: [{
 				tag: "ol", getAttrs(d:string|Node) {
 					let dom: HTMLElement = d as HTMLElement;
@@ -228,10 +428,49 @@ export class OrderedListExtension extends NodeExtension {
 	}
 
 	createKeymap(): Keymap { return {
-		"Shift-Ctrl-9" : wrapInList(this.type)
+		"Shift-Ctrl-9" : wrapInList(this.nodeType)
 	}}
 	
-	createInputRules() { return [orderedListRule(this.type)]; }
+	createInputRules() { return [orderedListRule(this.nodeType)]; }
+
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
+	get mdastNodeType() { return "list" as const };
+	mdastNodeTest(node: Md.List) { return node.ordered === true; };
+	createMdastMap(): MdastNodeMap<Md.List> {
+		// define map from Mdast Node -> ProseMirror Node
+		return {
+			mapType: "node_custom",
+			mapNode: (node: Md.List, children: ProseNode[]): ProseNode[] => {
+				let result = this.nodeType.createAndFill({
+					ordered: true,
+					tight: (node.spread !== true)
+				}, children || undefined);
+				return result ? [result] : [];
+			}
+		}
+	}
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return {
+		create: (node: ProseNode, children: Uni.Node[]): [Md.List] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let listAttrs = node.attrs as ExtensionNodeAttrs<OrderedListExtension>;
+
+			// create mdast node, without validating children
+			let listNode: AnyChildren<Md.List> = {
+				type: this.mdastNodeType,
+				children: children,
+				ordered: true,
+				spread: !listAttrs.tight,
+				start: listAttrs.order,    // TODO (2021-05-17) verify "ol.start" attribute is correct
+			};
+
+			// TODO (2021-05-17) validate node instead of casting
+			return [listNode as Md.List];
+		}
+	}}
 }
 
 /* -- Unordered List ------------------------------------ */
@@ -249,11 +488,11 @@ function normalizeBullet(bullet:string|undefined): string|null {
 	}
 }
 
-// : (NodeType) → InputRule
+// : (ProseNodeType) → InputRule
 // Given a list node type, returns an input rule that turns a bullet
 // (dash, plush, or asterisk) at the start of a textblock into a
 // bullet list.
-export function bulletListRule(nodeType:NodeType) {
+export function bulletListRule<S extends ProseSchema>(nodeType:ProseNodeType<S>) {
 	return wrappingInputRule(
 		/^\s*([-+*])\s$/,
 		nodeType,
@@ -265,15 +504,15 @@ export function bulletListRule(nodeType:NodeType) {
 	)
 }
 
-export class UnorderedListExtension extends NodeExtension {
+export class UnorderedListExtension extends NodeExtension<Md.List> {
 
 	get name() { return "bullet_list" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			content: "list_item+",
 			group: "block",
-			attrs: { tight: { default: false }, bullet: { default: undefined } },
+			attrs: { tight: { default: true }, bullet: { default: undefined } },
 			parseDOM: [{
 				tag: "ul",
 				getAttrs: (dom:string|Node) => ({
@@ -291,19 +530,58 @@ export class UnorderedListExtension extends NodeExtension {
 	}
 
 	createKeymap(): Keymap { return {
-		"Shift-Ctrl-8" : wrapInList(this.type)
+		"Shift-Ctrl-8" : wrapInList(this.nodeType)
 	}}
 	
-	createInputRules() { return [bulletListRule(this.type)]; }
+	createInputRules() { return [bulletListRule(this.nodeType)]; }
+
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
+	get mdastNodeType() { return "list" as const };
+	mdastNodeTest(node: Md.List) { return node.ordered === false; };
+	createMdastMap(): MdastNodeMap<Md.List> {
+		// define map from Mdast Node -> ProseMirror Node
+		return {
+			mapType: "node_custom",
+			mapNode: (node: Md.List, children: ProseNode[]): ProseNode[] => {
+				let result = this.nodeType.createAndFill({
+					ordered: false,
+					tight: (node.spread !== true)
+				}, children || undefined);
+				return result ? [result] : [];
+			}
+		}
+	}
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return {
+		create: (node: ProseNode, children: Uni.Node[]): [Md.List] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let listAttrs = node.attrs as ExtensionNodeAttrs<UnorderedListExtension>;
+			listAttrs
+
+			// create mdast node, without validating children
+			let listNode: AnyChildren<Md.List> = {
+				type: this.mdastNodeType,
+				children: children,
+				ordered: false,
+				spread: !listAttrs.tight,
+			};
+
+			// TODO (2021-05-17) validate node instead of casting
+			return [listNode as Md.List];
+		}
+	}}
 }
 
 /* -- List Item ----------------------------------------- */
 
-export class ListItemExtension extends NodeExtension {
+export class ListItemExtension extends NodeExtension<Md.ListItem> {
 
 	get name() { return "list_item" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			content: "paragraph block*",
 			attrs: { class: { default: undefined }, bullet: { default: undefined } },
@@ -325,19 +603,56 @@ export class ListItemExtension extends NodeExtension {
 	}
 
 	createKeymap(): Keymap { return {
-		"Enter"     : splitListItem(this.type),
-		"Shift-Tab" : liftListItem(this.type),
-		"Tab"       : sinkListItem(this.type)
+		"Enter"     : splitListItem(this.nodeType),
+		"Shift-Tab" : liftListItem(this.nodeType),
+		"Tab"       : sinkListItem(this.nodeType)
+	}}
+
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
+	get mdastNodeType() { return "listItem" as const };
+	createMdastMap(): MdastNodeMap<Md.ListItem> {
+		// define map from Mdast Node -> ProseMirror Node
+		return {
+			mapType: "node_custom",
+			mapNode: (node: Md.ListItem, children: ProseNode[]): ProseNode[] => {
+				let result = this.nodeType.createAndFill({
+					...(node.marker && { bullet : node.marker })
+				}, children || undefined);
+				return result ? [result] : [];
+			}
+		}
+	}
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return {
+		create: (node: ProseNode, children: Uni.Node[]): [Md.ListItem] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let itemAttrs = node.attrs as ExtensionNodeAttrs<ListItemExtension>;
+
+			// create mdast node, without validating children
+			let itemNode: AnyChildren<Md.ListItem> = {
+				type: this.mdastNodeType,
+				children: children,
+				...(itemAttrs?.bullet ? { marker: itemAttrs.bullet } : {}),
+				spread: false,     // TODO (2021-05-18) is there ever a case where `listItem.spread = true`?
+				//checked: false,  // TODO (2021-05-18) handle listItem.checked?
+			};
+
+			// TODO (2021-05-17) validate node instead of casting
+			return [itemNode as Md.ListItem];
+		}
 	}}
 }
 
 /* -- Unordered List ------------------------------------ */
 
-export class ImageExtension extends NodeExtension {
+export class ImageExtension extends NodeExtension<Md.Image> {
 
 	get name() { return "image" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			inline: true,
 			attrs: {
@@ -360,15 +675,50 @@ export class ImageExtension extends NodeExtension {
 			toDOM(node: ProseNode): DOMOutputSpec { return ["img", node.attrs] }
 		};
 	}
+
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
+	get mdastNodeType() { return "image" as const };
+	createMdastMap(): MdastNodeMap<Md.Image> {
+		// define map from Md.Heading -> ProseMirror Node
+		return {
+			mapType: "node_custom",
+			mapNode: (node: Md.Image, children: ProseNode[]): ProseNode[] => {
+				let result = this.nodeType.createAndFill({
+					src: node.url,
+					alt: node.alt,
+					title: node.title
+				});
+				return result ? [result] : [];
+			}
+		}
+	}
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return {
+		create: (node: ProseNode): [Md.Image] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let imageAttrs = node.attrs as { src: string, alt:string|null, title:string|null };
+
+			// create mdast node
+			return [{
+				type: this.mdastNodeType,
+				url: imageAttrs.src as string,
+				...(imageAttrs.alt   ? { alt   : imageAttrs.alt   } : {}),
+				...(imageAttrs.title ? { title : imageAttrs.title } : {}),
+			}];
+		}
+	}}
 }
 
 /* -- Hard Break ---------------------------------------- */
 
-export class HardBreakExtension extends NodeExtension {
+export class HardBreakExtension extends NodeExtension<Md.Break> {
 
 	get name() { return "hard_break" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			inline: true,
 			group: "inline",
@@ -381,7 +731,7 @@ export class HardBreakExtension extends NodeExtension {
 	createKeymap(){
 		let cmd = chainCommands(exitCode, (state, dispatch) => {
 			if(dispatch){
-				dispatch(state.tr.replaceSelectionWith(this.type.create()).scrollIntoView())
+				dispatch(state.tr.replaceSelectionWith(this.nodeType.create()).scrollIntoView())
 			}
 			return true
 		})
@@ -392,15 +742,24 @@ export class HardBreakExtension extends NodeExtension {
 			...(mac && { "Ctrl-Enter" : cmd })
 		}
 	}
+
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
+	get mdastNodeType() { return "break" as const };
+	createMdastMap() { return MdastNodeMapType.NODE_EMPTY }
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return Prose2Mdast_NodeMap_Presets.NODE_EMPTY };
 }
 
 /* -- Inline Math --------------------------------------- */
 
-export class InlineMathExtension extends NodeExtension {
+export class InlineMathExtension extends NodeExtension<Md.InlineMath> {
 
 	get name() { return "math_inline" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			group: "inline math",
 			content: "text*",
@@ -413,12 +772,21 @@ export class InlineMathExtension extends NodeExtension {
 		};
 	}
 
-	createInputRules() { return [makeInlineMathInputRule(REGEX_INLINE_MATH_DOLLARS_ESCAPED, this.type)]; }
+	createInputRules() { return [makeInlineMathInputRule(REGEX_INLINE_MATH_DOLLARS_ESCAPED, this.nodeType)]; }
+
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
+	get mdastNodeType() { return "inlineMath" as const };
+	createMdastMap() { return MdastNodeMapType.NODE_LITERAL }
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return Prose2Mdast_NodeMap_Presets.NODE_LIFT_LITERAL; }
 }
 
 /* -- Block Math --------------------------------------- */
 
-export class BlockMathExtension extends NodeExtension {
+export class BlockMathExtension extends NodeExtension<Md.BlockMath> {
 
 	get name() { return "math_display" as const; }
 
@@ -435,127 +803,138 @@ export class BlockMathExtension extends NodeExtension {
 		};
 	}
 
-	createInputRules() { return [makeBlockMathInputRule(REGEX_BLOCK_MATH_DOLLARS, this.type)]; }
+	createInputRules() { return [makeBlockMathInputRule(REGEX_BLOCK_MATH_DOLLARS, this.nodeType)]; }
+
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
+	get mdastNodeType() { return "math" as const };
+	createMdastMap() { return MdastNodeMapType.NODE_LITERAL }
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return Prose2Mdast_NodeMap_Presets.NODE_LIFT_LITERAL; }
 }
 
 /* -- Region -------------------------------------------- */
 
-export class RegionExtension extends NodeExtension {
+// TODO (2021/05/09) Markdown Directives Plugin for Remark
 
-	get name() { return "region" as const; }
+// export class RegionExtension extends NodeExtension {
 
-	createNodeSpec(): NodeSpec {
-		return {
-			content: "block+",
-			attrs: { "region" : { default: null } },
-			parseDOM: [{ 
-				tag: "div.region",
-				getAttrs(d:string|Node){
-					let dom: HTMLElement = d as HTMLElement;
-					return {
-						...(dom.hasAttribute("data-region") && { "region": dom.getAttribute("data-region") })
-					}
-				}
-			}],
-			toDOM(node: ProseNode): DOMOutputSpec {
-				return ["div", { 
-					class: "region",
-					...( node.attrs.region && { "data-region": node.attrs.region } )
-				}, 0];
-			}
-		};
-	}
+// 	get name() { return "region" as const; }
 
-	createKeymap(): Keymap { return {
-		"Mod-r" : (state, dispatch, view) => {
-			let { $to } = state.selection;
+// 	createNodeSpec(): NodeSpec {
+// 		return {
+// 			content: "block+",
+// 			attrs: { "region" : { default: null } },
+// 			parseDOM: [{ 
+// 				tag: "div.region",
+// 				getAttrs(d:string|Node){
+// 					let dom: HTMLElement = d as HTMLElement;
+// 					return {
+// 						...(dom.hasAttribute("data-region") && { "region": dom.getAttribute("data-region") })
+// 					}
+// 				}
+// 			}],
+// 			toDOM(node: ProseNode): DOMOutputSpec {
+// 				return ["div", { 
+// 					class: "region",
+// 					...( node.attrs.region && { "data-region": node.attrs.region } )
+// 				}, 0];
+// 			}
+// 		};
+// 	}
 
-			openPrompt({
-				title: "Create Region",
-				fields: {
-					region: new TextField({
-						label: "Region Name",
-						required: true
-					}),
-				},
-				callback(attrs: { [key: string]: any; } | undefined) {
-					// insert new embed node at top level
-					let tr = state.tr.insert($to.after(1), this.type.createAndFill(attrs))
-					if(dispatch){ dispatch(tr); }
-					if(view){ view.focus(); }
-				}
-			})
-			return true;
-		}
-	}}
-}
+// 	createKeymap(): Keymap { return {
+// 		"Mod-r" : (state, dispatch, view) => {
+// 			let { $to } = state.selection;
+
+// 			openPrompt({
+// 				title: "Create Region",
+// 				fields: {
+// 					region: new TextField({
+// 						label: "Region Name",
+// 						required: true
+// 					}),
+// 				},
+// 				callback(attrs: { [key: string]: any; } | undefined) {
+// 					// insert new embed node at top level
+// 					let tr = state.tr.insert($to.after(1), this.type.createAndFill(attrs))
+// 					if(dispatch){ dispatch(tr); }
+// 					if(view){ view.focus(); }
+// 				}
+// 			})
+// 			return true;
+// 		}
+// 	}}
+// }
 
 /* -- Embed -------------------------------------------- */
 
-export class EmbedExtension extends NodeExtension {
+// export class EmbedExtension extends NodeExtension {
 
-	get name() { return "embed" as const; }
+// 	get name() { return "embed" as const; }
 
-	createNodeSpec(): NodeSpec {
-		return {
-			content: "block+",
-			group: "embed",
-			atom: true,
-			attrs: {
-				fileName: {default: "" },
-				regionName : { default: "" },
-			},
-			parseDOM: [{
-				tag: "div.embed",
-				getAttrs(d: string| Node){
-					let dom: HTMLElement = d as HTMLElement;
-					return {
-						...(dom.hasAttribute("data-fileName") && { fileName: dom.getAttribute("data-fileName") }),
-						...(dom.hasAttribute("data-regionName") && { regionName: dom.getAttribute("data-regionName")})
-					}
-				}
-			}],
-			toDOM(node: ProseNode): DOMOutputSpec {
-				return ["div", {
-					class: "embed",
-					...node.attrs
-				}, 0];
-			}
-		};
-	}
+// 	createNodeSpec(): NodeSpec {
+// 		return {
+// 			content: "block+",
+// 			group: "embed",
+// 			atom: true,
+// 			attrs: {
+// 				fileName: {default: "" },
+// 				regionName : { default: "" },
+// 			},
+// 			parseDOM: [{
+// 				tag: "div.embed",
+// 				getAttrs(d: string| Node){
+// 					let dom: HTMLElement = d as HTMLElement;
+// 					return {
+// 						...(dom.hasAttribute("data-fileName") && { fileName: dom.getAttribute("data-fileName") }),
+// 						...(dom.hasAttribute("data-regionName") && { regionName: dom.getAttribute("data-regionName")})
+// 					}
+// 				}
+// 			}],
+// 			toDOM(node: ProseNode): DOMOutputSpec {
+// 				return ["div", {
+// 					class: "embed",
+// 					...node.attrs
+// 				}, 0];
+// 			}
+// 		};
+// 	}
 
-	createKeymap(): Keymap { return {
-		"Mod-m" : (state, dispatch, view) => {
-			let { $to } = state.selection;
+// 	createKeymap(): Keymap { return {
+// 		"Mod-m" : (state, dispatch, view) => {
+// 			let { $to } = state.selection;
 
-			openPrompt({
-				title: "Embed Region",
-				fields: {
-					fileName: new TextField({
-						label: "File Name",
-						required: true
-					}),
-					regionName: new TextField({
-						label: "Region Name",
-						required: true
-					}),
-				},
-				callback(attrs: { [key: string]: any; } | undefined) {
-					// insert new embed node at top level
-					let tr = state.tr.insert($to.after(1), this.type.createAndFill(attrs))
-					if(dispatch){ dispatch(tr); }
-					if(view){ view.focus(); }
-				}
-			})
-			return true;
-		}
-	}}
+// 			openPrompt({
+// 				title: "Embed Region",
+// 				fields: {
+// 					fileName: new TextField({
+// 						label: "File Name",
+// 						required: true
+// 					}),
+// 					regionName: new TextField({
+// 						label: "Region Name",
+// 						required: true
+// 					}),
+// 				},
+// 				callback(attrs: { [key: string]: any; } | undefined) {
+// 					// insert new embed node at top level
+// 					let tr = state.tr.insert($to.after(1), this.type.createAndFill(attrs))
+// 					if(dispatch){ dispatch(tr); }
+// 					if(view){ view.focus(); }
+// 				}
+// 			})
+// 			return true;
+// 		}
+// 	}}
 
-}
+// }
 
 ////////////////////////////////////////////////////////////
 
-export function inlineInputRule(pattern: RegExp, nodeType: NodeType, getAttrs?: (match: string[]) => any) {
+export function inlineInputRule<S extends ProseSchema>(pattern: RegExp, nodeType: ProseNodeType<S>, getAttrs?: (match: string[]) => any) {
 	return new InputRule(pattern, (state, match, start, end) => {
 		let $start = state.doc.resolve(start);
 		let index = $start.index();
@@ -576,23 +955,43 @@ export function inlineInputRule(pattern: RegExp, nodeType: NodeType, getAttrs?: 
 
 /* -- Citation ----------------------------------------------- */
 
-export function citationRule(nodeType: NodeType): InputRule {
+import { MdParseState, AnyChildren } from "@common/markdown/mdast2prose";
+
+export function citationRule<S extends ProseSchema>(nodeType: ProseNodeType<S>): InputRule {
 	return inlineInputRule(/@\[([^\s](?:[^\]]*[^\s])?)\](.)$/, nodeType);
 }
 
-export class CitationExtension extends NodeExtension {
+export class CitationExtension extends NodeExtension<Md.Cite> {
 	
 	get name() { return "citation" as const; }
 	
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			content: "text*",
 			group: "inline",
 			inline: true,
 			atom: true,
-			attrs: { title: { default: null } },
-			parseDOM: [{ tag: "span.citation" }],
-			toDOM(node: ProseNode): DOMOutputSpec { return ["span", Object.assign({ class: "citation" }, node.attrs), 0] }
+			attrs: {
+				/** [@citation] if true, otherwise @[citation] */
+				pandocSyntax: { default: false } 
+			},
+			parseDOM: [{ 
+				tag: "span.citation",
+				getAttrs(node:Node|string) {
+					return {
+						pandocSyntax: (node as Element).classList.contains("citation-pandoc")
+					};
+				}
+			}],
+			toDOM(node: ProseNode): DOMOutputSpec {
+				// NOTE:  this DOM serializer is only used when copy/pasting
+				// any changes made here should also be reflected in the citation NodeView
+				let pandocSytnax = (node.attrs.pandocSyntax === true);
+				let attrs = {
+					class: pandocSytnax ? "citation citation-pandoc" : "citation citation-alt"
+				};
+				return ["span", attrs, 0];
+			}
 		};
 	}
 
@@ -600,6 +999,61 @@ export class CitationExtension extends NodeExtension {
 		//"Mod-@" : toggleMark(this.type)
 	}}
 
-	createInputRules() { return [citationRule(this.type)]; }
+	createInputRules() { return [citationRule(this.nodeType)]; }
+
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
+	get mdastNodeType() { return "cite" as const };
+	createMdastMap(): MdastNodeMap<Md.Cite> {
+		// define map from Md.Heading -> ProseMirror Node
+		return {
+			mapType: "node_custom",
+			mapNode: (node: Md.Cite, _): ProseNode[] => {
+				let text = node.value;
+				let attrs: ExtensionNodeAttrs<CitationExtension> = {
+					pandocSyntax: false
+				}
+				// strip open/close bracket
+				// alt: @[wadler1998 pp.82; and @hughes1999 sec 3.1]
+				// pandoc: [see @wadler1998 pp.82; and @hughes1999 sec 3.1]
+				let start = 0;
+				let end = text.length;
+				if(text[0] == "@" && text[1] == "[") { start = 2; attrs.pandocSyntax = false; }
+				else if(text[0] == "[")              { start = 1; attrs.pandocSyntax = true;  }
+				else { console.error(`invalid citation syntax: ${text}`); }
+
+				if(text[end-1] == "]") { end--; }
+
+				// create text node (stripping away open/close bracket)
+				let textNode = this.store.schema.text(text.slice(start, end));
+				let result = this.nodeType.createAndFill(attrs, [textNode]);
+				return result ? [result] : [];
+			}
+		}
+	}
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return {
+		create: (node: ProseNode): [Md.Cite] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let citeAttrs = node.attrs as ExtensionNodeAttrs<CitationExtension>;
+
+			// surround node content with appropriate syntax
+			let citeSyntax;
+			if(citeAttrs.pandocSyntax) { citeSyntax = `[${node.textContent}]`; }
+			else                       { citeSyntax = `@[${node.textContent}]`; }
+
+			// create mdast node
+			return [{
+				type: "cite",
+				value: citeSyntax,
+				altSyntax: (citeAttrs.pandocSyntax !== true),
+				data: {
+					citeItems: []
+				}
+			}];
+		}
+	}}
 
 }

@@ -1,9 +1,10 @@
 import { IWorkspaceDir, IFileMeta } from "@common/files";
 import { IDoc } from "@common/doctypes/doctypes";
+import { IDisposable } from "@common/types";
 
 ////////////////////////////////////////////////////////////
 
-export interface WorkspacePlugin {
+export interface WorkspacePlugin extends IDisposable {
 	plugin_name:string;
 
 	handleWorkspaceClosed(dir:IWorkspaceDir):void;

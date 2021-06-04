@@ -6,8 +6,6 @@ const path = require("path");
 const webpack = require("webpack");
 const { merge } = require("webpack-merge");
 
-const PACKAGE_JSON = require("./package.json");
-
 ////////////////////////////////////////////////////////////
 
 // (7/16/20) webpack+babel https://stackoverflow.com/a/52323181/1444650
@@ -39,6 +37,11 @@ function base(options){
 	return (env) => {
 		// merge incoming config with a few extra options
 		let result = merge({
+			// TODO (added 2021-05-09 while attempting to output ESM) -- should remove
+			// experiments: { outputModule: true, },
+			output: {
+				libraryTarget: "commonjs2"
+			},
 			mode: IS_PRODUCTION ? "production" : "development",
 			// Absolute path for resolving entry points and loaders from configuration. 
 			// By default, webpack uses the current directory, but it is recommended to 
@@ -121,7 +124,8 @@ function base(options){
 			// TODO (2021/03/07) I could only get source maps to work by making
 			// them inline -- is there a way around this?
 			// choose a style of source map
-			devtool: "inline-source-map"
+			devtool: "inline-source-map",
+			stats: { errorDetails: true }
 		}, options);
 
 		return result;
