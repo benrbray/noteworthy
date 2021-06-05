@@ -110,14 +110,13 @@ export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, I
 		 */
 		
 		// expect YAML node at start of document, otherwise return empty metadata
-		let firstChild = this._root.children[0];
-		if(firstChild.type !== "yaml") {
-			this._yaml = {};
-		} else {
+		if(this._root?.children?.length > 0 && this._root.children[0].type === "yaml") {
 			// parse YAML
-			let parsedYaml = YAML.parse(firstChild.value);
+			let parsedYaml = YAML.parse(this._root.children[0].value);
 			// TODO (validate YAML)
 			this._yaml = parsedYaml;
+		} else {
+			this._yaml = {};
 		}
 	}
 

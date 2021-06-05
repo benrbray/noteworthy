@@ -17,5 +17,5 @@ export function parseAST(fileExt: string, fileContents: string):IDoc|null {
 	}
 
 	// parse
-	return parser.parse(fileContents);
+	return parser.parse(fileContents) || null;
 }

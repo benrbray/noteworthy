@@ -187,14 +187,14 @@ export class Workspace implements IDisposable {
 		
 		// read file contents
 		let fileContents = this._fsal.readFile(fileMeta.path);
-		if (fileContents === null) {
+		if (fileContents === null || fileContents === undefined) {
 			console.error(`workspace :: handleFileCreated() :: error reading file :: ${file.path}`);
 			return this.handleFileDeleted(file);
 		}
 
 		// parse file to ast
 		let fileAst:IDoc|null = parseAST(fileMeta.ext, fileContents);
-		if (fileAst === null) {
+		if (fileAst === null || fileAst === undefined) {
 			console.error(`workspace :: handleFileCreated() :: error parsing file :: ${file.path}`);
 			return this.handleFileDeleted(file);
 		}

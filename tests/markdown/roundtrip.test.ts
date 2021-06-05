@@ -28,6 +28,8 @@ export interface TestSuite<T extends TestCase<any>> {
 ////////////////////////////////////////////////////////////
 
 export const roundtripCases:TestRoundtrip[] = [
+	// empty file
+	{ markdown: "" },
 	// strong / emphasis
 	{ markdown: "***bold italic***" },
 	{ markdown: "**bold *italic***" },
