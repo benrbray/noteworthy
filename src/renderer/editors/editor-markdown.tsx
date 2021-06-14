@@ -39,6 +39,7 @@ import {
 	BlockQuoteExtension, HeadingExtension, HorizontalRuleExtension,
 	CodeBlockExtension, InlineMathExtension, BlockMathExtension,
 	OrderedListExtension, UnorderedListExtension, ListItemExtension, 
+	ContainerDirectiveExtension,
 	ImageExtension, HardBreakExtension,
 	//RegionExtension, EmbedExtension, 
 	RootExtension, ParagraphExtension, CitationExtension
@@ -124,6 +125,10 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 			// nodes: math
 			new InlineMathExtension(),
 			new BlockMathExtension(),
+			// nodes: directives
+			// new TextDirectiveExtension(),
+			// new LeafDirectiveExtension(),
+			new ContainerDirectiveExtension(),
 			// nodes: special
 			// new RegionExtension(),
 			// new EmbedExtension(),

@@ -14,6 +14,7 @@ import {
 	ListItemExtension, OrderedListExtension, UnorderedListExtension,
 	CodeBlockExtension, InlineMathExtension, BlockMathExtension,
 	ImageExtension, HardBreakExtension, ParagraphExtension,
+	ContainerDirectiveExtension,
 	CitationExtension,
 	RootExtension,
 	//RegionExtension, EmbedExtension,
@@ -60,6 +61,10 @@ export function makeDefaultMarkdownExtensions(): NwtExtension[] {
 		// nodes: special
 		// new RegionExtension(),
 		// new EmbedExtension(),
+		// nodes: directives
+		// new TextDirectiveExtension(),
+		// new LeafDirectiveExtension(),
+		new ContainerDirectiveExtension(),
 		// marks
 		new BoldExtension(),
 		new ItalicExtension(),

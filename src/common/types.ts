@@ -52,27 +52,18 @@ export interface ProseSchema<N extends string = string, M extends string = strin
 export type ProseNodeT<S> = S extends ProseSchema<infer N, any> ? N : never;
 export type ProseMarkT<S> = S extends ProseSchema<any, infer M> ? M : never;
 
-/** Like { Node } from "prosemirror-model", but more precise. */
-// export interface ProseNodeType<
-// 	S extends ProseSchema,
-// 	N extends ProseNodeT<S> = ProseNodeT<S> 
-// > extends NodeType<S> {
-// 	name: N
-// }
-
+/** Like { NodeType } from "prosemirror-model", but more precise. */
 export interface ProseNodeType<
-	S extends ProseSchema,
-	N extends ProseNodeT<S> = ProseNodeT<S> 
+	S extends ProseSchema = ProseSchema,
+	N extends string = ProseNodeT<S> 
 > extends NodeType<S> {
 	name: N
 }
 
-/** Like { Node } from "prosemirror-model", but more precise. */
+/** Like { MarkType } from "prosemirror-model", but more precise. */
 export interface ProseMarkType<
-	S extends ProseSchema,
-	M extends ProseMarkT<S> = ProseMarkT<S> 
+	S extends ProseSchema = ProseSchema,
+	M extends string = ProseMarkT<S> 
 > extends MarkType<S> {
 	name: M
 }
-
-type SchemaT = ProseSchema<"paragraph" | "heading", "emphasis" | "strong">;

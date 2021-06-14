@@ -123,6 +123,11 @@ export const roundtripCases:TestRoundtrip[] = [
 		- item4
 		- item5
 		`
+	},{ markdown: dedent`
+		* **Fruit I:** apple
+		* *Fruit II:* banana
+		* ***Fruit III:*** cherry
+		`
 	},
 	// ordered list
 	{ markdown: dedent`
@@ -139,6 +144,38 @@ export const roundtripCases:TestRoundtrip[] = [
 		  - name: Simon Peyton-Jones
 		date: 2007
 		---
+		`
+	},
+	// directives
+	{ markdown: dedent`
+		:::theorem
+		water is wet
+		:::
+		`
+	},
+	{ markdown: dedent`
+		:::theorem[this is a label]
+		water is wet
+		:::
+		`
+	},
+	{ markdown: dedent`
+		:::theorem{#id}
+		water is wet
+		:::
+		`
+	},
+	{ markdown: dedent`
+		:::theorem{#id key1="val1" key2="val2"}
+		water is wet
+		:::
+		`
+	},
+	// note: remark-directive puts no space between classes when serializing
+	{ markdown: dedent`
+		:::theorem{#id .class1.class2}
+		water is wet
+		:::
 		`
 	}
 ]

@@ -7,10 +7,10 @@
 
 /* image */
 #editor img {
-	display: block;
-	margin: 1em 0 1em 0;
-	max-width: 100%;
-	max-height: 70vh;
+  display: block;
+  margin: 0 auto;
+  height: auto;
+  max-width: 100%;
 }
 
 #editor p {
@@ -47,7 +47,6 @@
 	padding: 0.5em;
 	background-color: var(--color-bg-2);
 	font-family: "Consolas", "Ubuntu Mono", monospace;
-	font-size: 0.9em;
 	text-align: left;
 }
 
@@ -96,7 +95,6 @@
 }
 
 #editor ul {
-	margin-top: 0.2em;
 	padding-left: 2em;
 	position: relative;
 	list-style-type: none;
@@ -136,7 +134,27 @@
 #editor ul li[data-bullet="-"] { color: var(--color-bad);      }
 #editor ul li[data-bullet="?"] { color: var(--color-question); }
 
+/* -- Directives ---------------------------------------- */
+
+.directive {
+    margin-top: 1em;
+    padding: 0.5em;
+    background-color: #ffffff;
+    border: 1px solid #dfdfdf;
+    border-radius: 0.5em;
+}
+
+.directive > p:first-child { margin-top: 0;    }
+.directive > p:last-child  { margin-bottom: 0; }
+
+.directive-label {
+	font-weight: bold;
+	text-transform: capitalize;
+}
+
 /* -- Task Lists ---------------------------------------- */
+
+/* @todo (2021-06-12) are tasklist styles used? */
 
 /* task lists */
 li.task-list-item {
@@ -185,6 +203,123 @@ math-inline {
 
 math-display.ProseMirror-selectednode {
 	background-color: var(--color-bg-1) !important;
+}
+
+/* == DIRECTIVES ======================================== */
+
+
+.directive {
+  padding: 1em;
+}
+
+.directive > p:first-child {
+  margin: 1em;
+}
+
+.directive > *:last-child {
+  margin-bottom: 0;
+}
+
+.directive p:not(:first-child) {
+  margin-left:  0 !important;
+  margin-right: 0 !important;
+  margin-top:  1.0em;
+}
+
+.directive::before {
+  content: attr(data-name) ".";
+  text-transform: capitalize;
+  font-weight: bold;
+}
+
+.directive > p:first-child {
+  display: inline;
+}
+
+.directive[data-name="example"] {
+}
+
+.directive[data-name="definition"] {
+}
+.directive[data-name="remark"] {
+}
+
+/* ==== Error ==== */
+
+.directive[data-name="error"] {
+  color: var(--color-bad);
+  background-color: var(--color-bg-error);
+  border: none;
+}
+
+/* ==== Warning / Caution ==== */
+
+.directive[data-name="warning"], .directive[data-name="caution"] {
+  color: var(--color-warning);
+  background-color: var(--color-bg-warning);
+  border: none;
+}
+
+/* ==== Theorem ==== */
+
+.directive:focus-within {
+  border: 1px solid red;
+}
+
+.directive[data-name="theorem"] ol {
+  list-style-type: upper-roman;
+}
+
+/* ==== Proof ==== */
+
+.directive[data-name="proof"]::before {
+  font-weight: normal;
+  font-style: italic;
+}
+
+/* top-level proof */
+.ProseMirror > .directive[data-name="proof"] {
+  padding: 0.5em;
+}
+
+.directive[data-name="proof"] {
+  position: relative;
+  padding: 1.0em 0.5em 0.5em 0;
+  border: none;
+  border-radius: 0;
+  border-top: 1px solid #ccc;
+  border-bottom: 1px solid #ccc;
+  /* prevents border wiggle https://stackoverflow.com/a/11661286/1444650 */
+  overflow: auto;
+  background-color: unset;
+
+  text-align: justify;
+}
+
+.directive[data-name="proof"]:last-child {
+  border-bottom: none;
+}
+/* .directive[data-name="proof"] > p:last-child::after {
+  content: "";
+  display: inline-block;
+  border: 1px solid;
+  width: 0.5em;
+  height: 0.5em;
+  margin-left: 0.5em;
+} */
+
+/* proof qed */
+.directive[data-name="proof"]::after {
+  content: "";
+  display: block;
+  
+  position: absolute;
+  right: 0.5em;
+  bottom: 0.7em;
+
+  border: 1px solid;
+  width: 0.6em;
+  height: 0.6em;
 }
 
 /* == EMBEDDED FILES ==================================== */

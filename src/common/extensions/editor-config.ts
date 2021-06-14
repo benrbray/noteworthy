@@ -22,22 +22,23 @@ import { unistIsStringLiteral } from "@common/markdown/unist-utils";
 
 // remark and remark plugins
 import remark from "remark-parse";
-import remarkMathPlugin from "remark-math";
-import remarkFrontMatter from "remark-frontmatter";
-import remarkGfm from "remark-gfm";
-import remarkFootnotes from "remark-footnotes";
-import remarkStringify from "remark-stringify";
+import remarkMathPlugin from "remark-math";          // latex math blocks
+import remarkFrontMatter from "remark-frontmatter";  // yaml frontmatter
+import remarkGfm from "remark-gfm";                  // tables, heading ids
+import remarkFootnotes from "remark-footnotes";      // pandoc footnotes
+import remarkStringify from "remark-stringify";      // markdown to string
+import remarkDirective from "remark-directive";      // commonmark directives
 
 // custom remark plugins
-import { citePlugin } from "@benrbray/remark-cite";
-import { wikiLinkPlugin as remarkWikilinkPlugin } from '../markdown/remark-plugins/wikilink/remark-wikilink';
-import { remarkErrorPlugin } from "../markdown/remark-plugins/error/remark-error";
-import { remarkConcretePlugin } from "../markdown/remark-plugins/concrete/remark-concrete";
+import { citePlugin as remarkCitePlugin } from "@benrbray/remark-cite";
+import { wikiLinkPlugin as remarkWikilinkPlugin } from '@common/markdown/remark-plugins/wikilink/remark-wikilink';
+import { remarkErrorPlugin } from "@common/markdown/remark-plugins/error/remark-error";
+import { remarkConcretePlugin } from "@common/markdown/remark-plugins/concrete/remark-concrete";
 
 // project imports
 import { keymap as makeKeymap } from "prosemirror-keymap";
 import { DefaultMap } from "@common/util/DefaultMap";
-import { NwtExtension, NodeExtension, MarkExtension, MdastNodeMapType, MdastMarkMapType, Prose2Mdast_NodeMap_Presets, Prose2Mdast_MarkMap_Presets } from "./extension";
+import { NwtExtension, NodeExtension, MarkExtension, MdastNodeMapType, MdastMarkMapType, Prose2Mdast_NodeMap_Presets, Prose2Mdast_MarkMap_Presets } from "@common/extensions/extension";
 import * as prose2mdast from "@common/markdown/prose2mdast";
 import * as mdast2prose from "@common/markdown/mdast2prose";
 
@@ -129,7 +130,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 			.use(remark)
 			.use(remarkGfm)
 			.use(remarkMathPlugin)
-			.use(citePlugin, { 
+			.use(remarkCitePlugin, { 
 				syntax: { enableAltSyntax: true },
 				toMarkdown: { useNodeValue: true }
 			})
@@ -138,6 +139,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 			.use(remarkFootnotes, { inlineNotes: true })
 			.use(remarkWikilinkPlugin)
 			.use(remarkFrontMatter, ['yaml', 'toml'])
+			.use(remarkDirective)
 			.use(remarkStringify, {
 				// TODO: (2021-05-18) remember bullet type
 				bullet: '*',

@@ -99,6 +99,7 @@
     "prosemirror-transform": "^1.2.12",
     "prosemirror-view": "^1.18.0",
     "remark": "^13.0.0",
+    "remark-directive": "^1.0.1",
     "remark-footnotes": "^3.0.0",
     "remark-frontmatter": "^3.0.0",
     "remark-gfm": "^1.0.0",

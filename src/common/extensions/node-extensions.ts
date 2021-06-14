@@ -1,6 +1,7 @@
 // prosemirror imports
 import { Node as ProseNode, NodeSpec, DOMOutputSpec } from "prosemirror-model";
 import { wrapInList, splitListItem, liftListItem, sinkListItem } from "prosemirror-schema-list"
+import { NodeSelection } from "prosemirror-state";
 import {
 	wrappingInputRule, textblockTypeInputRule, InputRule,
 } from "prosemirror-inputrules"
@@ -931,6 +932,133 @@ export class BlockMathExtension extends NodeExtension<Md.BlockMath> {
 // 	}}
 
 // }
+
+////////////////////////////////////////////////////////////
+
+export interface ContainerDirective_ProseAttrs {
+	name: string,
+	attributes: Md.ContainerDirective["attributes"]
+}
+
+function makeContainerDirectiveInputRule(nodeType: ProseNodeType){
+	let pattern: RegExp = /^\\([a-zA-Z0-9]+) /ig;
+
+	const getAttrs = (matches: string[]): ContainerDirective_ProseAttrs => {
+		return { name: matches[1].trim() || "directive", attributes: { } };
+	}
+	
+	// always create a new block, rather than joining with an above block
+	const joinPredicate = () => false;
+
+	return wrappingInputRule(pattern, nodeType, getAttrs, joinPredicate)
+}
+
+export class ContainerDirectiveExtension extends NodeExtension<Md.ContainerDirective> {
+
+	get name() { return "container_directive" as const; }
+
+	createNodeSpec() {
+		return {
+			content: "block+",
+			group: "block",
+			defining: true,  // https://prosemirror.net/docs/ref/#model.NodeSpec.defining
+			isolating: true, // https://prosemirror.net/docs/ref/#model.NodeSpec.isolating
+			attrs: { name : { }, attributes : { default : {} as Md.ContainerDirective["attributes"] } },
+			parseDOM: [{
+				tag: "div.directive",
+				getAttrs: (dom:string|Node): ContainerDirective_ProseAttrs => {
+					let elt = dom as HTMLElement;
+
+					// TODO (2021-06-14) use default directive name or parse error?
+					let name = elt.dataset.name || "directive";
+					let attributes: ContainerDirective_ProseAttrs["attributes"] = { };
+
+					// attribute whitelist
+					for(let attrName of ["class", "id"]) {
+						let value = elt.getAttribute(attrName);
+						if(value === null || value === undefined) { continue; }
+						attributes[attrName] = value;
+					}
+
+					// keep all "data-*" attributes except "name",
+					// which is used to store the directive label
+					let dataNames = Object.keys(elt.dataset)
+						.filter(name => ["name"].indexOf(name) < 0);
+					
+					for(let dataName of dataNames) {
+						let value = elt.dataset[dataName];
+						if(value === null || value === undefined) { continue; }
+						attributes[dataName] = value;
+					}
+
+					return { name, attributes };
+				}
+			}],
+			toDOM(node: ProseNode): DOMOutputSpec {
+				let attrs = node.attrs as ContainerDirective_ProseAttrs;
+				let classNames = attrs.attributes.class ? `directive ${attrs.attributes.class}` : "directive"
+
+				// prefix custom attributes with "data-"
+				let dataAttrs: { [k:string] : string } = { };
+
+				Object.keys(attrs.attributes)
+					.filter(key => ["id", "class"].indexOf(key) > 0)
+					.forEach(key => {
+						dataAttrs[`data-${key}`] = attrs.attributes[key];
+					});
+				
+				return ["div", {
+					"data-name" : attrs.name,
+					// TODO (2021-06-12) is this safe? decide on format for directive id
+					...(attrs.attributes.id && { id : `${attrs.name}-${attrs.attributes.id}` }),
+					class : classNames
+				}, 0];
+			}
+		};
+	}
+
+	createInputRules() { return [makeContainerDirectiveInputRule(this.nodeType)]; }
+
+	// -- Conversion from Mdast -> ProseMirror ---------- //
+
+	get mdastNodeType() { return "containerDirective" as const };
+
+	//mdastNodeTest(node: Md.List) { return node.ordered === false; };
+
+	createMdastMap(): MdastNodeMap<Md.ContainerDirective> {
+		// define map from Mdast Node -> ProseMirror Node
+		return {
+			mapType: "node_custom",
+			mapNode: (node: Md.ContainerDirective, children: ProseNode[]): ProseNode[] => {
+				let result = this.nodeType.createAndFill({
+					name: node.name,
+					attributes : node.attributes
+				}, children || undefined);
+				return result ? [result] : [];
+			}
+		}
+	}
+
+	// -- Conversion from ProseMirror -> Mdast ---------- //
+
+	prose2mdast() { return {
+		create: (node: ProseNode, children: Uni.Node[]): [Md.ContainerDirective] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let attrs = node.attrs as ContainerDirective_ProseAttrs;
+			
+			// create mdast node, without validating children
+			let containerNode: AnyChildren<Md.ContainerDirective> = {
+				type: this.mdastNodeType,
+				children: children,
+				name: attrs.name,
+				attributes: attrs.attributes
+			};
+
+			// TODO (2021-05-17) validate node instead of casting
+			return [containerNode as Md.ContainerDirective];
+		}
+	}}
+}
 
 ////////////////////////////////////////////////////////////
 

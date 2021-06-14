@@ -36,7 +36,12 @@
 	--color-outline-emphasis: rgb(88, 172, 179);
 
 	/** Semantic Colors: Background **/
-	--color-bg-error: #ffc6c6;
+	--color-bg-good:     hsl(120, 100%, 89%);
+	--color-bg-bad:      hsl(0,   100%, 89%);
+	--color-bg-error:    hsl(0,   100%, 89%);
+	--color-bg-warning:    hsl(43   100%, 89%);
+	--color-bg-neutral:  hsl(207, 100%, 89%);
+	--color-bg-question: hsl(300, 100%, 89%);
 
 	/** Semantic Colors **/
 	--color-good: green;
@@ -384,7 +389,7 @@ div:hover::-webkit-scrollbar-thumb {
 
 /* == PROSEMIRROR ======================================= */
 
-.ProseMirror { outline: none; }
+.ProseMirror { outline: none; white-space: normal }
 
 /* == IPYNB ============================================= */
 
