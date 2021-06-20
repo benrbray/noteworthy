@@ -389,7 +389,7 @@ div:hover::-webkit-scrollbar-thumb {
 
 /* == PROSEMIRROR ======================================= */
 
-.ProseMirror { outline: none; white-space: normal }
+.ProseMirror { outline: none; }
 
 /* == IPYNB ============================================= */
 
