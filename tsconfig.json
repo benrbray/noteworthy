@@ -20,7 +20,15 @@
     ],                             /* Specify library files to be included in the compilation. */
     // "allowJs": true,                       /* Allow javascript files to be compiled. */
     // "checkJs": true,                       /* Report errors in .js files. */
+    
+    /* GitHub issues related to JSX/SolidJS *
+     * https://github.com/microsoft/TypeScript/issues/41813
+     * https://github.com/solidjs/solid/issues/282
+     * https://github.com/solidjs/solid/blob/main/CHANGELOG.md#0230---2020-12-05
+     */
     "jsx": "preserve",                     /* Specify JSX code generation: 'preserve', 'react-native', or 'react'. */
+    "jsxImportSource" : "solid-js",
+    
     // "declaration": true,                   /* Generates corresponding '.d.ts' file. */
     // "declarationMap": true,                /* Generates a sourcemap for each corresponding '.d.ts' file. */
     //"sourceMap": true,                     /* Generates corresponding '.map' file. */

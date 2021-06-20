@@ -1,4 +1,4 @@
-import { Suspense, createSignal, For, useTransition, createResource, Match, createResourceState } from "solid-js";
+import { Suspense, For, createResource, JSX } from "solid-js";
 import { LoadingSpinner } from "./loading";
 import { ITagSearchResult, IFileSearchResult } from "@main/plugins/crossref-plugin";
 
@@ -9,18 +9,20 @@ interface ITagSearchProps {
 }
 
 export const TagSearch = (props:ITagSearchProps) => {
-	const [searchResults, loadResults] = createResourceState<{files:(ITagSearchResult|IFileSearchResult)[]}>({ files: [] });
-
-	const onChange = async (val: Event & {target: HTMLInputElement} ) => {
-		loadResults({ files: props.getSearchResults(val.target.value) });
+	const [results, setResults] = createResource<{files:(ITagSearchResult|IFileSearchResult)[]}>(
+		(k, getPrev) => ({ files: [] })
+	);
+	
+	const onChange: JSX.EventHandlerUnion<HTMLInputElement, InputEvent> = async (val) => {
+		setResults.mutate({ files: await props.getSearchResults(val.currentTarget.value) });
 	}
 
 	return (
 		<div id="tab_tags" class="tab-contents">
-			<input onInput={onChange } placeholder="Search Tags..." />
+			<input onInput={onChange} placeholder="Search Tags..." />
 			<div id="tag_results">
 				<Suspense fallback={<LoadingSpinner />}>
-					<For each={searchResults.files}>
+					<For each={results()?.files || []}>
 					{ entry => {
 						if(entry.type == "tag-result"){
 							return (<div class="list-item search-result" 

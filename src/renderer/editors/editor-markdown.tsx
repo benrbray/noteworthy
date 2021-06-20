@@ -15,7 +15,7 @@ import { Editor } from "./editor";
 import * as Md from "@common/markdown/markdown-ast";
 
 // solidjs
-import { render } from "solid-js/dom";
+import { render } from "solid-js/web";
 import { createEffect, createSignal } from "solid-js";
 
 // views

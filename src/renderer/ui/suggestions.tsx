@@ -9,7 +9,7 @@ import { EditorView as ProseEditorView } from "prosemirror-view";
 import { suggest, Suggester, SuggestKeyBinding } from "prosemirror-suggest";
 
 // solidjs imports
-import { render } from "solid-js/dom";
+import { render } from "solid-js/web";
 import { createSignal, For } from "solid-js";
 
 ////////////////////////////////////////////////////////////////////////////////
