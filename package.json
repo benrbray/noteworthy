@@ -105,7 +105,7 @@
     "remark-gfm": "^1.0.0",
     "remark-math": "^4.0.0",
     "remark-parse": "^9.0.0",
-    "solid-js": "^0.18.14",
+    "solid-js": "^0.26.0",
     "stream-browserify": "^3.0.0",
     "util": "^0.12.3",
     "yaml": "^2.0.0-4"
@@ -137,7 +137,7 @@
     "@types/unist": "^2.0.3",
     "asar": "^3.0.3",
     "babel-loader": "^8.2.2",
-    "babel-preset-solid": "^0.18.14",
+    "babel-preset-solid": "^0.26.5",
     "copy-webpack-plugin": "^8.0.0",
     "css-loader": "^5.1.1",
     "dedent-js": "^1.0.1",

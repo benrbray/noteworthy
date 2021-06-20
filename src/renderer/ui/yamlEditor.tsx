@@ -2,7 +2,7 @@
 import YAML from "yaml";
 
 // solid.js imports
-import { afterEffects, SetStateFunction } from "solid-js";
+import { onMount, SetStateFunction } from "solid-js";
 
 // prosemirror imports
 import { Schema as ProseSchema, NodeSpec, Node as ProseNode } from "prosemirror-model";
@@ -170,6 +170,8 @@ interface IYamlEditorProps {
 // SolidJS: Yaml Editor Component
 export const YamlEditor = (props:IYamlEditorProps) => {
 	let editor:HTMLDivElement;
-	afterEffects(()=>{ makeYamlEditor(editor, props.yamlMeta, props.setYamlMeta) });
+	onMount(()=>{ makeYamlEditor(editor, props.yamlMeta, props.setYamlMeta) });
+
+	// https://github.com/solidjs/solid/blob/main/documentation/api.md#ref
 	return (<div ref={(elt:HTMLDivElement)=>{editor=elt}}></div>)
 }

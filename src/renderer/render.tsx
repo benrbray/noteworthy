@@ -18,7 +18,7 @@ import { IFolderMarker, FileExplorer } from "./ui/explorer";
 import { TagSearch } from "./ui/tag-search";
 
 // solid js imports
-import { render } from "solid-js/dom";
+import { render } from "solid-js/web";
 import { State as SolidState, SetStateFunction, createState, Suspense, Switch, Match, For } from "solid-js";
 import { CalendarTab } from "./ui/calendarTab";
 import { OutlineTab } from "./ui/outlineTab";

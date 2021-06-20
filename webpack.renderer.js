@@ -210,7 +210,7 @@ const config = base({
 								// TODO: update electron version here
 								"targets": { "electron": "12.0.0", }
 							} ],
-							'solid',
+							require("babel-preset-solid"),
 							'@babel/preset-typescript'
 						],
 						plugins: ["@babel/plugin-proposal-optional-chaining"],
