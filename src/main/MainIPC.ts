@@ -231,6 +231,11 @@ export class MainIpc_TagHandlers {
 		private _fileHandlers:MainIpc_FileHandlers,
 	){ }
 	
+	/**
+	 * Return a list of files which mention the query tag.
+	 * Useful for generating a list of backlinks.
+	 * @param query The tag to search for.
+	 */
 	async tagSearch(query:string):Promise<IFileMeta[]> {
 		// get active plugin
 		let plugin = this._pluginService.getWorkspacePluginByName("crossref_plugin");
@@ -241,6 +246,10 @@ export class MainIpc_TagHandlers {
 		return filterNonVoid( hashes.map(hash => (this._workspaceService.getFileByHash(hash))) );
 	}
 
+	/**
+	 * Return a list of tags which approximately match the query.
+	 * @param query The tag to search for.
+	 */
 	async fuzzyTagSearch(query:string):Promise<ITagSearchResult[]> {
 		// get active plugin
 		let plugin = this._pluginService.getWorkspacePluginByName("crossref_plugin");
