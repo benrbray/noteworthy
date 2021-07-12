@@ -1,4 +1,4 @@
-> Noteworthy is currently in development!  I work on Noteworthy in my free time, so progress comes in bursts.  I hope to have a public beta available for release before January 2021.
+> Noteworthy is currently in development!  I work on Noteworthy in my free time, so progress comes in bursts.  I hope to have a public beta available for release before January 2022.
 
 
 # Noteworthy ([https://noteworthy.ink/](https://noteworthy.ink/))
@@ -6,7 +6,7 @@
 A free, open-source, local-first Markdown editor built with [ProseMirror](https://prosemirror.net/).
 
 * Works directly with your **local** files, entirely **offline**.
-* Write your notes in **Markdown**, plus a few optional extensions.
+* Write your notes in **Markdown**, with **syntax extensions** like citations and block directives. 
 * Build your own personal wiki with **bidirectional links**.
 * Excellent **math** support — seamlessly transition between source and rendered math, thanks to [KaTeX](https://katex.org/) and [prosemirror-math](https://github.com/benrbray/prosemirror-math).
 
@@ -21,6 +21,11 @@ Display Math:
 ![display math](img/prosemirror-math_display.gif)
 
 ## Screenshot
+
+> (screenshot taken 12 July 2021)
+
+![screenshot from 12 July 2021](img/noteworthy_12july2021.png)
+
 
 > (screenshot taken 16 September 2020)
 
@@ -46,8 +51,10 @@ The table below compares Noteworthy to other editors with similar features.  Of 
 git clone --recurse-submodules git@github.com:benrbray/noteworthy.git
 cd noteworthy
 npm install
-npm run dev
+npm run dist
 ```
+
+After building, look in the `/dist` folder for an executable.
 
 ## Acknowledgements
 
