@@ -5,10 +5,11 @@ import { Keymap } from "prosemirror-commands"
 import { NodeView } from "prosemirror-view";
 
 // project imports
-import { ProseSchema, ProseNodeType, ProseMarkType } from "@common/types";
+import { ProseSchema, ProseNodeType, ProseMarkType, NodeViewConstructor } from "@common/types";
 
 // unist
 import * as Uni from "unist";
+import * as Md from "@common/markdown/markdown-ast";
 import { ProseMarkMap, ProseNodeMap } from "./editor-config";
 
 ////////////////////////////////////////////////////////////
@@ -45,33 +46,22 @@ export abstract class NwtExtension<S extends ProseSchema = ProseSchema, N extend
 	createKeymap(): Keymap          { return {}; }
 }
 
-export abstract class NodeExtension<T extends Uni.Node, N extends string = string> extends NwtExtension<ProseSchema<N,string>, N> {
+export abstract class NodeExtension<N extends string = string> extends NwtExtension<ProseSchema<N,string>, N> {
 	/** 
 	 * Returns the ProseMirror NodeType defined by this extension.
 	 * (not available until the extension has been used to create a schema) 
 	 */
-	get nodeType(): ProseNodeType<ProseSchema<N, string>, N> {
+	get nodeType(): ProseNodeType<ProseSchema, N> {
 		let type = this.store.schema.nodes[this.name];
 		if(type === undefined) { throw new Error(`error retrieving node type for extension ${this.name}`); }
 		return type;
 	}
 	
 	abstract createNodeSpec(): NodeSpec;
-	createNodeView(): NodeView|null { return null; }
-
-	abstract get mdastNodeType(): T["type"];
-	abstract createMdastMap() : MdastNodeMap<T>;
-	
-	/**
-	 * Extensions can override this method to impose additional
-	 * conditions on the Mdast node type, beyond `node.type = T`.
-	 */
-	mdastNodeTest(node: T): boolean { return true; }
-
-	abstract prose2mdast(): Prose2Mdast_NodeMap;
+	createNodeView(): NodeViewConstructor|null { return null; }
 }
 
-export abstract class MarkExtension<T extends Uni.Node, M extends string = string> extends NwtExtension<ProseSchema<string,M>, M> {
+export abstract class MarkExtension<M extends string = string> extends NwtExtension<ProseSchema<string,M>, M> {
 	/** 
 	 * Returns the ProseMirror MarkType defined by this extension.
 	 * (not available until the extension has been used to create a schema) 
@@ -83,24 +73,45 @@ export abstract class MarkExtension<T extends Uni.Node, M extends string = strin
 	}
 
 	abstract createMarkSpec(): MarkSpec;
+}
 
+export abstract class NodeSyntaxExtension<T extends Md.Node, N extends string = string> extends NodeExtension<N> {
 	abstract get mdastNodeType(): T["type"];
+
+	/**
+	* Mapping from Mdast node node to ProseMirror node.
+	*/
+	abstract createMdastMap() : MdastNodeMap<T>;
 	
 	/**
-	 * Extensions can override this method to impose additional
-	 * conditions on the Mdast node type, beyond `node.type = T`.
-	 */
+	* Extensions provide this method to impose additional
+	* conditions on the Mdast node type, beyond `node.type = T`.
+	*/
 	mdastNodeTest(node: T): boolean { return true; }
 
 	/**
-	 * Extensions can override this method to impose additional
-	 * conditions on the Mdast node type, beyond `node.type = T`.
-	 * 
-	 * TODO MarkExtension and NodeExtension should inherit from a common parent,
-	 *   or they should both include an optional `mapper` field
-	 */
+	* Mapping from ProseMirror node to Mdast node.
+	*/
+	abstract prose2mdast(): Prose2Mdast_NodeMap;
+}
+
+export abstract class MarkSyntaxExtension<T extends Md.Node, M extends string = string> extends MarkExtension<M> {
+	abstract get mdastNodeType(): T["type"];
+	
+	/**
+	* Mapping from Mdast node node to ProseMirror node.
+	*/
+	mdastNodeTest(node: T): boolean { return true; }
+
+	/**
+	* Extensions can provide this method to impose additional
+	* conditions on the Mdast node type, beyond `node.type = T`.
+	*/
 	abstract createMdastMap() : MdastMarkMap<T>;
 
+	/**
+	* Mapping from ProseMirror node to Mdast node.
+	*/
 	abstract prose2mdast(): Prose2Mdast_MarkMap;
 }
 

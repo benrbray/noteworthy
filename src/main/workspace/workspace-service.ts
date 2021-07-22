@@ -147,6 +147,7 @@ export class WorkspaceService extends EventEmitter {
 
 		if (!data.pluginData || !data.files) {
 			console.error("Workspace.fromJSON() :: invalid data :: creating fresh workspace");
+			/* TODO (2021/07/22) should this receive a list of plugins? */
 			return new Workspace(dir, {}, [], this, this._fsal);
 		}
 
@@ -154,6 +155,7 @@ export class WorkspaceService extends EventEmitter {
 		let pluginState:any;
 		for(let plugin of plugins){
 			if(pluginState = data.pluginData[plugin.plugin_name]){
+				/* TODO (2021/07/22) what if deserialization fails? */
 				plugin.deserialize(pluginState);
 			}
 		}

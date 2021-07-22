@@ -9,7 +9,7 @@ import {
 import { Plugin as ProsePlugin } from "prosemirror-state";
 
 // patched prosemirror types 
-import { ProseSchema } from "@common/types";
+import { NodeViewConstructor, ProseSchema } from "@common/types";
 import { markMapBasic, markMapStringLiteral, MdParser, nodeMapBasic, nodeMapLeaf, nodeMapStringLiteral } from "@common/markdown/mdast2prose";
 
 // unist / unified
@@ -38,9 +38,10 @@ import { remarkConcretePlugin } from "@common/markdown/remark-plugins/concrete/r
 // project imports
 import { keymap as makeKeymap } from "prosemirror-keymap";
 import { DefaultMap } from "@common/util/DefaultMap";
-import { NwtExtension, NodeExtension, MarkExtension, MdastNodeMapType, MdastMarkMapType, Prose2Mdast_NodeMap_Presets, Prose2Mdast_MarkMap_Presets } from "@common/extensions/extension";
+import { NwtExtension, NodeExtension, MarkExtension, MdastNodeMapType, MdastMarkMapType, Prose2Mdast_NodeMap_Presets, Prose2Mdast_MarkMap_Presets, MarkSyntaxExtension, NodeSyntaxExtension } from "@common/extensions/extension";
 import * as prose2mdast from "@common/markdown/prose2mdast";
 import * as mdast2prose from "@common/markdown/mdast2prose";
+import { Decoration, EditorView, NodeView } from "prosemirror-view";
 
 //// EDITOR CONFIG /////////////////////////////////////////
 
@@ -105,6 +106,7 @@ export type ProseMapper<
 export class EditorConfig<S extends ProseSchema = ProseSchema> {
 	schema: S & ProseSchema<"error_block","error_inline">;
 	plugins:ProsePlugin[];
+	nodeViews: { [nodeType:string] : NodeViewConstructor };
 
 	private _mdast2prose: UnistMapper;
 	private _prose2mdast: ProseMapper;
@@ -124,6 +126,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 
 		/** Step 2: Build Plugins */
 		this.plugins = this._buildPlugins(extensions, plugins.concat(makeKeymap(keymap)));
+		this.nodeViews = this._buildNodeViews(extensions);
 
 		/** Step 3: Configure Unified / Remark */
 		this._mdastParser = unified()
@@ -266,6 +269,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 
 		// keymap
 		let keymaps = new DefaultMap<string, ProseCommand[]>( _ => [] );
+		let nodeViews: { [nodeType:string] : NodeViewConstructor } = { };
 
 		// create node and mark specs
 		for(let ext of extensions) {
@@ -277,6 +281,14 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 			let extKeymap = ext.createKeymap();
 			for(let key in ext.createKeymap()) {
 				keymaps.get(key).push(extKeymap[key]);
+			}
+
+			// accumulate nodeviews
+			if(ext instanceof NodeExtension) {
+				let extNodeView = ext.createNodeView();
+				if(extNodeView) {
+					nodeViews[ext.nodeType.name] = extNodeView;
+				}
 			}
 		}
 
@@ -298,6 +310,25 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 
 		// provided plugins go last
 		return resultPlugins.concat(plugins);
+	}
+
+	// -- Build NodeViews --------------------------------------------------- //
+
+	private _buildNodeViews(extensions:NwtExtension<S>[]): { [nodeType:string] : NodeViewConstructor } {
+		let nodeViews: { [nodeType:string] : NodeViewConstructor } = { };
+
+		// create node and mark specs
+		for(let ext of extensions) {
+			if(!(ext instanceof NodeExtension)){ continue; }
+
+			// accumulate nodeviews
+			let extNodeView = ext.createNodeView();
+			if(!extNodeView) { continue; }
+
+			nodeViews[ext.nodeType.name] = extNodeView;
+		}
+
+		return nodeViews;
 	}
 
 	// -- Build Mdast2Prose ------------------------------------------------- //
@@ -330,7 +361,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 			let nodeTest: ((node: Uni.Node) => boolean) | null = null;
 			
 			// TODO: (2021-05-09) clean this up
-			if(ext instanceof NodeExtension) {
+			if(ext instanceof NodeSyntaxExtension) {
 				let mdastMap = ext.createMdastMap();
 
 				nodeTest = ext.mdastNodeTest;
@@ -346,7 +377,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 				} else {
 					mapper = mdastMap.mapNode;
 				}
-			} else if(ext instanceof MarkExtension) {
+			} else if(ext instanceof MarkSyntaxExtension) {
 				let mdastMap = ext.createMdastMap();
 
 				nodeTest = ext.mdastNodeTest;
@@ -418,7 +449,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 		for(let ext of extensions) {
 
 			// accumulate node handlers
-			if(ext instanceof NodeExtension) {
+			if(ext instanceof NodeSyntaxExtension) {
 				let mapper: ProseNodeMap<unknown, unknown>;
 				let p2m = ext.prose2mdast();
 				let proseNodeType: string = ext.nodeType.name;
@@ -447,7 +478,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 				});
 			}
 			// accumulate mark handlers
-			else if(ext instanceof MarkExtension) {
+			else if(ext instanceof MarkSyntaxExtension) {
 				let mapper: ProseMarkMap;
 				let p2m = ext.prose2mdast();
 

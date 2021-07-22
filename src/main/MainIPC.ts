@@ -233,7 +233,6 @@ export class MainIpc_TagHandlers {
 	
 	/**
 	 * Return a list of files which mention the query tag.
-	 * Useful for generating a list of backlinks.
 	 * @param query The tag to search for.
 	 */
 	async tagSearch(query:string):Promise<IFileMeta[]> {
@@ -242,6 +241,22 @@ export class MainIpc_TagHandlers {
 		if(!plugin){ return []; }
 		// tag search
 		const hashes:string[]|null = plugin.getTagMentions(query);
+		if(hashes === null){ return []; }
+		return filterNonVoid( hashes.map(hash => (this._workspaceService.getFileByHash(hash))) );
+	}
+	
+	/**
+	 * Return a list of files which mention any tags defined
+	 * by the document corresponding to the given hash.
+	 * Useful for generating a list of backlinks.
+	 * @param query The tag to search for.
+	 */
+	async backlinkSearch(hash:string):Promise<IFileMeta[]> {
+		// get active plugin
+		let plugin = this._pluginService.getWorkspacePluginByName("crossref_plugin");
+		if(!plugin){ return []; }
+		// tag search
+		const hashes:string[]|null = plugin.getBacklinksForDoc(hash);
 		if(hashes === null){ return []; }
 		return filterNonVoid( hashes.map(hash => (this._workspaceService.getFileByHash(hash))) );
 	}

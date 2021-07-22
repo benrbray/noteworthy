@@ -16,10 +16,11 @@ import { Editor } from "./editors/editor";
 // ui imports
 import { IFolderMarker, FileExplorer } from "./ui/explorer";
 import { TagSearch } from "./ui/tag-search";
+import { PanelBacklinks } from "./ui/panelBacklinks";
 
 // solid js imports
 import { render } from "solid-js/web";
-import { State as SolidState, SetStateFunction, createState, Suspense, Switch, Match, For } from "solid-js";
+import { State as SolidState, SetStateFunction, createState, Suspense, Switch, Match, For, createResource } from "solid-js";
 import { CalendarTab } from "./ui/calendarTab";
 import { OutlineTab } from "./ui/outlineTab";
 import { HistoryTab } from "./ui/historyTab";
@@ -284,11 +285,26 @@ class Renderer {
 				);
 			}
 
+			const activeFileName = () => {
+				let name = state.activeFile?.name;
+				if(!name) { return null; }
+				// trim extension
+				let dotIdx = name.indexOf(".");
+				if(dotIdx < 0) { return name; }
+				else { return name.slice(0, dotIdx) || null; }
+			}
+
 			return (<>
 				<style>{state.themeCss}</style>
 				<div id="app" onMouseUp={handleAppClicked}>
 					<AppSidebar />
 					<AppContent />
+					<PanelBacklinks 
+						proxy={this._mainProxy} 
+						hash={activeHash()}
+						fileName={activeFileName()}
+						handleFileClick={handleFileClick}
+					/>
 					<AppFooter />
 				</div>
 			</>)
@@ -304,7 +320,6 @@ class Renderer {
 
 		// create shadow dom
 		let contentElt = document.getElementById("content") as HTMLElement;
-		//let shadowElt = contentElt.attachShadow({mode: "open"});
 
 		// create editor
 		let editorElt = document.createElement("div");
@@ -385,11 +400,6 @@ class Renderer {
 		this._editor = editor;
 		this._editor.init();
 	}
-
-	// TODO (2021/03/09) remove this unused method?
-	// setCurrentFilePath(filePath: string): void {
-	// 	this._editor?.setCurrentFilePath(filePath);
-	// }
 
 	setNavHistory(navHistory: IRendererState["navigationHistory"]) {
 		this._react?.setState({ navigationHistory: navHistory });

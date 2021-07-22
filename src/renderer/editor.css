@@ -188,6 +188,13 @@ math-display.ProseMirror-selectednode {
 	background-color: var(--color-bg-1) !important;
 }
 
+.reactiveAtom {
+	padding: 10px;
+	background-color: #ffa;
+	height: 4em;
+	min-width: 2em;
+}
+
 /* == DIRECTIVES ======================================== */
 
 .directive {

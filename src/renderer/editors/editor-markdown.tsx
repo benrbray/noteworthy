@@ -60,6 +60,7 @@ import {
 import { WindowAfterPreload } from "@renderer/preload_types";
 import { ProseSchema } from "@common/types";
 import { makeDefaultMarkdownExtensions } from "@common/doctypes/markdown-doc";
+import { ReactiveAtomExtension } from "@common/extensions/nodeviews";
 declare let window: Window & typeof globalThis & WindowAfterPreload;
 
 ////////////////////////////////////////////////////////////
@@ -142,6 +143,7 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 			//new StrikethroughExtension(),
 			// plugins: crossrefs
 			new WikilinkExtension(),
+			new ReactiveAtomExtension(),
 			//new TagExtension(),
 			(this._citationExt = new CitationExtension())
 		];
@@ -335,6 +337,7 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
 			state: state,
 			nodeViews: {
+				...this._config.nodeViews
 				// TODO: restore embed view?
 				// "embed": (node, view, getPos) => {
 				// 	return new EmbedView(

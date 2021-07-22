@@ -7,7 +7,7 @@ import { toggleMark, Keymap } from "prosemirror-commands"
 import * as Md from "@common/markdown/markdown-ast";
 import { markActive, markInputRule } from "@common/prosemirror/util/mark-utils";
 import { openPrompt, TextField } from "@common/prompt/prompt";
-import { MarkExtension, MdastMarkMap, MdastMarkMapType, Prose2Mdast_MarkMap_Presets } from "@common/extensions/extension";
+import { MarkSyntaxExtension, MdastMarkMap, MdastMarkMapType, Prose2Mdast_MarkMap_Presets } from "@common/extensions/extension";
 
 // mdast
 import * as Uni from "unist";
@@ -26,7 +26,7 @@ export function boldRule(markType: MarkType):InputRule {
 /**
  * @compare to ReMirror BoldExtension, (https://github.com/remirror/remirror/blob/next/packages/%40remirror/extension-bold/src/bold-extension.ts)
  */
-export class BoldExtension extends MarkExtension<Md.Strong> {
+export class BoldExtension extends MarkSyntaxExtension<Md.Strong> {
 	
 	get name() { return "strong" as const; }
 	
@@ -66,7 +66,7 @@ export function italicRule(markType: MarkType): InputRule {
 	return markInputRule(/(?<!\*)\*(?:[^\s\*](.*[^\s])?)\*([^\*])$/, markType);
 }
 
-export class ItalicExtension extends MarkExtension<Md.Emphasis> {
+export class ItalicExtension extends MarkSyntaxExtension<Md.Emphasis> {
 	
 	get name() { return "em" as const; }
 	
@@ -105,7 +105,7 @@ export class ItalicExtension extends MarkExtension<Md.Emphasis> {
 
 // TODO: (2021/05/09) restore definitions
 
-// export class DefinitionExtension extends MarkExtension<Md.HTML> {
+// export class DefinitionExtension extends MarkSyntaxExtension<Md.HTML> {
 	
 // 	get name() { return "definition" as const; }
 	
@@ -129,7 +129,7 @@ export class ItalicExtension extends MarkExtension<Md.Emphasis> {
 
 /* -- Link ---------------------------------------- */
 
-export class LinkExtension extends MarkExtension<Md.Link> {
+export class LinkExtension extends MarkSyntaxExtension<Md.Link> {
 	
 	get name() { return "link" as const; }
 	
@@ -225,7 +225,7 @@ export class LinkExtension extends MarkExtension<Md.Link> {
 // 	return markInputRule(/(?<![^\s])_([^\s_](?:.*[^\s_])?)_(.)$/, markType);
 // }
 
-// export class UnderlineExtension extends MarkExtension {
+// export class UnderlineExtension extends MarkSyntaxExtension {
 	
 // 	get name() { return "underline" as const; }
 	
@@ -250,7 +250,7 @@ export class LinkExtension extends MarkExtension<Md.Link> {
 
 /* -- Code ---------------------------------------------- */
 
-export class CodeExtension extends MarkExtension<Md.InlineCode> {
+export class CodeExtension extends MarkSyntaxExtension<Md.InlineCode> {
 	
 	get name() { return "code" as const; }
 	
@@ -286,7 +286,7 @@ export class CodeExtension extends MarkExtension<Md.InlineCode> {
 // 	return markInputRule(/~([^\s~](?:.*[^\s~])?)~(.)$/, markType);
 // }
 
-// export class StrikethroughExtension extends MarkExtension {
+// export class StrikethroughExtension extends MarkSyntaxExtension {
 	
 // 	get name() { return "strike" as const; }
 	
@@ -315,7 +315,7 @@ export function wikilinkRule(markType: MarkType): InputRule {
 	return markInputRule(/\[\[([^\s](?:[^\]]*[^\s])?)\]\](.)$/, markType);
 }
 
-export class WikilinkExtension extends MarkExtension<Md.Wikilink> {
+export class WikilinkExtension extends MarkSyntaxExtension<Md.Wikilink> {
 	
 	get name() { return "wikilink" as const; }
 	
@@ -376,7 +376,7 @@ export class WikilinkExtension extends MarkExtension<Md.Wikilink> {
 // 	return markInputRule(/#\[([^\s](?:[^\]]*[^\s])?)\](.)$/, markType);
 // }
 
-// export class TagExtension extends MarkExtension {
+// export class TagExtension extends MarkSyntaxExtension {
 	
 // 	get name() { return "tag" as const; }
 	

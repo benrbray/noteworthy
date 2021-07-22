@@ -38,6 +38,16 @@ function deserializeSetMap<V>(serialized: { [key: string]: V[] }): DefaultMap<st
 
 ////////////////////////////////////////////////////////////
 
+type BrandedString<T extends string> = { __brand : T } & string;
+type Hash = BrandedString<"hash">;
+type Tag  = BrandedString<"tag">;
+
+/* branded string constructors */
+function hashFromString (s:string): Hash { return s as Hash; }
+function TagFromString  (s:string): Tag  { return s as Tag;  }
+
+////////////////////////////////////////////////////////////
+
 /**
  * Document types should implement this interface in order
  * to be recognized by the built-in cross-reference system.
@@ -94,9 +104,15 @@ export class CrossRefPlugin implements WorkspacePlugin {
 
 	plugin_name:string = "crossref_plugin";
 
-	// plugin data
+	// -- Plugin Data ----------------------------------- //
+
+	/** maps a hash to the set of tags mentioned by the corresponding document **/
 	_doc2tags: DefaultMap<string, Set<string>>;
+	/** maps a hash to the set of tags defined by the corresponding document **/
+	_doc2defs: DefaultMap<string, Set<string>>;
+	/** maps a tag to the set of documents that mention it **/
 	_tag2docs: DefaultMap<string, Set<string>>;
+	/** maps a tag to the set of documents which define it **/
 	_tag2defs: DefaultMap<string, Set<string>>;
 
 	constructor(){
@@ -104,6 +120,7 @@ export class CrossRefPlugin implements WorkspacePlugin {
 
 		// crossref lookups
 		this._doc2tags = new DefaultMap(() => new Set());
+		this._doc2defs = new DefaultMap(() => new Set());
 		this._tag2docs = new DefaultMap(() => new Set());
 		this._tag2defs = new DefaultMap(() => new Set());
 	}
@@ -125,8 +142,28 @@ export class CrossRefPlugin implements WorkspacePlugin {
 
 	clear(): void {
 		this._doc2tags.clear();
+		this._doc2defs.clear();
 		this._tag2docs.clear();
 		this._tag2defs.clear();
+	}
+
+	// == Document Queries ============================== //
+
+	getTagsDefinedByDoc(hash:string):string[] {
+		let defs = this._doc2defs.get(hash);
+		return Array.from(defs);
+	}
+
+	/**
+	 * Return a list of documents which mention
+	 * any of the tags defined by this document.
+	 */
+	getBacklinksForDoc(hash:string): string[] {
+		let defs = this.getTagsDefinedByDoc(hash);
+		let backlinks = defs.flatMap(tag => {
+			return this.getTagMentions(tag);
+		});
+		return Array.from(new Set(backlinks));
 	}
 
 	// == Tag Queries =================================== //
@@ -142,6 +179,7 @@ export class CrossRefPlugin implements WorkspacePlugin {
 	/**
 	 * Returns a list of hashes for documents which mention this tag.
 	 * (defining a tag also counts as mentioning it)
+	 * @note Does NOT consider aliases of the given tag.
 	 */
 	getTagMentions(tag:string):string[]{
 		tag = this.normalizeTag(tag);
@@ -164,7 +202,7 @@ export class CrossRefPlugin implements WorkspacePlugin {
 
 	handleFileDeleted(filePath:string, fileHash:string): void {
 		//console.log("xref :: file-delete", filePath);
-		this.removeWikilinks(fileHash);
+		this._removeWikilinks(fileHash);
 	}
 
 	handleFileCreated(fileMeta:IFileMeta, doc:IDoc): void {
@@ -172,7 +210,7 @@ export class CrossRefPlugin implements WorkspacePlugin {
 		if(!isXrefProvider(doc)) { return; }
 
 		// discover wikilinks in created file
-		this.addWikilinks(fileMeta, doc);
+		this._addWikilinks(fileMeta, doc);
 	}
 
 	handleFileChanged(fileMeta:IFileMeta, doc:IDoc): void {
@@ -180,16 +218,17 @@ export class CrossRefPlugin implements WorkspacePlugin {
 		if(!isXrefProvider(doc)) { return; }
 
 		// remove wikilinks previously associated with this file
-		this.removeWikilinks(fileMeta.hash);
+		this._removeWikilinks(fileMeta.hash);
 		// discover wikilinks in new version of file
-		this.addWikilinks(fileMeta, doc);
+		this._addWikilinks(fileMeta, doc);
 	}
 
 	// == Tag Management ================================ //
 
-	removeWikilinks(fileHash: string) {
+	private _removeWikilinks(fileHash: string) {
 		// remove document
 		this._doc2tags.delete(fileHash);
+		this._doc2defs.delete(fileHash);
 
 		// remove doc hash from all tags
 		for (let [tag, docs] of this._tag2docs) {
@@ -209,19 +248,23 @@ export class CrossRefPlugin implements WorkspacePlugin {
 		}
 	}
 
-	addWikilinks(fileMeta:IFileMeta, doc: ICrossRefProvider) {
+	private _addWikilinks(fileMeta:IFileMeta, doc: ICrossRefProvider) {
 		// get all tags referenced / created by this file
 		let definedTags: string[] = this._getTagsDefinedBy({ fileMeta, doc });
 		let mentionedTags: string[] = this._getTagsMentionedBy({ fileMeta, doc });
-		let tags = new Set<string>([...definedTags, ...mentionedTags]);
+		
+		let defs = new Set<string>(definedTags);
+		let uses = new Set<string>([...definedTags, ...mentionedTags]);
 
-		console.log("xref :: addWikilinks ::", tags.values());
+		console.log("xref :: addWikilinks ::", uses.values());
 
 		// doc --> tag
-		this._doc2tags.set(fileMeta.hash, tags);
+		this._doc2tags.set(fileMeta.hash, uses);
+		// doc ->> defs
+		this._doc2defs.set(fileMeta.hash, defs);
 
 		// tag --> doc
-		for (let tag of tags) {
+		for (let tag of uses) {
 			this._tag2docs.get(tag).add(fileMeta.hash);
 		}
 
@@ -233,6 +276,10 @@ export class CrossRefPlugin implements WorkspacePlugin {
 
 	// == Tag Discovery ================================= //
 
+	/**
+	 * Given the contents / metadata of a document, returns the
+	 * set of tags defined by that document.
+	 */
 	private _getTagsDefinedBy(data: { fileMeta?:IFileMeta, doc?:ICrossRefProvider }):string[] {
 		let tags:string[] = [];
 
@@ -243,7 +290,7 @@ export class CrossRefPlugin implements WorkspacePlugin {
 			));
 		}
 
-		// tags defined by file metadat
+		// tags defined by file metadata
 		if(data.fileMeta){
 			// tags defined by path
 			let fileName = path.basename(data.fileMeta.path, path.extname(data.fileMeta.path));
@@ -254,6 +301,11 @@ export class CrossRefPlugin implements WorkspacePlugin {
 		return tags;
 	}
 
+	/**
+	 * Given the contents / metadata of a document, returns
+	 * the set of tags mentioned within the document.
+	 * @note Includes defined tags as well.
+	 */
 	private _getTagsMentionedBy(data: { fileMeta?:IFileMeta, doc?:ICrossRefProvider }):string[] {
 		let tags:string[] = [];
 
@@ -319,6 +371,7 @@ export class CrossRefPlugin implements WorkspacePlugin {
 	serialize():string {
 		return JSON.stringify({
 			doc2tags: serializeSetMap(this._doc2tags),
+			doc2defs: serializeSetMap(this._doc2defs),
 			tag2docs: serializeSetMap(this._tag2docs),
 			tag2defs: serializeSetMap(this._tag2defs)
 		})
@@ -327,6 +380,7 @@ export class CrossRefPlugin implements WorkspacePlugin {
 	deserialize(serialized:string):CrossRefPlugin {
 		let json: any = JSON.parse(serialized);
 		this._doc2tags = deserializeSetMap(json.doc2tags);
+		this._doc2defs = deserializeSetMap(json.doc2defs);
 		this._tag2docs = deserializeSetMap(json.tag2docs);
 		this._tag2defs = deserializeSetMap(json.tag2defs);
 
