@@ -79,19 +79,20 @@ export abstract class NodeSyntaxExtension<T extends Md.Node, N extends string = 
 	abstract get mdastNodeType(): T["type"];
 
 	/**
-	* Mapping from Mdast node node to ProseMirror node.
-	*/
+	 * Mapping from Mdast node node to ProseMirror node.
+	 */
 	abstract createMdastMap() : MdastNodeMap<T>;
 	
 	/**
-	* Extensions provide this method to impose additional
-	* conditions on the Mdast node type, beyond `node.type = T`.
-	*/
+	 * Extensions provide this method to impose additional
+	 * conditions on the incoming Mdast node type, beyond
+	 * `node.type = T`.
+	 */
 	mdastNodeTest(node: T): boolean { return true; }
 
 	/**
-	* Mapping from ProseMirror node to Mdast node.
-	*/
+	 * Mapping from ProseMirror node to Mdast node.
+	 */
 	abstract prose2mdast(): Prose2Mdast_NodeMap;
 }
 
@@ -99,19 +100,19 @@ export abstract class MarkSyntaxExtension<T extends Md.Node, M extends string = 
 	abstract get mdastNodeType(): T["type"];
 	
 	/**
-	* Mapping from Mdast node node to ProseMirror node.
-	*/
-	mdastNodeTest(node: T): boolean { return true; }
-
-	/**
-	* Extensions can provide this method to impose additional
-	* conditions on the Mdast node type, beyond `node.type = T`.
-	*/
+	 * Mapping from Mdast node node to ProseMirror node.
+	 */
 	abstract createMdastMap() : MdastMarkMap<T>;
 
 	/**
-	* Mapping from ProseMirror node to Mdast node.
-	*/
+	 * Extensions can provide this method to impose additional
+	 * conditions on the Mdast node type, beyond `node.type = T`.
+	 */
+	mdastNodeTest(node: T): boolean { return true; }
+
+	/**
+	 * Mapping from ProseMirror node to Mdast node.
+	 */
 	abstract prose2mdast(): Prose2Mdast_MarkMap;
 }
 
