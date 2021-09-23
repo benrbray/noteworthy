@@ -63,11 +63,7 @@ export class MainIpc_FileHandlers {
 
 	async requestFileCreate(path:string, contents:string=""):Promise<IFileMeta|null> {
 		/** @todo (6/26/20) check if path in workspace? */
-		return this._fsal.createFile(path, contents)
-			.then(
-				() => { return this._workspaceService.updatePath(path)||null; },
-				(reason) => { console.error("error creating file", reason); return null; }
-			)
+		return this._workspaceService.createFile(path, contents);
 	}
 
 	// -- Request File Save ----------------------------- //
@@ -75,7 +71,7 @@ export class MainIpc_FileHandlers {
 	async requestFileSave(file: IFileWithContents): Promise<boolean> {
 		if (!this._app.window) { return false; }
 
-		this._fsal.saveFile(file.path, file.contents, false);
+		await this._fsal.saveFile(file.path, file.contents, false);
 		/** @todo (7/12/20) check for file save errors? */
 		this._app._renderProxy?.fileDidSave({saveas: false, path: file.path });
 		return true;
@@ -170,6 +166,32 @@ export class MainIpc_DialogHandlers {
 
 		// load file from path
 		//this._navigationHandlers.requestFileOpen({ path: filePaths[0] })
+	}
+
+	// -- Dialog File Create ---------------------------- //
+
+	async dialogFileNew(): Promise<void> {
+		if (!this._app.window) { return Promise.reject("no active window"); }
+
+		// default "new file" path
+		const workspaceDir = this._workspaceService.getWorkspaceDir();
+
+		const newFilePath: string | undefined = dialog.showSaveDialogSync(
+			this._app.window.window,
+			{
+				title: "New Document",
+				buttonLabel: "New Document",
+				properties: ["showOverwriteConfirmation"],
+				...(workspaceDir && { defaultPath: workspaceDir.path })
+			}
+		);
+		if (!newFilePath) { return Promise.reject("no file path specified"); }
+
+		// create and open new file
+		let newFile = await this._workspaceService.createFile(newFilePath, "");
+		if(!newFile) { return Promise.reject("failed to create new file"); }
+
+		return this._app._eventHandlers.navigation.navigateToHash({ hash: newFile.hash });
 	}
 
 	// -- Dialog File Save As --------------------------- //

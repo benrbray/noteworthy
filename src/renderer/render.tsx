@@ -345,6 +345,18 @@ class Renderer {
 		document.addEventListener("keydown", shiftHandler);
 		document.addEventListener("keyup", shiftHandler);
 		document.addEventListener("keypress", shiftHandler);
+
+		// keyboard shortcuts
+		const keyboardHandler = async (evt: KeyboardEvent) => {
+			console.log("keyboardHander", evt.key, "ctrl=", evt.ctrlKey);
+
+			if(evt.ctrlKey && evt.key === "n") {
+				let newFile = await this._mainProxy.dialog.dialogFileNew();
+				console.log("creating new file", newFile);
+			} 
+		}
+
+		document.addEventListener("keypress", keyboardHandler);
 	}
 
 	////////////////////////////////////////////////////////

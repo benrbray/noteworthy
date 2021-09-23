@@ -60,7 +60,6 @@ import {
 import { WindowAfterPreload } from "@renderer/preload_types";
 import { ProseSchema } from "@common/types";
 import { makeDefaultMarkdownExtensions } from "@common/doctypes/markdown-doc";
-import { ReactiveAtomExtension } from "@common/extensions/nodeviews";
 declare let window: Window & typeof globalThis & WindowAfterPreload;
 
 ////////////////////////////////////////////////////////////
@@ -143,7 +142,6 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 			//new StrikethroughExtension(),
 			// plugins: crossrefs
 			new WikilinkExtension(),
-			new ReactiveAtomExtension(),
 			//new TagExtension(),
 			(this._citationExt = new CitationExtension())
 		];

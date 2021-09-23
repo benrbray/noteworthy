@@ -19,7 +19,8 @@ export enum WorkspaceEvent {
 }
 
 export class WorkspaceService extends EventEmitter {
-	_workspace:Workspace|null;
+	
+	private _workspace:Workspace|null;
 
 	constructor(private _fsal: FSAL) {
 		super();
@@ -209,6 +210,15 @@ export class WorkspaceService extends EventEmitter {
 	}
 
 	// == Files / Paths ================================= //
+
+	async createFile(path:string, contents:string=""): Promise<IFileMeta|null> {
+		/** @todo (6/26/20) check if path in workspace? */
+		return this._fsal.createFile(path, contents)
+			.then(
+				() => { return this.updatePath(path)||null; },
+				(reason) => { console.error("error creating file", reason); return null; }
+			)
+	}
 
 	getFileByHash(hash: string): (IFileMeta | null) {
 		if (!this._workspace) { return null; }
