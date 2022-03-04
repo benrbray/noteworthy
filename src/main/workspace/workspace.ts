@@ -217,11 +217,6 @@ export class Workspace implements IDisposable {
 		if (index > -1) { this._plugins.splice(index, 1); }
 	}
 
-	/** @todo fix typings for plugin by name? */
-	getPluginByName(name:"crossref_plugin"):CrossRefPlugin|null;
-	getPluginByName(name:"metadata_plugin"):MetadataPlugin|null;
-	getPluginByName(name:"outline_plugin"):OutlinePlugin|null;
-	getPluginByName(name:string):WorkspacePlugin|null;
 	getPluginByName(name:string):WorkspacePlugin|null {
 		/** @todo (6/28/20) use an ordered dict to store plugins instead? */
 		return this._plugins.find(plugin => (plugin.plugin_name == name)) || null;
