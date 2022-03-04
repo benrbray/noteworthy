@@ -7,7 +7,7 @@ import { enforceMacOSAppLocation } from 'electron-util';
 import { EventEmitter } from "events";
 
 // project imports
-import Main from "./windows/main";
+import MainWindow from "./windows/main";
 import Window from "./windows/window";
 import { 
 	MainIpc_FileHandlers, MainIpc_TagHandlers, MainIpc_DialogHandlers, 
@@ -24,6 +24,7 @@ import { RendererIpcHandlers } from "@renderer/RendererIPC";
 import { WorkspaceService, WorkspaceEvent } from "./workspace/workspace-service";
 import { ThemeService, ThemeEvent } from "./theme/theme-service";
 import { PluginService } from "./plugins/plugin-service";
+import NewFileWindow from "./windows/newFileWindow";
 
 ////////////////////////////////////////////////////////////
 
@@ -129,7 +130,7 @@ export default class NoteworthyApp extends EventEmitter {
 			/** @todo handle window exists? */
 		}
 		console.log("app :: load")
-		this.window = new Main("main", this);
+		this.window = new MainWindow("main", this);
 		this.window.init();
 
 		this._renderProxy = invokerFor<RendererIpcHandlers>(
