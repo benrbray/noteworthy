@@ -86,8 +86,8 @@ export default class NoteworthyApp extends EventEmitter {
 
 		// handlers with a single dependency
 		let fileHandlers       = new MainIpc_FileHandlers(this, this._fsal, this._workspaceService, this._pluginService);
-		let tagHandlers        = new MainIpc_TagHandlers(this, this._workspaceService, this._pluginService, fileHandlers);
-		let navigationHandlers = new MainIpc_NavigationHandlers(this, this._workspaceService, this._pluginService, fileHandlers, tagHandlers);
+		let tagHandlers        = new MainIpc_TagHandlers(this, this._workspaceService, this._pluginService);
+		let navigationHandlers = new MainIpc_NavigationHandlers(this, this._workspaceService, this._pluginService);
 		let dialogHandlers     = new MainIpc_DialogHandlers(this, this._fsal, this._workspaceService);
 		let outlineHandlers    = new MainIpc_OutlineHandlers(this._pluginService);
 		let themeHandlers      = new MainIpc_ThemeHandlers(this._themeService);

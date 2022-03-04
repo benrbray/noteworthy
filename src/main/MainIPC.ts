@@ -249,8 +249,7 @@ export class MainIpc_TagHandlers {
 	constructor(
 		private _app:NoteworthyApp,
 		private _workspaceService:WorkspaceService,
-		private _pluginService:PluginService,
-		private _fileHandlers:MainIpc_FileHandlers,
+		private _pluginService:PluginService
 	){ }
 	
 	/**
@@ -372,7 +371,9 @@ export class MainIpc_TagHandlers {
 			// create file
 			/** @todo (9/14/20) default file creation should probably be handled by the WorkspaceService */
 			let fileContents: string = this._app.getDefaultFileContents(".md", fileName)
-			let file: IFileMeta | null = await this._fileHandlers.requestFileCreate(filePath, fileContents);
+			
+			// @todo (2022/03/04) avoid private access to _eventHandlers? or make public?
+			let file: IFileMeta | null = await this._app._eventHandlers.file.requestFileCreate(filePath, fileContents);
 			if (!file) {
 				console.error("MainIpc_TagHandlers :: unknown error creating file for tag");
 				return null;
@@ -450,9 +451,7 @@ export class MainIpc_NavigationHandlers {
 	constructor(
 		private _app:NoteworthyApp,
 		private _workspaceService: WorkspaceService,
-		private _pluginService: PluginService,
-		private _fileHandlers: MainIpc_FileHandlers,
-		private _tagHandlers: MainIpc_TagHandlers
+		private _pluginService: PluginService
 	) {
 		this._navHistory = [];
 		this._navIdx = 0;
@@ -465,7 +464,8 @@ export class MainIpc_NavigationHandlers {
 		console.log(`MainIPC_NavigationHandlers :: navigate :: ${ fileInfo.hash }`);
 
 		// get file contents
-		let file = await this._fileHandlers.requestFileContents(fileInfo);
+		// @todo (2022/03/04) avoid private access to _eventHandlers? or make public?
+		let file = await this._app._eventHandlers.file.requestFileContents(fileInfo);
 		if(!file){ return null; }
 
 		// send file to render process
@@ -553,7 +553,8 @@ export class MainIpc_NavigationHandlers {
 		if (!this._app.window) { return; }
 
 		// get files which define this tag
-		let fileHash = await this._tagHandlers.getHashForTag(data);
+		// @todo (2022/03/04) avoid private access to _eventHandlers? or make public?
+		let fileHash = await this._app._eventHandlers.tag.getHashForTag(data);
 		if(!fileHash) return;
 		// load file from hash
 		this.navigateToHash({ hash: fileHash });
