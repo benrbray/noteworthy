@@ -2,7 +2,7 @@
 import * as pathlib from "path";
 
 // project imports
-import { MainIpcHandlers, MainIpc_LifecycleHandlers, MainIpc_FileHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, MainIpc_DialogHandlers, MainIpc_TagHandlers, MainIpc_OutlineHandlers, MainIpc_MetadataHandlers, MainIpc_NavigationHandlers } from "@main/MainIPC";
+import { MainIpcHandlers, MainIpc_LifecycleHandlers, MainIpc_FileHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, MainIpc_DialogHandlers, MainIpc_TagHandlers, MainIpc_OutlineHandlers, MainIpc_MetadataHandlers, MainIpc_NavigationHandlers, MainIpc_CitationHandlers } from "@main/MainIPC";
 import { RendererIpcEvents, RendererIpcHandlers } from "./RendererIPC";
 import { IPossiblyUntitledFile, IDirEntryMeta, IFileMeta } from "@common/files";
 import { invokerFor } from "@common/ipc";
@@ -83,7 +83,8 @@ class Renderer {
 			tag:        invokerFor<MainIpc_TagHandlers>        (ipcRenderer, channel, logPrefix, "tag"),
 			outline:    invokerFor<MainIpc_OutlineHandlers>    (ipcRenderer, channel, logPrefix, "outline"),
 			metadata:   invokerFor<MainIpc_MetadataHandlers>   (ipcRenderer, channel, logPrefix, "metadata"),
-			navigation: invokerFor<MainIpc_NavigationHandlers> (ipcRenderer, channel, logPrefix, "navigation")
+			navigation: invokerFor<MainIpc_NavigationHandlers> (ipcRenderer, channel, logPrefix, "navigation"),
+			citations:  invokerFor<MainIpc_CitationHandlers>   (ipcRenderer, channel, logPrefix, "citations")
 		}
 
 		this._eventHandlers = new RendererIpcHandlers(this);

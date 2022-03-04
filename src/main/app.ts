@@ -14,7 +14,9 @@ import {
 	MainIpc_LifecycleHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, 
 	MainIpcHandlers, MainIpcChannel, MainIpc_OutlineHandlers, 
 	MainIpc_MetadataHandlers,
-	MainIpc_NavigationHandlers
+	MainIpc_NavigationHandlers,
+	MainIpc_CitationHandlers,
+	MainIpcChannelName
 } from "./MainIPC";
 import { FSAL } from "./fsal/fsal";
 import { invokerFor, FunctionPropertyNames } from "@common/ipc";
@@ -60,9 +62,9 @@ export default class NoteworthyApp extends EventEmitter {
 	init(){
 		ipcMain.handle(
 			"command", 
-			<T extends MainIpcChannel>(
-				evt: IpcMainInvokeEvent, channel: T,
-				key: FunctionPropertyNames<MainIpcHandlers[T]>, data: any
+			<C extends MainIpcChannelName>(
+				evt: IpcMainInvokeEvent, channel: C,
+				key: FunctionPropertyNames<MainIpcHandlers[C]>, data: any
 			) => {
 				console.log(`MainIPC :: handling event :: ${channel} ${key}`);
 				return this.handle(channel, key, data);
@@ -92,6 +94,7 @@ export default class NoteworthyApp extends EventEmitter {
 		let outlineHandlers    = new MainIpc_OutlineHandlers(this._pluginService);
 		let themeHandlers      = new MainIpc_ThemeHandlers(this._themeService);
 		let metadataHandlers   = new MainIpc_MetadataHandlers(this._pluginService);
+		let citationHandlers   = new MainIpc_CitationHandlers();
 
 		return {
 			lifecycle:  lifecycleHandlers,
@@ -103,6 +106,7 @@ export default class NoteworthyApp extends EventEmitter {
 			outline:    outlineHandlers,
 			metadata:   metadataHandlers,
 			navigation: navigationHandlers,
+			citations:  citationHandlers
 		}
 	}
 
@@ -179,11 +183,11 @@ export default class NoteworthyApp extends EventEmitter {
 	 *   
 	 *   However, this won't typecheck!  We need correlated record types yet again!!!
 	 */
-	async handle<S extends MainIpcChannel, T extends FunctionPropertyNames<MainIpcHandlers[S]>>(
-			channel:S,
+	async handle<C extends MainIpcChannelName, T extends FunctionPropertyNames<MainIpcHandlers[C]>>(
+			channel: C,
 			name: T,
 			/** @todo now we only take the FIRST parameter of each handler -- should we take them all? */
-			data?: Parameters<MainIpcHandlers[S][T]>[0]
+			data?: Parameters<MainIpcHandlers[C][T]>[0]
 	) {
 		/** @remark (6/25/20) cannot properly type-check this call
 		 *  without support for "correlated record types", see e.g.

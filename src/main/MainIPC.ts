@@ -20,15 +20,42 @@ import { WorkspacePlugin } from "./plugins/plugin";
 import { IMetadata } from "./plugins/metadata-plugin";
 import { getFileMetadata } from "@common/files";
 
-////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
-/** @todo (7/12/20) move to separate file (duplicated in ipc.ts right now) */
-type FunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? K : never }[keyof T];
-type FunctionProperties<T> = Pick<T, FunctionPropertyNames<T>>;
+declare global {
+	namespace Noteworthy {
+		export interface MainIpcHandlers {
+			// plugins can add additional handler types by
+			// augmenting this interface with type declarations
+		}
+	}
+}
+
+export interface DefaultMainIpcHandlers {
+	lifecycle:  MainIpc_LifecycleHandlers;
+	file:       MainIpc_FileHandlers;
+	theme:      MainIpc_ThemeHandlers;
+	shell:      MainIpc_ShellHandlers;
+	dialog:     MainIpc_DialogHandlers;
+	tag:        MainIpc_TagHandlers;
+	outline:    MainIpc_OutlineHandlers;
+	metadata:   MainIpc_MetadataHandlers;
+	navigation: MainIpc_NavigationHandlers;
+};
+
+export type MainIpcHandlers = Noteworthy.MainIpcHandlers & DefaultMainIpcHandlers
+export type MainIpcChannelName = keyof MainIpcHandlers;
+
+export interface MainIpcChannel {
+	readonly name: MainIpcChannelName;
+}
 
 //// LIFECYCLE /////////////////////////////////////////////
 
-export class MainIpc_LifecycleHandlers {
+export class MainIpc_LifecycleHandlers implements MainIpcChannel {
+
+	get name() { return "lifecycle" as const; }
+
 	/** @todo (9/13/20) break app into multiple parts so we don't need to consume the whole thing */
 	constructor(private _app:NoteworthyApp){ }
 
@@ -51,7 +78,9 @@ export class MainIpc_LifecycleHandlers {
 
 //// FILE SYSTEM ///////////////////////////////////////////
 
-export class MainIpc_FileHandlers {
+export class MainIpc_FileHandlers implements MainIpcChannel {
+	get name() { return "file" as const; }
+
 	constructor(
 		private _app: NoteworthyApp,
 		private _fsal: FSAL,
@@ -110,7 +139,10 @@ export class MainIpc_FileHandlers {
 
 //// DIALOG ////////////////////////////////////////////////
 
-export class MainIpc_DialogHandlers {
+export class MainIpc_DialogHandlers implements MainIpcChannel {
+
+	get name() { return "dialog" as const; }
+
 	/** @todo (9/13/20) break app into multiple parts so we don't need to consume the whole thing */
 	constructor(
 		private _app: NoteworthyApp,
@@ -235,7 +267,10 @@ export class MainIpc_DialogHandlers {
 ////////////////////////////////////////////////////////////
 
 
-export class MainIpc_ThemeHandlers {
+export class MainIpc_ThemeHandlers implements MainIpcChannel {
+	
+	get name() { return "theme" as const; }
+
 	/** @todo (9/13/20) break app into multiple parts so we don't need to consume the whole thing */
 	constructor(private _themeService:ThemeService){ }
 
@@ -244,7 +279,10 @@ export class MainIpc_ThemeHandlers {
 	}
 }
 
-export class MainIpc_TagHandlers {
+export class MainIpc_TagHandlers implements MainIpcChannel {
+	
+	get name() { return "tag" as const; }
+
 	/** @todo (9/13/20) break app into multiple parts so we don't need to consume the whole thing */
 	constructor(
 		private _app:NoteworthyApp,
@@ -401,7 +439,10 @@ export class MainIpc_TagHandlers {
 
 //// OUTLINE ///////////////////////////////////////////////
 
-export class MainIpc_OutlineHandlers {
+export class MainIpc_OutlineHandlers implements MainIpcChannel {
+	
+	get name() { return "outline" as const; }
+	
 	constructor(
 		private _pluginService:PluginService
 	) { }
@@ -417,7 +458,10 @@ export class MainIpc_OutlineHandlers {
 
 //// SHELL /////////////////////////////////////////////////
 
-export class MainIpc_ShellHandlers {
+export class MainIpc_ShellHandlers implements MainIpcChannel {
+	
+	get name() { return "shell" as const; }
+	
 	constructor() { }
 
 	async requestExternalLinkOpen(url: string) {
@@ -427,7 +471,10 @@ export class MainIpc_ShellHandlers {
 
 //// PLUGINS ///////////////////////////////////////////////
 
-export class MainIpc_MetadataHandlers {
+export class MainIpc_MetadataHandlers implements MainIpcChannel {
+
+	get name() { return "metadata" as const; }
+	
 	constructor(
 		private _pluginService: PluginService
 	) { }
@@ -442,9 +489,11 @@ export class MainIpc_MetadataHandlers {
 
 //// NAVIGATION ////////////////////////////////////////////////////////////////
 
-export class MainIpc_NavigationHandlers {
-	// TODO (2021/03/12) clear navigation history on workspace open/close
+export class MainIpc_NavigationHandlers implements MainIpcChannel {
 
+	get name() { return "navigation" as const; }
+	
+	// TODO (2021/03/12) clear navigation history on workspace open/close
 	private _navHistory: IFileMeta[];
 	private _navIdx: number;
 
@@ -575,24 +624,18 @@ export class MainIpc_NavigationHandlers {
 
 ////////////////////////////////////////////////////////////
 
-export interface MainIpcHandlers {
-	lifecycle:  MainIpc_LifecycleHandlers;
-	file:       MainIpc_FileHandlers;
-	theme:      MainIpc_ThemeHandlers;
-	shell:      MainIpc_ShellHandlers;
-	dialog:     MainIpc_DialogHandlers;
-	// plugins
-	/** @todo Custom plugins won't be able to add their own
-	 * handlers to this file, so there needs to be a standard
-	 * way to request plugin data from the render process */
-	tag:        MainIpc_TagHandlers;
-	outline:    MainIpc_OutlineHandlers;
-	metadata:   MainIpc_MetadataHandlers;
-	navigation: MainIpc_NavigationHandlers;
-};
+export class MainIpc_CitationHandlers implements MainIpcChannel {
+	get name() { return "citations" as const; }
 
-export type MainIpcChannel = keyof MainIpcHandlers;
+	constructor() {
 
-export type MainIpcEvents = {
-	[K in MainIpcChannel] : FunctionPropertyNames<MainIpcHandlers[K]>
+	}
+}
+
+declare global {
+	namespace Noteworthy {
+		export interface MainIpcHandlers {
+			citations: MainIpc_CitationHandlers;
+		}
+	}
 }
