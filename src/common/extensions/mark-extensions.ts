@@ -250,6 +250,10 @@ export class LinkExtension extends MarkExtension<Md.Link> {
 
 /* -- Code ---------------------------------------------- */
 
+export function inlineCodeRule(markType: MarkType): InputRule {
+	return markInputRule(/`([^\s](?:.*[^\s])?)`(.)$/, markType);
+}
+
 export class CodeExtension extends MarkExtension<Md.InlineCode> {
 	
 	get name() { return "code" as const; }
@@ -268,7 +272,7 @@ export class CodeExtension extends MarkExtension<Md.InlineCode> {
 		return { "Ctrl-`" : toggleMark(this.markType) };
 	}
 
-	createInputRules() { return [/** @todo (9/27/20) code input rule */]; }
+	createInputRules() { return [inlineCodeRule(this.markType)]; }
 
 	// -- Conversion from Mdast -> ProseMirror ---------- //
 
