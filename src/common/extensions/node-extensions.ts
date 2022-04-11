@@ -161,7 +161,7 @@ export class BlockQuoteExtension extends NodeExtension<Md.Blockquote> {
 	}
 
 	createKeymap(): Keymap {
-		return { "Ctrl->" : setBlockType(this.nodeType) }
+		return { "Mod->" : setBlockType(this.nodeType) }
 	}
 	
 	createInputRules() { return [blockQuoteRule(this.nodeType)]; }
@@ -225,7 +225,7 @@ export class HeadingExtension extends NodeExtension<Md.Heading> {
 		};
 
 		for(let i = 1; i <= 6; i++){
-			keymap[`Shift-Ctrl-${i}`] = setBlockType(this.nodeType, { level : i });
+			keymap[`Shift-Mod-${i}`] = setBlockType(this.nodeType, { level : i });
 		}
 
 		return keymap;
@@ -371,7 +371,7 @@ export class CodeBlockExtension extends NodeExtension<Md.Code> {
 	}
 
 	createKeyMap(): Keymap { return {
-		"Shift-Ctrl-\\" : setBlockType(this.nodeType) };
+		"Shift-Mod-\\" : setBlockType(this.nodeType) };
 	}
 	
 	createInputRules() { return [codeBlockRule(this.nodeType)]; }
@@ -429,7 +429,7 @@ export class OrderedListExtension extends NodeExtension<Md.List> {
 	}
 
 	createKeymap(): Keymap { return {
-		"Shift-Ctrl-9" : wrapInList(this.nodeType)
+		"Shift-Mod-9" : wrapInList(this.nodeType)
 	}}
 	
 	createInputRules() { return [orderedListRule(this.nodeType)]; }
@@ -531,7 +531,7 @@ export class UnorderedListExtension extends NodeExtension<Md.List> {
 	}
 
 	createKeymap(): Keymap { return {
-		"Shift-Ctrl-8" : wrapInList(this.nodeType)
+		"Shift-Mod-8" : wrapInList(this.nodeType)
 	}}
 	
 	createInputRules() { return [bulletListRule(this.nodeType)]; }

@@ -675,7 +675,7 @@ export class CitationView implements NodeView {
 						this._outerView.focus();
 						return true;
 					}),
-					"Ctrl-Enter": (state: EditorState, dispatch: ((tr: Transaction) => void)|undefined) => {
+					"Mod-Enter": (state: EditorState, dispatch: ((tr: Transaction) => void)|undefined) => {
 						let { to } = this._outerView.state.selection;
 						let outerState: EditorState = this._outerView.state;
 

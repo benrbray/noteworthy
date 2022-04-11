@@ -153,7 +153,7 @@ export class LinkExtension extends MarkExtension<Md.Link> {
 	}
 
 	createKeymap(): Keymap {
-		return { "Ctrl-k" : (state, dispatch, view) => {
+		return { "Mod-k" : (state, dispatch, view) => {
 			// only insert link when highlighting text
 			if(state.selection.empty){ return false; }
 
@@ -263,7 +263,9 @@ export class CodeExtension extends MarkExtension<Md.InlineCode> {
 	}
 
 	createKeymap(): Keymap {
-		return { "Mod-`" : toggleMark(this.markType) };
+		// note: on mac, pressing Cmd+` does not register as an event
+		// https://github.com/ProseMirror/prosemirror/issues/540 
+		return { "Ctrl-`" : toggleMark(this.markType) };
 	}
 
 	createInputRules() { return [/** @todo (9/27/20) code input rule */]; }
