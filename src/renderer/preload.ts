@@ -63,12 +63,31 @@ contextBridge.exposeInMainWorld(
 ////////////////////////////////////////////////////////////////////////////////
 
 let clipboardApi: WindowAfterPreload["clipboardApi"] = {
+	/**
+	 * Convert incoming clipboard images to Base64-encoded data URIs.
+	 */
 	getClipboardImageDataURI(): string|null {
-		if(clipboard.availableFormats("clipboard").find(str => str.startsWith("image"))){
-			return clipboard.readImage("clipboard").toDataURL();
-		} else {
+		// despite what the docs say, Electron's clipboard is occasionally `undefined`
+		if(!clipboard) {
+			console.error("[preload.clipboardApi] clipboard is undefined:", clipboard);
 			return null;
 		}
+
+		var formats = clipboard.availableFormats("clipboard");
+		var hasImage = formats.find(str => str.startsWith("image"));
+		console.warn("[clipboardApi] available formats:", formats);
+
+		// check for images on the clipboard
+		if(hasImage){
+			var image = clipboard.readImage("clipboard");
+			var dataUrl = image.toDataURL();
+			console.warn("[clipboardApi] image=", image);
+			console.warn("[clipboardApi] data=", dataUrl);
+
+			return dataUrl;
+		}
+		// ignore all other data types
+		return null;
 	}
 }
 

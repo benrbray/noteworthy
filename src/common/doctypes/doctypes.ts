@@ -15,10 +15,13 @@
 export interface DocMeta {
 	title?:string;
 	author?:string;
+	authors?:string; // TODO (2022/03/06) author vs authors?
 	url?:string;
 	date?:string;
-	tags_defined?:string|string[];
-	tags?:string|string[];
+	year?:string;
+	tags_defined?:string;  // TODO (2022/03/06) yaml might give us a string[] instead
+	tags?:string; // TODO (2022/03/06) yaml might give us a string[] instead
+	bibtex?:string;
 }
 
 export interface IDoc {

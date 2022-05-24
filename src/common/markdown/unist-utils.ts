@@ -17,7 +17,7 @@ export function unistIsStringLiteral(node: Uni.Node): node is Uni.Literal & { va
 
 ////////////////////////////////////////////////////////////////////////////////
 
-enum VisitorAction {
+export enum VisitorAction {
 	/** Continue traversal as normal. */
 	CONTINUE = 1,
 	/** Do not traverse this node's children. */
@@ -90,6 +90,87 @@ export function visitNodeType<N extends Uni.Node = never>(
 	visit(tree, node => {
 		if(predicate(node)) { return visitor(node);          }
 		else                { return VisitorAction.CONTINUE; }
+	});
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+export type VisitTransformerAction = {
+  action: VisitorAction,
+  continueFrom?: number
+}
+
+/** 
+ * Visits the nodes of a syntax tree, possibly making one or more of the following
+ * allowed *local transformations* along the way:
+ * 
+ *   - Since this is a pre-order traversal, a node will be visited before any
+ *     of its children are visited.  Therefore, arbitrary changes to the
+ *     currently focused node are allowed.
+ *   - Arbitrary changes to the parent node and its descendants are allowed,
+ *     but the visitor should reu
+ * 
+ * **Caution:** It is dangerous to make changes to nodes which do not have this
+ * node's parent as a common ancestor.
+ *
+ * When the node's visitor modifies its parent such that the numbering of its
+ * siblings might change, the visitor should use `continueFrom` to indicate the
+ * sibling index from which the traversal should continue next. 
+ */
+export type VisitTransformer<V extends Uni.Node = Uni.Node> = (node:V, index: number, parent: Uni.Parent|null) => VisitTransformerAction;
+
+// depth-first preorder traversal 
+export function visitTransform(tree: Uni.Node, visitor: VisitTransformer): void {
+	recurse(tree, 0, null);
+
+	/**
+	 * @param node The root node of a subtree.
+	 * @param index The index of `node` with respect to its parent.
+	 */
+	function recurse(node: Uni.Node, index: number, parent: Uni.Parent|null): VisitTransformerAction {
+		// visit the node itself and handle the result
+    let result: VisitTransformerAction = visitor(node, index, parent);
+		if(result.action === VisitorAction.EXIT) { return result; } // skips the rest of the entire tree
+		if(result.action === VisitorAction.SKIP) { return result; } // skips just the children of this node
+
+		// visit the node's children from first to last
+		if(unistIsParent(node)) {
+      for(let childIdx = 0; childIdx < node.children.length; childIdx++) {
+        // visit child and handle the subtree result
+        let subresult = recurse(node.children[childIdx], childIdx, node);
+        if(subresult.action === VisitorAction.EXIT) { return { action: VisitorAction.EXIT } }
+
+        // when the visitor modifies its parent (possibly inserting/removing/reordering
+        // siblings), it should return a `continueFrom` indicating the next `childIdx`
+        // to visit after its own processing is complete 
+        if(subresult.continueFrom !== undefined && subresult.continueFrom >= 0) {
+          // note: subtracting one here since the index will be incremented before the next loop
+          childIdx = subresult.continueFrom-1;
+        }
+      }
+    }
+
+		return result;
+	}
+}
+
+/**
+ * Visit a specific type of node.
+ */
+export function visitTransformNodeType<N extends Uni.Node = never>(
+	tree: Uni.Node,
+	type: N["type"],
+	visitor: VisitTransformer<N>
+): void {
+	// filter nodes by type
+	function predicate(node: Uni.Node): node is N {
+		return (node.type === type);
+	}
+
+	// apply the provided visitor only if type predicate matches
+	visitTransform(tree, (node, idx, parent) => {
+		if(predicate(node)) { return visitor(node, idx, parent);         }
+		else                { return { action: VisitorAction.CONTINUE }; }
 	});
 }
 
@@ -276,4 +357,19 @@ function position(pos: Uni.Position): string {
 
 function index(value: number): number {
   return value && typeof value === 'number' ? value : 1
+}
+
+// -- hast-util-whitespace -----------------------------------------------------
+
+export function whitespace(thing: unknown): boolean {
+  const value: string =
+    // @ts-expect-error looks like a node.
+    thing && typeof thing === 'object' && thing.type === 'text'
+      ? // @ts-expect-error looks like a text.
+        thing.value || ''
+      : thing
+
+  // HTML whitespace expression.
+  // See <https://html.spec.whatwg.org/#space-character>.
+  return typeof value === 'string' && value.replace(/[ \t\n\f\r]/g, '') === ''
 }

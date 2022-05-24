@@ -201,7 +201,7 @@ export class HeadingExtension extends NodeSyntaxExtension<Md.Heading> {
 	createNodeSpec() {
 		return {
 			attrs: { level: { default: 1 } },
-			content: "(text | image)*",
+			content: "text*",
 			group: "block",
 			defining: true,
 			parseDOM: [
@@ -655,13 +655,13 @@ export class ImageExtension extends NodeSyntaxExtension<Md.Image> {
 
 	createNodeSpec() {
 		return {
-			inline: true,
+			inline: false,
 			attrs: {
 				src: {},
 				alt: { default: null },
 				title: { default: null }
 			},
-			group: "inline",
+			group: "block",
 			draggable: true,
 			parseDOM: [{
 				tag: "img[src]", getAttrs(d:string|Node) {
@@ -690,6 +690,8 @@ export class ImageExtension extends NodeSyntaxExtension<Md.Image> {
 					alt: node.alt,
 					title: node.title
 				});
+				console.warn("ImageExtension.mdastNodeType :: node=", node);
+				console.warn("ImageExtension.mdastNodeType :: result=", result);
 				return result ? [result] : [];
 			}
 		}
@@ -1168,9 +1170,10 @@ export class CitationExtension extends NodeSyntaxExtension<Md.Cite> {
 			let citeAttrs = node.attrs as ExtensionNodeAttrs<CitationExtension>;
 
 			// surround node content with appropriate syntax
+			let content = node.textContent;
 			let citeSyntax;
-			if(citeAttrs.pandocSyntax) { citeSyntax = `[${node.textContent}]`; }
-			else                       { citeSyntax = `@[${node.textContent}]`; }
+			if(citeAttrs.pandocSyntax) { citeSyntax = `[${content}]`; }
+			else                       { citeSyntax = `@[${content}]`; }
 
 			// create mdast node
 			return [{
@@ -1178,7 +1181,10 @@ export class CitationExtension extends NodeSyntaxExtension<Md.Cite> {
 				value: citeSyntax,
 				altSyntax: (citeAttrs.pandocSyntax !== true),
 				data: {
-					citeItems: []
+					// TODO (2022/03/06) citeItems not properly converted (e.g. when multiple are present) -- need to parse value of cite node
+					citeItems: [{
+						key: content
+					}]
 				}
 			}];
 		}

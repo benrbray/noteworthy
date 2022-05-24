@@ -28,11 +28,16 @@ import {
 	//TagExtension
 } from "@common/extensions/mark-extensions";
 
-// yaml / toml 
-import YAML from "yaml";
 import { unistPredicate, visit, visitNodeType } from "@common/markdown/unist-utils";
 import { NwtExtension } from "@common/extensions/extension";
 import { mdastTextContent } from "@common/markdown/mdast-to-string";
+import { Citation, ICitationProvider } from "@main/plugins/citation-plugin";
+import { pick } from "@common/util/pick";
+import { parseDate, formatDate } from "@common/util/date";
+
+// yaml / toml 
+import YAML from "yaml";
+
 
 ////////////////////////////////////////////////////////////
 
@@ -89,7 +94,7 @@ export const defaultMarkdownConfig = new EditorConfig(
 
 ////////////////////////////////////////////////////////////////////////////////
 
-export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, IMetadataProvider {
+export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, IMetadataProvider, ICitationProvider {
 	
 	private readonly _yaml: { [key:string] : string|string[] };
 
@@ -169,6 +174,49 @@ export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, I
 	getMetadata(): IMetadata {
 		/** @todo (10/2/20) unify this function with getMeta() above */
 		return this._yaml;
+	}
+
+	// -- ICitationProvider ----------------------------- //
+
+	public IS_CITATION_PROVIDER: true = true;
+
+	getCitation(): Citation | null {
+		// first, look for "bibtex" yaml field
+		// @todo (2022/03/04) validate bibtex? allow csl-json? detect?
+		// @todo (2022/03/05) avoid cast here
+		let meta = this.getMeta() as { [k:string]: string};
+		let bibtexField = meta.bibtex;
+		if(bibtexField) { return { type: "bibtex", data: bibtexField }; }
+
+		// next, try to assemble doc metadata into a csl-json object
+		const fields = [
+			"author", "editor", "publsher",
+			"address", "organization", "school", "institution",
+			"title", "booktitle", "journal",
+			"number", "volume", "series", "edition", "pages",
+			"year", "month",
+			"howpublished", "isbn"
+		];
+
+		const bibFields = pick(meta, fields);
+
+		// TODO (2022/03/07) improve date handling
+		if(meta["date"] !== undefined) {
+			const dateParts = parseDate(meta["date"]);
+			if(dateParts) {
+				const date = formatDate(dateParts);
+				bibFields["date"] = date;
+			}
+		}
+
+		return {
+			type: "bibtex-json",
+			data: {
+				type: "misc",
+				label: null, // TODO
+				properties: bibFields
+			}
+		};
 	}
 
 	// -- ICrossRefProvider ----------------------------- //

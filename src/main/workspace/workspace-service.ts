@@ -11,6 +11,7 @@ import { EventEmitter } from "events";
 import { FsalEvents, ChokidarEvents } from "@common/events";
 import { OutlinePlugin } from "@main/plugins/outline-plugin";
 import { MetadataPlugin } from "@main/plugins/metadata-plugin";
+import { CitationPlugin } from "@main/plugins/citation-plugin";
 
 ////////////////////////////////////////////////////////////
 
@@ -48,7 +49,8 @@ export class WorkspaceService extends EventEmitter {
 		let plugins: WorkspacePlugin[] = [
 			new CrossRefPlugin(),
 			new OutlinePlugin(),
-			new MetadataPlugin()
+			new MetadataPlugin(),
+			new CitationPlugin()
 		];
 
 		// get directory info
