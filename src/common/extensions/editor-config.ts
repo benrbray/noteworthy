@@ -34,6 +34,7 @@ import { citePlugin as remarkCitePlugin } from "@benrbray/remark-cite";
 import { wikiLinkPlugin as remarkWikilinkPlugin } from '@common/markdown/remark-plugins/wikilink/remark-wikilink';
 import { remarkErrorPlugin } from "@common/markdown/remark-plugins/error/remark-error";
 import { remarkConcretePlugin } from "@common/markdown/remark-plugins/concrete/remark-concrete";
+import { remarkUnwrapImagePlugin } from "@common/markdown/remark-plugins/unwrap-image/remark-unwrap-image";
 
 // project imports
 import { keymap as makeKeymap } from "prosemirror-keymap";
@@ -143,6 +144,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 			.use(remarkWikilinkPlugin)
 			.use(remarkFrontMatter, ['yaml', 'toml'])
 			.use(remarkDirective)
+			.use(remarkUnwrapImagePlugin)
 			.use(remarkStringify, {
 				// TODO: (2021-05-18) remember bullet type
 				bullet: '*',
@@ -176,9 +178,30 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 	}
 
 	parseAST(markdown: string): Md.Node | null {
-		let result = this._mdastParser.parse(markdown);
+		// TODO (2022/05/06) right now we are calling _mdastParser.parse in two separate places
+		// and any post-transformations need to be duplicated in both.  The two uses should call the
+		// same postprocessing function.
+		
+		// parse and transform ast
+		let parsed = this._mdastParser.parse(markdown);
+		let result = this._mdastParser.runSync(parsed);
+
 		if(!result) { return null;              }
 		else        { return result as Md.Node; }
+	}
+
+	/**
+	 * Convert the given ProseMirror document into a Markdown AST.
+	 */
+	prose2mdast(doc: ProseNode): Md.Node | null {
+		const result = prose2mdast.proseTreeMap(doc, this._prose2mdast);
+		
+		// TODO (2022/03/06) error handling
+		if(result.length >  1) { console.error("multiple top-level nodes"); return null; }
+		if(result.length == 0) { console.error("empty document");           return null; } 
+
+		// TODO (2022/03/06) avoid cast from Uni.Node to Md.Node
+		return result[0] as Md.Node;
 	}
 
 	serialize(doc: ProseNode): string | null {
@@ -243,8 +266,6 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 				return ["pre", attrs, ["code", 0]] 
 			}
 		}
-
-		console.log(JSON.stringify(nodeSpecs, undefined, 2));
 
 		// build schema
 		// TODO: speicalize to ProseSchema<N,M> for some N,M?

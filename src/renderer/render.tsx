@@ -17,10 +17,15 @@ import { Editor } from "./editors/editor";
 import { IFolderMarker, FileExplorer } from "./ui/explorer";
 import { TagSearch } from "./ui/tag-search";
 import { PanelBacklinks } from "./ui/panelBacklinks";
+import { BibliographyComponent } from "./ui/bibliography";
+
+// unist / unified
+import * as Uni from "unist";
+import * as Md from "@common/markdown/markdown-ast";
 
 // solid js imports
 import { render } from "solid-js/web";
-import { State as SolidState, SetStateFunction, createState, Suspense, Switch, Match, For, createResource } from "solid-js";
+import { State as SolidState, SetStateFunction, createState, Suspense, Switch, Match, For, createResource, onCleanup } from "solid-js";
 import { CalendarTab } from "./ui/calendarTab";
 import { OutlineTab } from "./ui/outlineTab";
 import { HistoryTab } from "./ui/historyTab";
@@ -35,6 +40,7 @@ import { ITagSearchResult, IFileSearchResult } from "@main/plugins/crossref-plug
 // this transformation.  So, we must explicitly declare them here:
 import { WindowAfterPreload } from "@renderer/preload_types";
 import { MouseButton } from "@common/inputEvents";
+import { visitNodeType } from "@common/markdown/unist-utils";
 declare let window: Window & typeof globalThis & WindowAfterPreload;
 // this is a "safe" version of ipcRenderer exposed by the preload script
 const ipcRenderer = window.restrictedIpcRenderer;
@@ -47,6 +53,8 @@ export interface IRendererState {
 	fileTree: [IFolderMarker, IDirEntryMeta[]][];
 	navigationHistory: { history: IFileMeta[], currentIdx: number };
 	themeCss: string;
+	selection: { to:number, from:number };
+	markdownAst: null|Uni.Node;
 }
 
 class Renderer {
@@ -136,7 +144,9 @@ class Renderer {
 				activeFile: null,
 				fileTree:[],
 				navigationHistory: { history: [], currentIdx: 0 },
-				themeCss: ""
+				themeCss: "",
+				selection: {to:0, from:0},
+				markdownAst: null
 			});
 			this._react = { state, setState }
 
@@ -273,8 +283,20 @@ class Renderer {
 				</div>);
 			}
 
+			const extractCitations = (): string[] => {
+				if(!state.markdownAst) { return []; }
+				const result: Set<string> = new Set();
+				visitNodeType<Md.Cite>(state.markdownAst, "cite", (node: Md.Cite) => {
+					node.data.citeItems.map(c => c.key).forEach(k => result.add(k));
+				});
+
+				return [...result];
+			}
+
 			const AppContent = () => {
-				return (<div id="content">
+				return (<div id="content" class="document">
+					<div id="editor" spellcheck={false}></div>
+					<BibliographyComponent proxy={this._mainProxy} citationKeys={extractCitations()} />
 				</div>);
 			}
 
@@ -294,6 +316,19 @@ class Renderer {
 				if(dotIdx < 0) { return name; }
 				else { return name.slice(0, dotIdx) || null; }
 			}
+
+			const timer = setInterval(() => {
+				if(!this._editor) { return; }
+
+				// attempt to parse markdown ast from editor
+				this._react?.setState({
+					markdownAst: this._editor.getAst()
+				});
+			}, 10000);
+
+			onCleanup(() => {
+				clearInterval(timer);
+			});
 
 			return (<>
 				<style>{state.themeCss}</style>
@@ -319,19 +354,10 @@ class Renderer {
 		 */
 		this._mainProxy.theme.requestThemeRefresh();
 
-		// create shadow dom
-		let contentElt = document.getElementById("content") as HTMLElement;
-
-		// create editor
-		let editorElt = document.createElement("div");
-		editorElt.setAttribute("id", "editor");
-		editorElt.setAttribute("spellcheck", "false");
-		contentElt.appendChild(editorElt);
-
 		// dom elements
 		this._ui = {
 			titleElt : document.getElementById("title") as HTMLDivElement,
-			editorElt : editorElt
+			editorElt : document.getElementById("editor") as HTMLDivElement
 		}
 	}
 
@@ -394,11 +420,17 @@ class Renderer {
 		
 		let ext: string = pathlib.extname(this._currentFile.path || "");
 
+		// notify ui of selection change
+		let setSelectionInfo = (selection: {to:number, from:number}): void => {
+			console.log("set selection", selection);
+			this._react?.setState({selection});
+		};
+
 		// set current editor
 		// (no way to describe type of abstract constructor)
 		// (https://github.com/Microsoft/TypeScript/issues/5843)
 		let editor:Editor;
-		const args = [this._currentFile, this._ui.editorElt, this._mainProxy] as const;
+		const args = [this._currentFile, this._ui.editorElt, this._mainProxy, setSelectionInfo] as const;
 		switch (ext) {
 			/** @todo (9/27/20) re-enable other file types */
 			//case ".ipynb":   editor = new IpynbEditor(...args);       break;
