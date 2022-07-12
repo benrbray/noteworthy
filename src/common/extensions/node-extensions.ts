@@ -690,6 +690,8 @@ export class ImageExtension extends NodeSyntaxExtension<Md.Image> {
 					alt: node.alt,
 					title: node.title
 				});
+				console.warn("ImageExtension.mdastNodeType :: node=", node);
+				console.warn("ImageExtension.mdastNodeType :: result=", result);
 				return result ? [result] : [];
 			}
 		}
