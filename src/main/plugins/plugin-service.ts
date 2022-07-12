@@ -10,19 +10,44 @@ import { OutlinePlugin } from "./outline-plugin";
 import { CrossRefPlugin } from "./crossref-plugin";
 import { MetadataPlugin } from "./metadata-plugin";
 
+////////////////////////////////////////////////////////////////////////////////
+
+export declare const BasePlugins: {
+	readonly crossref_plugin: CrossRefPlugin;
+	readonly outline_plugin: OutlinePlugin;
+	readonly metadata_plugin: MetadataPlugin;
+};
+
+declare global {
+	namespace Noteworthy {
+		/** This interface is for extending the default
+		 * set of Plugins with full type-checking support. */
+		export interface Plugins {
+
+		}
+	}
+}
+
+export type Plugins = Noteworthy.Plugins & typeof BasePlugins;
+export type PluginName = keyof Plugins;
+export type PluginType = Plugins[keyof Plugins];
+
+////////////////////////////////////////////////////////////////////////////////
+
 export class PluginService {
 	constructor(
 		private _workspaceService:WorkspaceService
 	){}
 
-	/** @todo (10/2/20) improve this type signature -- these overloads are duplicated from `workspace.getPluginByName()`
+	/**
+	 * Retrieve the workspace plugin with the specified name.
 	 * @returns NULL when the plugin is not available
 	 */
-	getWorkspacePluginByName(name:"crossref_plugin"): CrossRefPlugin|null;
-	getWorkspacePluginByName(name:"outline_plugin"): OutlinePlugin|null;
-	getWorkspacePluginByName(name:"metadata_plugin"): MetadataPlugin|null;
-	getWorkspacePluginByName(name:string): WorkspacePlugin|null {
+	getWorkspacePluginByName<T extends PluginName>(name: T): Plugins[T] | null {
 		if(!this._workspaceService.workspace) { return null; }
-		return this._workspaceService.workspace.getPluginByName(name);
+		const plugin = this._workspaceService.workspace.getPluginByName(name);
+		// @todo (2022/03/04) avoid cast here? better guarantee?
+		// @todo (2022/03/04) avoid returning null?
+		return plugin as Plugins[T] || null;
 	}
 }

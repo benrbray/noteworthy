@@ -20,15 +20,42 @@ import { WorkspacePlugin } from "./plugins/plugin";
 import { IMetadata } from "./plugins/metadata-plugin";
 import { getFileMetadata } from "@common/files";
 
-////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
-/** @todo (7/12/20) move to separate file (duplicated in ipc.ts right now) */
-type FunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? K : never }[keyof T];
-type FunctionProperties<T> = Pick<T, FunctionPropertyNames<T>>;
+declare global {
+	namespace Noteworthy {
+		export interface MainIpcHandlers {
+			// plugins can add additional handler types by
+			// augmenting this interface with type declarations
+		}
+	}
+}
+
+export interface DefaultMainIpcHandlers {
+	lifecycle:  MainIpc_LifecycleHandlers;
+	file:       MainIpc_FileHandlers;
+	theme:      MainIpc_ThemeHandlers;
+	shell:      MainIpc_ShellHandlers;
+	dialog:     MainIpc_DialogHandlers;
+	tag:        MainIpc_TagHandlers;
+	outline:    MainIpc_OutlineHandlers;
+	metadata:   MainIpc_MetadataHandlers;
+	navigation: MainIpc_NavigationHandlers;
+};
+
+export type MainIpcHandlers = Noteworthy.MainIpcHandlers & DefaultMainIpcHandlers
+export type MainIpcChannelName = keyof MainIpcHandlers;
+
+export interface MainIpcChannel {
+	readonly name: MainIpcChannelName;
+}
 
 //// LIFECYCLE /////////////////////////////////////////////
 
-export class MainIpc_LifecycleHandlers {
+export class MainIpc_LifecycleHandlers implements MainIpcChannel {
+
+	get name() { return "lifecycle" as const; }
+
 	/** @todo (9/13/20) break app into multiple parts so we don't need to consume the whole thing */
 	constructor(private _app:NoteworthyApp){ }
 
@@ -51,23 +78,20 @@ export class MainIpc_LifecycleHandlers {
 
 //// FILE SYSTEM ///////////////////////////////////////////
 
-export class MainIpc_FileHandlers {
+export class MainIpc_FileHandlers implements MainIpcChannel {
+	get name() { return "file" as const; }
+
 	constructor(
 		private _app: NoteworthyApp,
 		private _fsal: FSAL,
-		private _workspaceService: WorkspaceService,
-		private _pluginService: PluginService
+		private _workspaceService: WorkspaceService
 	){ }
 
 	// -- Request File Create --------------------------- //
 
 	async requestFileCreate(path:string, contents:string=""):Promise<IFileMeta|null> {
 		/** @todo (6/26/20) check if path in workspace? */
-		return this._fsal.createFile(path, contents)
-			.then(
-				() => { return this._workspaceService.updatePath(path)||null; },
-				(reason) => { console.error("error creating file", reason); return null; }
-			)
+		return this._workspaceService.createFile(path, contents);
 	}
 
 	// -- Request File Save ----------------------------- //
@@ -75,7 +99,7 @@ export class MainIpc_FileHandlers {
 	async requestFileSave(file: IFileWithContents): Promise<boolean> {
 		if (!this._app.window) { return false; }
 
-		this._fsal.saveFile(file.path, file.contents, false);
+		await this._fsal.saveFile(file.path, file.contents, false);
 		/** @todo (7/12/20) check for file save errors? */
 		this._app._renderProxy?.fileDidSave({saveas: false, path: file.path });
 		return true;
@@ -114,7 +138,10 @@ export class MainIpc_FileHandlers {
 
 //// DIALOG ////////////////////////////////////////////////
 
-export class MainIpc_DialogHandlers {
+export class MainIpc_DialogHandlers implements MainIpcChannel {
+
+	get name() { return "dialog" as const; }
+
 	/** @todo (9/13/20) break app into multiple parts so we don't need to consume the whole thing */
 	constructor(
 		private _app: NoteworthyApp,
@@ -172,6 +199,32 @@ export class MainIpc_DialogHandlers {
 		//this._navigationHandlers.requestFileOpen({ path: filePaths[0] })
 	}
 
+	// -- Dialog File Create ---------------------------- //
+
+	async dialogFileNew(): Promise<void> {
+		if (!this._app.window) { return Promise.reject("no active window"); }
+
+		// default "new file" path
+		const workspaceDir = this._workspaceService.getWorkspaceDir();
+
+		const newFilePath: string | undefined = dialog.showSaveDialogSync(
+			this._app.window.window,
+			{
+				title: "New Document",
+				buttonLabel: "New Document",
+				properties: ["showOverwriteConfirmation"],
+				...(workspaceDir && { defaultPath: workspaceDir.path })
+			}
+		);
+		if (!newFilePath) { return Promise.reject("no file path specified"); }
+
+		// create and open new file
+		let newFile = await this._workspaceService.createFile(newFilePath, "");
+		if(!newFile) { return Promise.reject("failed to create new file"); }
+
+		return this._app._eventHandlers.navigation.navigateToHash({ hash: newFile.hash });
+	}
+
 	// -- Dialog File Save As --------------------------- //
 
 	async dialogFileSaveAs(file: IPossiblyUntitledFile): Promise<string | null> {
@@ -213,7 +266,10 @@ export class MainIpc_DialogHandlers {
 ////////////////////////////////////////////////////////////
 
 
-export class MainIpc_ThemeHandlers {
+export class MainIpc_ThemeHandlers implements MainIpcChannel {
+	
+	get name() { return "theme" as const; }
+
 	/** @todo (9/13/20) break app into multiple parts so we don't need to consume the whole thing */
 	constructor(private _themeService:ThemeService){ }
 
@@ -222,15 +278,21 @@ export class MainIpc_ThemeHandlers {
 	}
 }
 
-export class MainIpc_TagHandlers {
+export class MainIpc_TagHandlers implements MainIpcChannel {
+	
+	get name() { return "tag" as const; }
+
 	/** @todo (9/13/20) break app into multiple parts so we don't need to consume the whole thing */
 	constructor(
 		private _app:NoteworthyApp,
 		private _workspaceService:WorkspaceService,
-		private _pluginService:PluginService,
-		private _fileHandlers:MainIpc_FileHandlers,
+		private _pluginService:PluginService
 	){ }
 	
+	/**
+	 * Return a list of files which mention the query tag.
+	 * @param query The tag to search for.
+	 */
 	async tagSearch(query:string):Promise<IFileMeta[]> {
 		// get active plugin
 		let plugin = this._pluginService.getWorkspacePluginByName("crossref_plugin");
@@ -240,7 +302,27 @@ export class MainIpc_TagHandlers {
 		if(hashes === null){ return []; }
 		return filterNonVoid( hashes.map(hash => (this._workspaceService.getFileByHash(hash))) );
 	}
+	
+	/**
+	 * Return a list of files which mention any tags defined
+	 * by the document corresponding to the given hash.
+	 * Useful for generating a list of backlinks.
+	 * @param query The tag to search for.
+	 */
+	async backlinkSearch(hash:string):Promise<IFileMeta[]> {
+		// get active plugin
+		let plugin = this._pluginService.getWorkspacePluginByName("crossref_plugin");
+		if(!plugin){ return []; }
+		// tag search
+		const hashes:string[]|null = plugin.getBacklinksForDoc(hash);
+		if(hashes === null){ return []; }
+		return filterNonVoid( hashes.map(hash => (this._workspaceService.getFileByHash(hash))) );
+	}
 
+	/**
+	 * Return a list of tags which approximately match the query.
+	 * @param query The tag to search for.
+	 */
 	async fuzzyTagSearch(query:string):Promise<ITagSearchResult[]> {
 		// get active plugin
 		let plugin = this._pluginService.getWorkspacePluginByName("crossref_plugin");
@@ -326,7 +408,9 @@ export class MainIpc_TagHandlers {
 			// create file
 			/** @todo (9/14/20) default file creation should probably be handled by the WorkspaceService */
 			let fileContents: string = this._app.getDefaultFileContents(".md", fileName)
-			let file: IFileMeta | null = await this._fileHandlers.requestFileCreate(filePath, fileContents);
+			
+			// @todo (2022/03/04) avoid private access to _eventHandlers? or make public?
+			let file: IFileMeta | null = await this._app._eventHandlers.file.requestFileCreate(filePath, fileContents);
 			if (!file) {
 				console.error("MainIpc_TagHandlers :: unknown error creating file for tag");
 				return null;
@@ -354,7 +438,10 @@ export class MainIpc_TagHandlers {
 
 //// OUTLINE ///////////////////////////////////////////////
 
-export class MainIpc_OutlineHandlers {
+export class MainIpc_OutlineHandlers implements MainIpcChannel {
+	
+	get name() { return "outline" as const; }
+	
 	constructor(
 		private _pluginService:PluginService
 	) { }
@@ -370,7 +457,10 @@ export class MainIpc_OutlineHandlers {
 
 //// SHELL /////////////////////////////////////////////////
 
-export class MainIpc_ShellHandlers {
+export class MainIpc_ShellHandlers implements MainIpcChannel {
+	
+	get name() { return "shell" as const; }
+	
 	constructor() { }
 
 	async requestExternalLinkOpen(url: string) {
@@ -380,7 +470,10 @@ export class MainIpc_ShellHandlers {
 
 //// PLUGINS ///////////////////////////////////////////////
 
-export class MainIpc_MetadataHandlers {
+export class MainIpc_MetadataHandlers implements MainIpcChannel {
+
+	get name() { return "metadata" as const; }
+	
 	constructor(
 		private _pluginService: PluginService
 	) { }
@@ -395,18 +488,18 @@ export class MainIpc_MetadataHandlers {
 
 //// NAVIGATION ////////////////////////////////////////////////////////////////
 
-export class MainIpc_NavigationHandlers {
-	// TODO (2021/03/12) clear navigation history on workspace open/close
+export class MainIpc_NavigationHandlers implements MainIpcChannel {
 
+	get name() { return "navigation" as const; }
+	
+	// TODO (2021/03/12) clear navigation history on workspace open/close
 	private _navHistory: IFileMeta[];
 	private _navIdx: number;
 
 	constructor(
 		private _app:NoteworthyApp,
 		private _workspaceService: WorkspaceService,
-		private _pluginService: PluginService,
-		private _fileHandlers: MainIpc_FileHandlers,
-		private _tagHandlers: MainIpc_TagHandlers
+		private _pluginService: PluginService
 	) {
 		this._navHistory = [];
 		this._navIdx = 0;
@@ -419,7 +512,8 @@ export class MainIpc_NavigationHandlers {
 		console.log(`MainIPC_NavigationHandlers :: navigate :: ${ fileInfo.hash }`);
 
 		// get file contents
-		let file = await this._fileHandlers.requestFileContents(fileInfo);
+		// @todo (2022/03/04) avoid private access to _eventHandlers? or make public?
+		let file = await this._app._eventHandlers.file.requestFileContents(fileInfo);
 		if(!file){ return null; }
 
 		// send file to render process
@@ -507,7 +601,8 @@ export class MainIpc_NavigationHandlers {
 		if (!this._app.window) { return; }
 
 		// get files which define this tag
-		let fileHash = await this._tagHandlers.getHashForTag(data);
+		// @todo (2022/03/04) avoid private access to _eventHandlers? or make public?
+		let fileHash = await this._app._eventHandlers.tag.getHashForTag(data);
 		if(!fileHash) return;
 		// load file from hash
 		this.navigateToHash({ hash: fileHash });
@@ -528,24 +623,100 @@ export class MainIpc_NavigationHandlers {
 
 ////////////////////////////////////////////////////////////
 
-export interface MainIpcHandlers {
-	lifecycle:  MainIpc_LifecycleHandlers;
-	file:       MainIpc_FileHandlers;
-	theme:      MainIpc_ThemeHandlers;
-	shell:      MainIpc_ShellHandlers;
-	dialog:     MainIpc_DialogHandlers;
-	// plugins
-	/** @todo Custom plugins won't be able to add their own
-	 * handlers to this file, so there needs to be a standard
-	 * way to request plugin data from the render process */
-	tag:        MainIpc_TagHandlers;
-	outline:    MainIpc_OutlineHandlers;
-	metadata:   MainIpc_MetadataHandlers;
-	navigation: MainIpc_NavigationHandlers;
-};
+import { Cite } from "@citation-js/core";
+import "@citation-js/plugin-bibtex";
+import "@citation-js/plugin-csl";
+import { Citation } from "./plugins/citation-plugin";
 
-export type MainIpcChannel = keyof MainIpcHandlers;
+export class MainIpc_CitationHandlers implements MainIpcChannel {
+	get name() { return "citations" as const; }
 
-export type MainIpcEvents = {
-	[K in MainIpcChannel] : FunctionPropertyNames<MainIpcHandlers[K]>
+	constructor(
+		private _app: NoteworthyApp,
+		private _pluginService: PluginService
+	) {}
+
+	/**
+	 * Convert a citation key (such as `peyton-jones1992:stg`) into
+	 * a formatted citation suitable for display.
+	 */
+	async getCitationForKey(citeKey: string): Promise<string | null> {
+		const citePlugin = this._pluginService.getWorkspacePluginByName("citation_plugin");
+		if(!citePlugin) { return null; }
+		
+		// get file corresponding to citation key, if one exists
+		// TODO (2022/03/07) what if two files exist for the same tag?  which citation to use?
+		const file = await this._app._eventHandlers.tag.getFileForTag({ tag: citeKey, create: false });
+		if(!file) { return null; }
+
+		const cite = this.getCitationForHash(file.hash);
+		return cite;
+
+		// TODO (2022/03/07) also check if any bibliography files contain the key
+		// TODO (2022/03/07) what if bibliography contains entry whose key matches a file tag?
+	}
+	
+	getCitationForHash(hash: string): string | null {
+		const citePlugin = this._pluginService.getWorkspacePluginByName("citation_plugin");
+		if(!citePlugin) { return null; }
+
+		// retrieve citation string from document
+		const citeData = citePlugin.getCitationForHash(hash);
+		if(!citeData) { return null; }
+
+		// use citeproc-js to render citation string
+		try {
+			const cite = new Cite(citeData.data);
+
+			const citeOutput = cite.format('bibliography', {
+				type: 'html',
+				template: 'vancouver',
+				lang: 'en-US'
+			});
+
+			if(typeof citeOutput !== "string") { return null; }
+			return citeOutput;
+		} catch(err) {
+			console.error(err);
+			return null;
+		}
+	}
+
+	async generateBibliography(citeKeys: string[]): Promise<string | null> {
+		const citePlugin = this._pluginService.getWorkspacePluginByName("citation_plugin");
+		if(!citePlugin) { return null; }
+
+		// retrieve bibliography entry for each citation key
+		const citeData: (string|object[]|object)[] = [];
+		for(const citeKey of citeKeys) {
+			// get file corresponding to citation key, if one exists
+			// TODO (2022/03/07) what if two files exist for the same tag?  which citation to use?
+			const file = await this._app._eventHandlers.tag.getFileForTag({ tag: citeKey, create: false });
+			if(!file) { continue; }
+
+			// get citation data
+			const data = citePlugin.getCitationForHash(file.hash);
+			if(!data) { continue; }
+
+			citeData.push(data.data);
+		}
+
+		// generate bibliography
+		const cite = new Cite(citeData);
+		const bibliography = cite.format("bibliography", {
+			format: "html",
+			template: "apa",
+			lang: "en-US"
+		});
+
+		return bibliography as string;
+	}
+}
+
+declare global {
+	namespace Noteworthy {
+		export interface MainIpcHandlers {
+			citations: MainIpc_CitationHandlers;
+		}
+	}
 }

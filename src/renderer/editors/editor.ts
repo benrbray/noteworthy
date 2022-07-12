@@ -2,6 +2,9 @@ import { IPossiblyUntitledFile, IUntitledFile } from "@common/files";
 import { MainIpcHandlers } from "@main/MainIPC";
 import { to } from "@common/util/to";
 
+import * as Uni from "unist";
+
+////////////////////////////////////////////////////////////////////////////////
 export abstract class Editor<TDocumentModel=any> {
 	// editor
 	protected _editorElt:HTMLElement;
@@ -42,6 +45,13 @@ export abstract class Editor<TDocumentModel=any> {
 	 * Convert the current contents of this editor to a string.
 	 */
 	abstract serializeContents():string;
+
+	/**
+	 * Get an abstract syntax tree for this document.
+	 */
+	// TODO (2022/03/06) Different editor types may have different AST types,
+	// or maybe even no AST at all.  This method shouldn't be on the interface.
+	abstract getAst(): Uni.Node | null;
 
 	/**
 	 * Populate the document model from a string.
@@ -190,6 +200,21 @@ export class DefaultEditor extends Editor<string> {
 
 	parseContents(contents:string):string {
 		return contents;
+	}
+
+	getAst(): Uni.Node | null {
+		if(!this._inputElt) { return null; }
+
+		return {
+			type: "root",
+			children: [{
+				type: "paragraph",
+				children: [{
+					type: "text",
+					value: this._inputElt.value
+				}]
+			}]
+		};
 	}
 
 	setContents(contents:string):void {

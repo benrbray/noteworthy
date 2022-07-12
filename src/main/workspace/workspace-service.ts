@@ -11,6 +11,7 @@ import { EventEmitter } from "events";
 import { FsalEvents, ChokidarEvents } from "@common/events";
 import { OutlinePlugin } from "@main/plugins/outline-plugin";
 import { MetadataPlugin } from "@main/plugins/metadata-plugin";
+import { CitationPlugin } from "@main/plugins/citation-plugin";
 
 ////////////////////////////////////////////////////////////
 
@@ -19,7 +20,8 @@ export enum WorkspaceEvent {
 }
 
 export class WorkspaceService extends EventEmitter {
-	_workspace:Workspace|null;
+	
+	private _workspace:Workspace|null;
 
 	constructor(private _fsal: FSAL) {
 		super();
@@ -47,7 +49,8 @@ export class WorkspaceService extends EventEmitter {
 		let plugins: WorkspacePlugin[] = [
 			new CrossRefPlugin(),
 			new OutlinePlugin(),
-			new MetadataPlugin()
+			new MetadataPlugin(),
+			new CitationPlugin()
 		];
 
 		// get directory info
@@ -147,6 +150,7 @@ export class WorkspaceService extends EventEmitter {
 
 		if (!data.pluginData || !data.files) {
 			console.error("Workspace.fromJSON() :: invalid data :: creating fresh workspace");
+			/* TODO (2021/07/22) should this receive a list of plugins? */
 			return new Workspace(dir, {}, [], this, this._fsal);
 		}
 
@@ -154,6 +158,7 @@ export class WorkspaceService extends EventEmitter {
 		let pluginState:any;
 		for(let plugin of plugins){
 			if(pluginState = data.pluginData[plugin.plugin_name]){
+				/* TODO (2021/07/22) what if deserialization fails? */
 				plugin.deserialize(pluginState);
 			}
 		}
@@ -207,6 +212,15 @@ export class WorkspaceService extends EventEmitter {
 	}
 
 	// == Files / Paths ================================= //
+
+	async createFile(path:string, contents:string=""): Promise<IFileMeta|null> {
+		/** @todo (6/26/20) check if path in workspace? */
+		return this._fsal.createFile(path, contents)
+			.then(
+				() => { return this.updatePath(path)||null; },
+				(reason) => { console.error("error creating file", reason); return null; }
+			)
+	}
 
 	getFileByHash(hash: string): (IFileMeta | null) {
 		if (!this._workspace) { return null; }

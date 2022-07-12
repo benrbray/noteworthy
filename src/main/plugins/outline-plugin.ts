@@ -32,7 +32,7 @@ export function isOutlineProvider(resource:unknown):resource is IOutlineProvider
 }
 
 export type IOutlineEntry = {
-	/** Depths define an implicit tree structure among entries, beginning with 0 at the top level. */
+	/** Depths define an implicit tree structure among entries, beginning with 1 at the top level. */
 	depth : number,
 	/** A string identifier for this entry, unique within the document. */
 	uniqueId: string,

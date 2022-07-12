@@ -12,6 +12,7 @@ import { IPossiblyUntitledFile } from "@common/files";
 import { Editor } from "./editor";
 
 // markdown
+import * as Uni from "unist";
 import * as Md from "@common/markdown/markdown-ast";
 
 // solidjs
@@ -91,7 +92,12 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 
 	// == Constructor =================================== //
 
-	constructor(file: IPossiblyUntitledFile | null, editorElt: HTMLElement, mainProxy: MainIpcHandlers) {
+	constructor(
+		file: IPossiblyUntitledFile | null,
+		editorElt: HTMLElement,
+		mainProxy: MainIpcHandlers,
+		private _setSelectionInfo: (s: {to:number, from:number}) => void
+	) {
 		super(file, editorElt, mainProxy);
 
 		// no editor until initialized
@@ -335,6 +341,7 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 		this._proseEditorView = new ProseEditorView(this._editorElt, {
 			state: state,
 			nodeViews: {
+				...this._config.nodeViews
 				// TODO: restore embed view?
 				// "embed": (node, view, getPos) => {
 				// 	return new EmbedView(
@@ -355,6 +362,8 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 				
 				}
 
+				// forward selection info to ui
+				this._setSelectionInfo({ to: tr.selection.to, from: tr.selection.from });
 				console.log("selection :: ", tr.selection.from, tr.selection.to)
 
 				// apply transaction
@@ -387,16 +396,18 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 
 				return false;
 			},
-			handlePaste: (view) => {
+			handlePaste: (view, evt, slice) => {
 
 				/** @todo (6/22/20) make this work with the ClipboardEvent? */
+
+				console.warn("[handlePaste]", evt, slice);
 
 				// handle pasting of images
 				// (for some reason, event.clipboardData.getData("img/png") etc.
 				// do not return any data.  So we use the electron clipboard instead.)
 				let clipboardImageURI: string|null = window.clipboardApi.getClipboardImageDataURI();
 
-				if(clipboardImageURI == null){
+				if(clipboardImageURI !== null){
 					let imgNode = this._imageExt.nodeType.createAndFill({
 						src: clipboardImageURI
 					});
@@ -430,6 +441,14 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 	}
 
 	// == Document Model ================================ //
+
+	/**
+	 * Convert the contents of the editor to a Markdown AST.
+	 */
+	getAst(): Md.Node | null {
+		if(!this._proseEditorView){ return null; }
+		return this._config.prose2mdast(this._proseEditorView.state.doc);
+	}
 
 	/**
 	 * Serialize the contents of this editor as a string.

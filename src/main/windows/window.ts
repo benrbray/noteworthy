@@ -62,6 +62,7 @@ class Window {
 			title: "Noteworthy",
 			//titleBarStyle: 'hiddenInset',
 			webPreferences: {
+				nativeWindowOpen: true,
 				webSecurity: true,
 				sandbox: true,
 				contextIsolation: true,
@@ -70,10 +71,26 @@ class Window {
 			icon: "assets/icon/noteworthy-icon-512.png"
 		}, options);
 
-		const win = new BrowserWindow(options);
-		state.manage(win);
+		const mainWindow = new BrowserWindow(options);
+		state.manage(mainWindow);
 
-		return win;
+		// https://www.electronjs.org/docs/api/window-open
+		mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+			console.log("window open handler", url);
+			return {
+				action: 'allow',
+				overrideBrowserWindowOptions: {
+					frame: true,
+					fullscreenable: false,
+					backgroundColor: 'black',
+					webPreferences: {
+						preload: 'dist/preload/preload.js'
+					}
+				}
+			}
+		});
+
+		return mainWindow;
 	}
 
 	cleanup(){

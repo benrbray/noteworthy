@@ -7,14 +7,16 @@ import { enforceMacOSAppLocation } from 'electron-util';
 import { EventEmitter } from "events";
 
 // project imports
-import Main from "./windows/main";
+import MainWindow from "./windows/main";
 import Window from "./windows/window";
 import { 
 	MainIpc_FileHandlers, MainIpc_TagHandlers, MainIpc_DialogHandlers, 
 	MainIpc_LifecycleHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers, 
 	MainIpcHandlers, MainIpcChannel, MainIpc_OutlineHandlers, 
 	MainIpc_MetadataHandlers,
-	MainIpc_NavigationHandlers
+	MainIpc_NavigationHandlers,
+	MainIpc_CitationHandlers,
+	MainIpcChannelName
 } from "./MainIPC";
 import { FSAL } from "./fsal/fsal";
 import { invokerFor, FunctionPropertyNames } from "@common/ipc";
@@ -24,6 +26,7 @@ import { RendererIpcHandlers } from "@renderer/RendererIPC";
 import { WorkspaceService, WorkspaceEvent } from "./workspace/workspace-service";
 import { ThemeService, ThemeEvent } from "./theme/theme-service";
 import { PluginService } from "./plugins/plugin-service";
+import NewFileWindow from "./windows/newFileWindow";
 
 ////////////////////////////////////////////////////////////
 
@@ -59,9 +62,9 @@ export default class NoteworthyApp extends EventEmitter {
 	init(){
 		ipcMain.handle(
 			"command", 
-			<T extends MainIpcChannel>(
-				evt: IpcMainInvokeEvent, channel: T,
-				key: FunctionPropertyNames<MainIpcHandlers[T]>, data: any
+			<C extends MainIpcChannelName>(
+				evt: IpcMainInvokeEvent, channel: C,
+				key: FunctionPropertyNames<MainIpcHandlers[C]>, data: any
 			) => {
 				console.log(`MainIPC :: handling event :: ${channel} ${key}`);
 				return this.handle(channel, key, data);
@@ -84,13 +87,14 @@ export default class NoteworthyApp extends EventEmitter {
 		let shellHandlers      = new MainIpc_ShellHandlers();
 
 		// handlers with a single dependency
-		let fileHandlers       = new MainIpc_FileHandlers(this, this._fsal, this._workspaceService, this._pluginService);
-		let tagHandlers        = new MainIpc_TagHandlers(this, this._workspaceService, this._pluginService, fileHandlers);
-		let navigationHandlers = new MainIpc_NavigationHandlers(this, this._workspaceService, this._pluginService, fileHandlers, tagHandlers);
+		let fileHandlers       = new MainIpc_FileHandlers(this, this._fsal, this._workspaceService);
+		let tagHandlers        = new MainIpc_TagHandlers(this, this._workspaceService, this._pluginService);
+		let navigationHandlers = new MainIpc_NavigationHandlers(this, this._workspaceService, this._pluginService);
 		let dialogHandlers     = new MainIpc_DialogHandlers(this, this._fsal, this._workspaceService);
 		let outlineHandlers    = new MainIpc_OutlineHandlers(this._pluginService);
 		let themeHandlers      = new MainIpc_ThemeHandlers(this._themeService);
 		let metadataHandlers   = new MainIpc_MetadataHandlers(this._pluginService);
+		let citationHandlers   = new MainIpc_CitationHandlers(this, this._pluginService);
 
 		return {
 			lifecycle:  lifecycleHandlers,
@@ -102,6 +106,7 @@ export default class NoteworthyApp extends EventEmitter {
 			outline:    outlineHandlers,
 			metadata:   metadataHandlers,
 			navigation: navigationHandlers,
+			citations:  citationHandlers
 		}
 	}
 
@@ -129,7 +134,7 @@ export default class NoteworthyApp extends EventEmitter {
 			/** @todo handle window exists? */
 		}
 		console.log("app :: load")
-		this.window = new Main("main", this);
+		this.window = new MainWindow("main", this);
 		this.window.init();
 
 		this._renderProxy = invokerFor<RendererIpcHandlers>(
@@ -178,11 +183,11 @@ export default class NoteworthyApp extends EventEmitter {
 	 *   
 	 *   However, this won't typecheck!  We need correlated record types yet again!!!
 	 */
-	async handle<S extends MainIpcChannel, T extends FunctionPropertyNames<MainIpcHandlers[S]>>(
-			channel:S,
+	async handle<C extends MainIpcChannelName, T extends FunctionPropertyNames<MainIpcHandlers[C]>>(
+			channel: C,
 			name: T,
 			/** @todo now we only take the FIRST parameter of each handler -- should we take them all? */
-			data?: Parameters<MainIpcHandlers[S][T]>[0]
+			data?: Parameters<MainIpcHandlers[C][T]>[0]
 	) {
 		/** @remark (6/25/20) cannot properly type-check this call
 		 *  without support for "correlated record types", see e.g.

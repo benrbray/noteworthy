@@ -13,6 +13,11 @@
   max-width: 100%;
 }
 
+/* images should snuggle up between paragraphs */
+#editor p + img { margin-top: -0.5em; }
+#editor .directive > p:first-child + img { margin-top: 0.5em; }
+#editor img + p { margin-top: 0.5em;  }
+
 #editor p {
 	margin-left: 0.5em;
 	font-family: var(--font-editor);
@@ -188,6 +193,13 @@ math-display.ProseMirror-selectednode {
 	background-color: var(--color-bg-1) !important;
 }
 
+.reactiveAtom {
+	padding: 10px;
+	background-color: #ffa;
+	height: 4em;
+	min-width: 2em;
+}
+
 /* == DIRECTIVES ======================================== */
 
 .directive {
@@ -203,6 +215,7 @@ math-display.ProseMirror-selectednode {
 	text-transform: capitalize;
 }
 
+/* TODO (2022/05/06) simplify formatting for first paragraph in directive */
 .directive > p:first-child { margin: 1em 0 0 0; }
 .directive > *:last-child  { margin-bottom: 0;  }
 
@@ -497,3 +510,9 @@ math-display.ProseMirror-selectednode {
 .popup-item.selected { background-color: var(--color-bg-selected); }
 
 .popup-item b { color: var(--color-text-fuzzy-match); }
+
+/* == BIBLIOGRAPHY ====================================== */
+
+#bibliography {
+
+}

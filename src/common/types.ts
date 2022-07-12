@@ -1,4 +1,5 @@
 import { Node, Schema, NodeType, MarkType, Mark } from "prosemirror-model";
+import { Decoration, EditorView, NodeView } from "prosemirror-view";
 
 declare module "prosemirror-model" {
 	interface Fragment {
@@ -67,3 +68,10 @@ export interface ProseMarkType<
 > extends MarkType<S> {
 	name: M
 }
+
+export type NodeViewConstructor = (
+		node: Node<any>, 
+		view: EditorView<any>, 
+		getPos: boolean | (() => number), // boolean is for marks -- prosemirror typings are limited 
+		decorations: Decoration<{[key: string]: any;}>[]
+	) => NodeView<any>;

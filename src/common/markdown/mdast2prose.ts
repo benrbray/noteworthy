@@ -357,7 +357,12 @@ export const makeParser = <S extends ProseSchema<"error_block","error_inline">>(
 	return (markdown:string) => {
 		// Step 1: Use Remark to convert markdown to AST
 		// TODO: remove cast?
-		let ast: Md.Root = md2ast.parse(markdown) as Md.Root;
+		let parsedAst: Md.Root = md2ast.parse(markdown) as Md.Root;
+		let ast: Md.Root = md2ast.runSync(parsedAst) as Md.Root;
+		
+		console.log("[mdast2prose] document ast:\n");
+		console.log(ast);
+		console.log("\n\n\n");
 
 		// Step 2: Use nodeMap to convert AST to ProseMirror Doc
 

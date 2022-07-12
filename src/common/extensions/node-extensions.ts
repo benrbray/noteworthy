@@ -16,7 +16,7 @@ import * as Uni from "unist";
 // project imports
 import * as Md from "@common/markdown/markdown-ast";
 import { incrHeadingLevelCmd } from "@common/prosemirror/commands/demoteHeadingCmd";
-import { ExtensionNodeAttrs, MdastNodeMap, MdastNodeMapType, NodeExtension, Prose2Mdast_NodeMap, Prose2Mdast_NodeMap_Presets } from "@common/extensions/extension";
+import { ExtensionNodeAttrs, MdastNodeMap, MdastNodeMapType, NodeSyntaxExtension, Prose2Mdast_NodeMap, Prose2Mdast_NodeMap_Presets } from "@common/extensions/extension";
 import {
 	makeInlineMathInputRule, makeBlockMathInputRule,
 	REGEX_INLINE_MATH_DOLLARS_ESCAPED, REGEX_BLOCK_MATH_DOLLARS
@@ -36,7 +36,7 @@ const mac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform) : f
 
 /* -- Root ---------------------------------------------- */
 
-export class RootExtension extends NodeExtension<Md.Root> {
+export class RootExtension extends NodeSyntaxExtension<Md.Root> {
 
 	// -- ProseMirror Schema -- //
 
@@ -111,7 +111,7 @@ export class RootExtension extends NodeExtension<Md.Root> {
 
 /* -- Paragraph ----------------------------------------- */
 
-export class ParagraphExtension extends NodeExtension<Md.Paragraph> {
+export class ParagraphExtension extends NodeSyntaxExtension<Md.Paragraph> {
 
 	// -- ProseMirror Schema -- //
 
@@ -147,7 +147,7 @@ export function blockQuoteRule<S extends ProseSchema>(nodeType:ProseNodeType<S>)
 	return wrappingInputRule(/^\s*>\s$/, nodeType)
 }
 
-export class BlockQuoteExtension extends NodeExtension<Md.Blockquote> {
+export class BlockQuoteExtension extends NodeSyntaxExtension<Md.Blockquote> {
 
 	get name() { return "blockquote" as const; }
 
@@ -188,7 +188,7 @@ export function headingRule<S extends ProseSchema>(nodeType: ProseNodeType<S>, m
 		nodeType, match => ({ level: match[1].length }))
 }
 
-export class HeadingExtension extends NodeExtension<Md.Heading> {
+export class HeadingExtension extends NodeSyntaxExtension<Md.Heading> {
 
 	get name() { return "heading" as const; }
 
@@ -196,12 +196,12 @@ export class HeadingExtension extends NodeExtension<Md.Heading> {
 	 * @param _bottomType Is the NodeType that should be created when a
 	 *     heading is demoted from H1 (normally, _bottomType = paragraph)
 	 */
-	constructor(private _bottomType: NodeExtension<any, any>) { super(); }
+	constructor(private _bottomType: NodeSyntaxExtension<any, any>) { super(); }
 
 	createNodeSpec() {
 		return {
 			attrs: { level: { default: 1 } },
-			content: "(text | image)*",
+			content: "text*",
 			group: "block",
 			defining: true,
 			parseDOM: [
@@ -273,7 +273,7 @@ export class HeadingExtension extends NodeExtension<Md.Heading> {
 
 /* -- Horizontal Rule ----------------------------------- */
 
-export class HorizontalRuleExtension extends NodeExtension<Md.ThematicBreak> {
+export class HorizontalRuleExtension extends NodeSyntaxExtension<Md.ThematicBreak> {
 
 	get name() { return "horizontal_rule" as const; }
 
@@ -343,7 +343,7 @@ export function codeBlockRule<S extends ProseSchema>(nodeType: ProseNodeType<S>)
 	return textblockTypeInputRule(/^```$/, nodeType)
 }
 
-export class CodeBlockExtension extends NodeExtension<Md.Code> {
+export class CodeBlockExtension extends NodeSyntaxExtension<Md.Code> {
 
 	get name() { return "code_block" as const; }
 
@@ -388,8 +388,8 @@ export class CodeBlockExtension extends NodeExtension<Md.Code> {
 
 // /* -- Ordered List -------------------------------------- */
 
-// TODO: enabling lists requires a NodeExtension to be able to define multiple schema nodes
-// or.... maybe each NodeExtension can also have a test() that it runs on 
+// TODO: enabling lists requires a NodeSyntaxExtension to be able to define multiple schema nodes
+// or.... maybe each NodeSyntaxExtension can also have a test() that it runs on 
 // each node in the AST matching its mdastNodeType property
 // so for OrdereDList it would be test(node: Md.List) { return node.ordered === true; } 
 
@@ -401,7 +401,7 @@ export function orderedListRule<S extends ProseSchema>(nodeType:ProseNodeType<S>
 		(match, node) => node.childCount + node.attrs.order == +match[1])
 }
 
-export class OrderedListExtension extends NodeExtension<Md.List> {
+export class OrderedListExtension extends NodeSyntaxExtension<Md.List> {
 
 	get name() { return "ordered_list" as const; }
 
@@ -505,7 +505,7 @@ export function bulletListRule<S extends ProseSchema>(nodeType:ProseNodeType<S>)
 	)
 }
 
-export class UnorderedListExtension extends NodeExtension<Md.List> {
+export class UnorderedListExtension extends NodeSyntaxExtension<Md.List> {
 
 	get name() { return "bullet_list" as const; }
 
@@ -578,7 +578,7 @@ export class UnorderedListExtension extends NodeExtension<Md.List> {
 
 /* -- List Item ----------------------------------------- */
 
-export class ListItemExtension extends NodeExtension<Md.ListItem> {
+export class ListItemExtension extends NodeSyntaxExtension<Md.ListItem> {
 
 	get name() { return "list_item" as const; }
 
@@ -649,19 +649,19 @@ export class ListItemExtension extends NodeExtension<Md.ListItem> {
 
 /* -- Unordered List ------------------------------------ */
 
-export class ImageExtension extends NodeExtension<Md.Image> {
+export class ImageExtension extends NodeSyntaxExtension<Md.Image> {
 
 	get name() { return "image" as const; }
 
 	createNodeSpec() {
 		return {
-			inline: true,
+			inline: false,
 			attrs: {
 				src: {},
 				alt: { default: null },
 				title: { default: null }
 			},
-			group: "inline",
+			group: "block",
 			draggable: true,
 			parseDOM: [{
 				tag: "img[src]", getAttrs(d:string|Node) {
@@ -690,6 +690,8 @@ export class ImageExtension extends NodeExtension<Md.Image> {
 					alt: node.alt,
 					title: node.title
 				});
+				console.warn("ImageExtension.mdastNodeType :: node=", node);
+				console.warn("ImageExtension.mdastNodeType :: result=", result);
 				return result ? [result] : [];
 			}
 		}
@@ -715,7 +717,7 @@ export class ImageExtension extends NodeExtension<Md.Image> {
 
 /* -- Hard Break ---------------------------------------- */
 
-export class HardBreakExtension extends NodeExtension<Md.Break> {
+export class HardBreakExtension extends NodeSyntaxExtension<Md.Break> {
 
 	get name() { return "hard_break" as const; }
 
@@ -756,7 +758,7 @@ export class HardBreakExtension extends NodeExtension<Md.Break> {
 
 /* -- Inline Math --------------------------------------- */
 
-export class InlineMathExtension extends NodeExtension<Md.InlineMath> {
+export class InlineMathExtension extends NodeSyntaxExtension<Md.InlineMath> {
 
 	get name() { return "math_inline" as const; }
 
@@ -787,7 +789,7 @@ export class InlineMathExtension extends NodeExtension<Md.InlineMath> {
 
 /* -- Block Math --------------------------------------- */
 
-export class BlockMathExtension extends NodeExtension<Md.BlockMath> {
+export class BlockMathExtension extends NodeSyntaxExtension<Md.BlockMath> {
 
 	get name() { return "math_display" as const; }
 
@@ -820,7 +822,7 @@ export class BlockMathExtension extends NodeExtension<Md.BlockMath> {
 
 // TODO (2021/05/09) Markdown Directives Plugin for Remark
 
-// export class RegionExtension extends NodeExtension {
+// export class RegionExtension extends NodeSyntaxExtension {
 
 // 	get name() { return "region" as const; }
 
@@ -872,7 +874,7 @@ export class BlockMathExtension extends NodeExtension<Md.BlockMath> {
 
 /* -- Embed -------------------------------------------- */
 
-// export class EmbedExtension extends NodeExtension {
+// export class EmbedExtension extends NodeSyntaxExtension {
 
 // 	get name() { return "embed" as const; }
 
@@ -953,7 +955,7 @@ function makeContainerDirectiveInputRule(nodeType: ProseNodeType){
 	return wrappingInputRule(pattern, nodeType, getAttrs, joinPredicate)
 }
 
-export class ContainerDirectiveExtension extends NodeExtension<Md.ContainerDirective> {
+export class ContainerDirectiveExtension extends NodeSyntaxExtension<Md.ContainerDirective> {
 
 	get name() { return "container_directive" as const; }
 
@@ -1089,7 +1091,7 @@ export function citationRule<S extends ProseSchema>(nodeType: ProseNodeType<S>):
 	return inlineInputRule(/@\[([^\s](?:[^\]]*[^\s])?)\](.)$/, nodeType);
 }
 
-export class CitationExtension extends NodeExtension<Md.Cite> {
+export class CitationExtension extends NodeSyntaxExtension<Md.Cite> {
 	
 	get name() { return "citation" as const; }
 	
@@ -1168,9 +1170,10 @@ export class CitationExtension extends NodeExtension<Md.Cite> {
 			let citeAttrs = node.attrs as ExtensionNodeAttrs<CitationExtension>;
 
 			// surround node content with appropriate syntax
+			let content = node.textContent;
 			let citeSyntax;
-			if(citeAttrs.pandocSyntax) { citeSyntax = `[${node.textContent}]`; }
-			else                       { citeSyntax = `@[${node.textContent}]`; }
+			if(citeAttrs.pandocSyntax) { citeSyntax = `[${content}]`; }
+			else                       { citeSyntax = `@[${content}]`; }
 
 			// create mdast node
 			return [{
@@ -1178,7 +1181,10 @@ export class CitationExtension extends NodeExtension<Md.Cite> {
 				value: citeSyntax,
 				altSyntax: (citeAttrs.pandocSyntax !== true),
 				data: {
-					citeItems: []
+					// TODO (2022/03/06) citeItems not properly converted (e.g. when multiple are present) -- need to parse value of cite node
+					citeItems: [{
+						key: content
+					}]
 				}
 			}];
 		}
