@@ -1,10 +1,10 @@
 // type declarations
 
-declare module NodeJS {
-	interface Global {
-		isQuitting: boolean;
-	}
-}
+// declare module NodeJS {
+// 	interface Global {
+// 		isQuitting: boolean;
+// 	}
+// }
 
 interface ProxyConstructor {
 	new <TSource extends object, TTarget extends object>(target: TSource, handler: ProxyHandler<TSource>): TTarget;
