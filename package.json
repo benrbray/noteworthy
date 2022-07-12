@@ -145,7 +145,7 @@
     "dedent-js": "^1.0.1",
     "del": "^6.0.0",
     "del-cli": "^3.0.1",
-    "electron": "^12.0.0",
+    "electron": "^15.5.5",
     "electron-builder": "^22.10.5",
     "file-loader": "^6.2.0",
     "html-loader": "^2.1.1",
