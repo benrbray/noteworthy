@@ -83,7 +83,7 @@ export default class NewFileWindow extends Window {
 		{ this.window.on("leave-full-screen", this.__fullscreenLeave); }
 
 	attach__navigateUrl = () =>
-		{ this.window.webContents.on("new-window", this.__navigateUrl); }
+		{ this.window.webContents.setWindowOpenHandler(this.__navigateUrl); }
 
 	// Event Handlers ----------------------------------- */
 
@@ -117,9 +117,12 @@ export default class NewFileWindow extends Window {
 		this.window.webContents.send("window-fullscreen-set", false);
 	}
 
-	__navigateUrl = (event:Event, url:string) => {
-		if (url === this.window.webContents.getURL()) { return; }
-		event.preventDefault();
-		shell.openExternal(url);
+	__navigateUrl = (details: Electron.HandlerDetails) => {
+		if (details.url === this.window.webContents.getURL()) {
+			return { "action": "deny" as const };
+		}
+		// TODO (Ben @ 2023/03/01) is this working properly? if so, delete comment
+		//shell.openExternal(url);
+		return { "action" : "allow" as const }
 	}
 }
