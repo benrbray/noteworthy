@@ -350,7 +350,6 @@ export class CrossRefPlugin implements WorkspacePlugin {
 
 		// list tags matching query
 		let tagResults:Fuzzysort.Results = fuzzysort.go(query, tags, {
-			allowTypo: true,
 			limit: 10,
 			threshold: -1000
 		});
