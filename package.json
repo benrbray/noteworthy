@@ -145,7 +145,7 @@
     "del": "^6.0.0",
     "del-cli": "^3.0.1",
     "electron": "^23.1.1",
-    "electron-builder": "^22.10.5",
+    "electron-builder": "^23.6.0",
     "file-loader": "^6.2.0",
     "html-loader": "^2.1.1",
     "html-webpack-plugin": "^5.2.0",
