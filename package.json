@@ -108,8 +108,8 @@
     "remark-parse": "^9.0.0",
     "solid-js": "^0.26.0",
     "stream-browserify": "^3.0.0",
-    "util": "^0.12.3",
-    "yaml": "^2.0.0-6"
+    "util": "^0.12.5",
+    "yaml": "^2.2.1"
   },
   "devDependencies": {
     "@babel/core": "^7.13.8",
@@ -156,8 +156,8 @@
     "source-map-support": "^0.5.19",
     "ts-loader": "^9.4.2",
     "ts-node": "^10.9.1",
-    "tsconfig-paths": "^3.9.0",
-    "tsconfig-paths-webpack-plugin": "^3.3.0",
+    "tsconfig-paths": "^3.14.2",
+    "tsconfig-paths-webpack-plugin": "^4.0.0",
     "typescript": "4.4",
     "url-loader": "^4.1.1",
     "webpack": "^5.75.0",
