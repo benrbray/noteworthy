@@ -9,15 +9,13 @@
  * @param promise
  * @param errorExt Additional Information you can pass to the err object
  */
-export async function to<U=Error, T=any>(
+export async function to<U = Error, T = any>(
 	promise: Promise<T>,
-	errorExt?: object
-): Promise<[U | null, T | undefined]> {
+): Promise<[U,undefined]|[null, T]> {
 	return promise
 		.then<[null, T]>((data: T) => [null, data])
 		.catch<[U, undefined]>((err: U) => {
 			// attach extra error information
-			if (errorExt) { Object.assign(err, errorExt); }
 			return [err, undefined];
 		});
 }

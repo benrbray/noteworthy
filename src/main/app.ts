@@ -321,3 +321,7 @@ export default class NoteworthyApp extends EventEmitter {
 		// updater.checkForUpdatesAndNotify();
 	}
 }
+
+type Test<C extends MainIpcChannelName> = MainIpcHandlers[C];
+
+type Test2<C extends MainIpcChannelName> = FunctionPropertyNames<MainIpcHandlers[C]>;
