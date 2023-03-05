@@ -2,7 +2,8 @@
 import YAML from "yaml";
 
 // solid.js imports
-import { onMount, SetStateFunction } from "solid-js";
+import { onMount } from "solid-js";
+import { SetStoreFunction } from "solid-js/store";
 
 // prosemirror imports
 import { Schema as ProseSchema, NodeSpec, Node as ProseNode } from "prosemirror-model";
@@ -79,8 +80,8 @@ function buildKeymap_yaml(schema:ProseSchema, mapKeys?:{ [key:string] : string|f
 // ProseMirror: Yaml Editor
 function makeYamlEditor(
 	elt:HTMLElement,
-	yamlData:{[key:string] : unknown },
-	setYamlMeta:SetStateFunction<{ data : { [key:string]:string } }>
+	yamlData: {[key:string] : unknown },
+	setYamlMeta:SetStoreFunction<{ data : { [key:string]:string } }>
 ){
 	YAML.stringify("", { customTags: ["timestamp"] });
 	let schema = new ProseSchema({
@@ -163,14 +164,14 @@ function makeYamlEditor(
 ////////////////////////////////////////////////////////////
 
 interface IYamlEditorProps {
-	yamlMeta:{ data: { [key:string] : unknown } };
-	setYamlMeta:SetStateFunction<{meta : { [key:string] : any }}>
+	yamlMeta: { data: { [key:string] : unknown } };
+	setYamlMeta: SetStoreFunction<{ data : { [key:string] : any } }>
 }
 
 // SolidJS: Yaml Editor Component
 export const YamlEditor = (props:IYamlEditorProps) => {
 	let editor:HTMLDivElement;
-	onMount(()=>{ makeYamlEditor(editor, props.yamlMeta, props.setYamlMeta) });
+	onMount(()=>{ makeYamlEditor(editor, props.yamlMeta.data, props.setYamlMeta) });
 
 	// https://github.com/solidjs/solid/blob/main/documentation/api.md#ref
 	return (<div ref={(elt:HTMLDivElement)=>{editor=elt}}></div>)

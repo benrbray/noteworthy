@@ -61,6 +61,7 @@ import {
 import { WindowAfterPreload } from "@renderer/preload_types";
 import { ProseSchema } from "@common/types";
 import { makeDefaultMarkdownExtensions } from "@common/doctypes/markdown-doc";
+import { createStore } from "solid-js/store";
 declare let window: Window & typeof globalThis & WindowAfterPreload;
 
 ////////////////////////////////////////////////////////////
@@ -291,13 +292,16 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 
 		// SolidJS: create Signal for reactivity
 		let state = this._proseEditorView.state;
-		let [yamlMeta, setYamlMeta] = createSignal({ data: state.doc.attrs['yamlMeta'] });
+		let [yamlMeta, setYamlMeta] =
+			createStore(
+				{ data : state.doc.attrs['yamlMeta'] as { [key:string] : string } }
+			);
 
 		// SolidJS: render YAML editor
 		const Editor = ()=>{
 			// SolidJS: respond to metadata changes
 			createEffect(()=>{
-				let data = yamlMeta().data;
+				let data = yamlMeta.data;
 				let proseView = this._proseEditorView;
 				if(!proseView){ return; }
 				
@@ -313,7 +317,7 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 				));
 			});
 			// build component
-			return (<YamlEditor yamlMeta={yamlMeta().data} setYamlMeta={setYamlMeta} />)
+			return (<YamlEditor yamlMeta={yamlMeta} setYamlMeta={setYamlMeta} />)
 		}
 		
 		render(Editor, this._metaElt);
