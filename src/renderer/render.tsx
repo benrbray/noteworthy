@@ -25,7 +25,8 @@ import * as Md from "@common/markdown/markdown-ast";
 
 // solid js imports
 import { render } from "solid-js/web";
-import { State as SolidState, SetStateFunction, createState, Suspense, Switch, Match, For, createResource, onCleanup } from "solid-js";
+import { Suspense, Switch, Match, For, createResource, onCleanup } from "solid-js";
+import { Store as SolidStore, SetStoreFunction, createStore } from "solid-js/store"
 import { CalendarTab } from "./ui/calendarTab";
 import { OutlineTab } from "./ui/outlineTab";
 import { HistoryTab } from "./ui/historyTab";
@@ -69,7 +70,7 @@ class Renderer {
 		editorElt: HTMLDivElement;
 	}
 
-	_react:null | { state: SolidState<IRendererState>, setState: SetStateFunction<IRendererState> };
+	_react:null | { state: SolidStore<IRendererState>, setState: SetStoreFunction<IRendererState> };
 
 	// prosemirror
 	_editor: Editor | null;
@@ -139,7 +140,7 @@ class Renderer {
 	initUI() {
 		const App = () => {
 			// create solid state
-			let [state, setState] = createState<IRendererState>({
+			let [state, setState] = createStore<IRendererState>({
 				activeTab: 0,
 				activeFile: null,
 				fileTree:[],
