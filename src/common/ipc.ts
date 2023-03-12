@@ -9,7 +9,12 @@
 
 /* -- Types --------------------------------------------- */
 
-export type FunctionPropertyNames<T> = { [K in keyof T]: K extends string ? (T[K] extends Function ? K : never) : never }[keyof T];
+export type FunctionPropertyNames<T> = {
+	[K in keyof T]: 
+		K extends string
+			? (T[K] extends Function ? K : never)
+			: never 
+}[keyof T];
 
 /* -- Invoker ------------------------------------------- */
 
