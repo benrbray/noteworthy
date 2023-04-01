@@ -11,13 +11,25 @@
 	--font-size: 1.2rem;
 	--line-height: 1.1em;
 	--line-height-list: var(--line-height);
+
+	/** ABSTRACT COLORS (used for both UI and Editor) **/
+	--color-primary-bg-1: #ffffff;
+	--color-primary-bg-2: #f3f3f3;
+	--color-primary-bg-3: #dddddd;
+	--color-primary-bg-4: #d0d0d0;
+	--color-primary-bg-5: #bbbbbb;
+
 	/** UI Colors **/
-	--color-bg: #fefefe;
-	--color-bg-1: #f3f3f3;
+	--color-bg: var(--color-primary-bg-1);
+	--color-bg-1: var(--color-primary-bg-2);
 	/* e.g. sidebar */
-	--color-bg-2: #ddd;
+	--color-bg-2: var(--color-primary-bg-3);
 	/* e.g. code_blocks */
-	--color-bg-3: #d0d0d0;
+	--color-bg-3: var(--color-primary-bg-4);
+	/* tabs */
+	--ui-tab-active-bg: var(--color-primary-bg-2);
+	--ui-tab-inactive-bg: var(--color-primary-bg-3);
+	--ui-tab-inactive-hover-bg: var(--color-primary-bg-5);
 	/* e.g. folder */
 	--color-bg-textinput: #ccc;
 	--color-textinput: var(--color-text);
@@ -102,6 +114,14 @@ div:hover::-webkit-scrollbar-thumb {
 	height: 100%;
 }
 
+/* (Ben @ 2023/04/01) this is a hack to allow the bottom panel to collapse, can we do better? */
+/* probably need to make the panel a child of the "content" grid region */
+#app.collapsePanel {
+	grid-template-areas: "sidebar content" "sidebar panel" "sidebar footer";
+	grid-template-rows: 1fr 1.5em 1.5em;
+	grid-template-columns: 200px 1fr;
+}
+
 #footer {
 	grid-area: footer;
 	background-color: #e0e0e0;
@@ -143,6 +163,40 @@ div:hover::-webkit-scrollbar-thumb {
 
 #app {
 	color: var(--color-text);
+}
+
+/* ===== LOWER PANEL ==================================== */
+
+#lower-panel {
+  grid-area: "panel";
+  position: relative;
+  height: 100%;
+  overflow-y: hidden;
+  border-top: 3px solid var(--color-bg-3);
+}
+
+#lower-panel .tabs {
+  display: flex;
+  width: 100%;
+  height: 1.5em;
+  justify-content: space-between;
+  user-select: none;
+}
+
+#lower-panel .tabs .tab {
+  flex-grow: 1;
+  text-align: center;
+  line-height: 1.5em;
+  background-color: var(--ui-tab-inactive-bg);
+  color: var(--color-text-faint);
+}
+
+#lower-panel .tabs .active {
+  background-color: var(--ui-tab-active-bg);
+}
+
+#lower-panel .tabs .tab:not(.active):hover {
+  background-color: var(--ui-tab-inactive-hover-bg);
 }
 
 /* ==== SIDEBAR ========================================= */
@@ -422,14 +476,12 @@ div:hover::-webkit-scrollbar-thumb {
 /* ------------------------------------------------------ */
 
 .panel {
-	grid-area: panel;
 	overflow-x: hidden;
 	user-select: none;
 }
 
 .panel-header {
 	background-color: var(--color-bg-1);
-	border-top: 3px solid var(--color-bg-3);
 	padding: 0.5em;
 	font-weight: bold;
 	text-align: right;
@@ -463,8 +515,6 @@ div:hover::-webkit-scrollbar-thumb {
 .panel .file:hover {
 	background-color: var(--color-bg-1);
 }
-
-.panel .file-name {}
 
 .panel .file-path {
 	color: #ccc;

@@ -26,7 +26,6 @@ import { RendererIpcHandlers } from "@renderer/RendererIPC";
 import { WorkspaceService, WorkspaceEvent } from "./workspace/workspace-service";
 import { ThemeService, ThemeEvent } from "./theme/theme-service";
 import { PluginService } from "./plugins/plugin-service";
-import NewFileWindow from "./windows/newFileWindow";
 
 ////////////////////////////////////////////////////////////
 

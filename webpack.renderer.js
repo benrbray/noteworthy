@@ -208,7 +208,7 @@ const config = base({
 						presets: [
 							[ '@babel/preset-env', { 
 								// TODO: update electron version here
-								"targets": { "electron": "12.0.0", }
+								"targets": { "electron": "23.0.0", }
 							} ],
 							require("babel-preset-solid"),
 							'@babel/preset-typescript'

@@ -25,7 +25,7 @@ import * as Md from "@common/markdown/markdown-ast";
 
 // solid js imports
 import { render } from "solid-js/web";
-import { Suspense, Switch, Match, For, createResource, onCleanup } from "solid-js";
+import { Suspense, Switch, Match, For, Show, createResource, onCleanup, createSignal } from "solid-js";
 import { Store as SolidStore, SetStoreFunction, createStore } from "solid-js/store"
 import { CalendarTab } from "./ui/calendarTab";
 import { OutlineTab } from "./ui/outlineTab";
@@ -50,6 +50,8 @@ const ipcRenderer = window.restrictedIpcRenderer;
 
 export interface IRendererState {
 	activeTab: number,
+	activeLowerTab: number,
+	showLowerPanel: boolean,
 	activeFile: null|IPossiblyUntitledFile;
 	fileTree: [IFolderMarker, IDirEntryMeta[]][];
 	navigationHistory: { history: IFileMeta[], currentIdx: number };
@@ -142,6 +144,8 @@ class Renderer {
 			// create solid state
 			let [state, setState] = createStore<IRendererState>({
 				activeTab: 0,
+				activeLowerTab: 0,
+				showLowerPanel: true,
 				activeFile: null,
 				fileTree:[],
 				navigationHistory: { history: [], currentIdx: 0 },
@@ -185,6 +189,11 @@ class Renderer {
 				{ title: "Themes",    codicon: "codicon-symbol-color" },
 				{ title: "Calendar",  codicon: "codicon-calendar" },
 			];
+
+			const lowerTabLabels = [
+				{ title: "Backlinks" },
+				{ title: "Citations" }
+			]
 
 			const handleFileClick = (evt:MouseEvent) => {
 				let target:HTMLElement = evt.currentTarget as HTMLElement;
@@ -284,6 +293,54 @@ class Renderer {
 				</div>);
 			}
 
+			const AppLowerPanel = () => {
+				return (<div id="lower-panel">
+					{/* Sidebar Tabs*/}
+					<nav class="tabs">
+						<For each={lowerTabLabels}>
+						{ (tab,idx) => {
+							let active = ()=>(state.activeLowerTab == idx());
+							return (
+								<a 
+									class={`tab ${active()?"active":""}`}
+									title={tab.title}
+									onClick={()=>{
+										if(state.activeLowerTab === idx()) {
+											setState({ showLowerPanel: !state.showLowerPanel })
+										} else {
+											setState({ activeLowerTab: idx(), showLowerPanel: true })
+										}
+									}}
+								>
+									{tab.title}
+								</a>
+							)}
+						}
+						</For>
+					</nav>
+					{/* Sidebar Content */}
+					<Show when={state.showLowerPanel}>
+					<div class="content">
+						<Suspense fallback={<Loading/>}>
+							<Switch>
+								<Match when={state.activeLowerTab == 0}>
+									<PanelBacklinks 
+										proxy={this._mainProxy} 
+										hash={activeHash()}
+										fileName={activeFileName()}
+										handleFileClick={handleFileClick}
+									/>
+								</Match>
+								<Match when={state.activeLowerTab == 1}>
+									<OutlineTab getOutline={getOutline} />
+								</Match>
+							</Switch>
+						</Suspense>
+					</div>
+					</Show>
+				</div>);
+			}
+
 			const extractCitations = (): string[] => {
 				if(!state.markdownAst) { return []; }
 				const result: Set<string> = new Set();
@@ -333,15 +390,10 @@ class Renderer {
 
 			return (<>
 				<style>{state.themeCss}</style>
-				<div id="app" onMouseUp={handleAppClicked}>
+				<div id="app" class={state.showLowerPanel ? "" : "collapsePanel"} onMouseUp={handleAppClicked}>
 					<AppSidebar />
 					<AppContent />
-					<PanelBacklinks 
-						proxy={this._mainProxy} 
-						hash={activeHash()}
-						fileName={activeFileName()}
-						handleFileClick={handleFileClick}
-					/>
+					<AppLowerPanel />
 					<AppFooter />
 				</div>
 			</>)
@@ -382,9 +434,59 @@ class Renderer {
 				let newFile = await this._mainProxy.dialog.dialogFileNew();
 				console.log("creating new file", newFile);
 			} 
+
+			if(evt.ctrlKey && evt.key === "t") {
+				this.launchCiteWindow();
+			}
 		}
 
 		document.addEventListener("keypress", keyboardHandler);
+	}
+
+	////////////////////////////////////////////////////////
+
+	createCitation() {
+
+	}
+
+	launchCiteWindow() {
+		if(this._react === null) { return; }
+
+		// TODO (Ben @ 2023/04/01) how to load css/html in child window?? webpack nightmare
+		let childWindow = window.open("", "new_citation");
+		if(childWindow === null) { return; }
+
+		const [bibtex, setBibtex] = createSignal("result here");
+
+		const CiteWindow = () => {
+			if(this._react === null) { return; }
+
+
+			return (<>
+				{/* <style>{this._react.state.themeCss}</style> --> */}
+				<textarea
+					onInput={(evt) => {
+						console.log("event", evt);
+						setBibtex((evt.target as HTMLTextAreaElement).value)
+					}}
+					oninput={(evt) => {
+						console.log("event", evt);
+						setBibtex((evt.target as HTMLTextAreaElement).value)
+					}}
+					onMouseDown={(evt) => {
+						console.log("event", evt);
+						setBibtex("blah")
+					}}
+					placeholder="Insert BibTeX here..."
+				/>
+				<div>{bibtex()}</div>
+			</>);
+		}
+
+		let elt = childWindow.document.createElement("div");
+		childWindow.document.body.appendChild(elt);
+
+		render(() => <CiteWindow/>, elt);
 	}
 
 	////////////////////////////////////////////////////////
