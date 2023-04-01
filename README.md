@@ -1,4 +1,4 @@
-> Noteworthy is currently in development!  I work on Noteworthy in my free time, so progress comes in bursts.  I hope to have a public beta available for release before January 2022.
+> Noteworthy is currently in development!  I work on Noteworthy in my free time, so progress comes in bursts.
 
 
 # Noteworthy ([https://noteworthy.ink/](https://noteworthy.ink/))
