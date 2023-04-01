@@ -37,8 +37,6 @@ class Window {
 	initDebug(){
 		if (!Environment.isDevelopment) return;
 
-		this.window.webContents.openDevTools();
-
 		this.window.webContents.on('devtools-opened', () => {
 			this.window.focus();
 			setImmediate(() => this.window.focus());
@@ -57,10 +55,9 @@ class Window {
 
 		/** @todo get rid of lodash */
 		options = _.merge(dimensions, {
-			frame: true, //!is.macos,
+			frame: true,
 			show: false,
 			title: "Noteworthy",
-			//titleBarStyle: 'hiddenInset',
 			webPreferences: {
 				nativeWindowOpen: true,
 				webSecurity: true,

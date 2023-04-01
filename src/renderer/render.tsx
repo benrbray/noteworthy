@@ -433,11 +433,6 @@ class Renderer {
 		let editor:Editor;
 		const args = [this._currentFile, this._ui.editorElt, this._mainProxy, setSelectionInfo] as const;
 		switch (ext) {
-			/** @todo (9/27/20) re-enable other file types */
-			//case ".ipynb":   editor = new IpynbEditor(...args);       break;
-			//case ".json":    editor = new ProseMirrorEditor(...args); break;
-			//case ".journal": editor = new JournalEditor(...args);     break;
-			//case ".nwt":     editor = new NwtEditor(...args);         break;
 			case ".md":      editor = new MarkdownEditor(...args);    break;
 			default:         editor = new MarkdownEditor(...args); break;
 		}
@@ -488,7 +483,7 @@ class Renderer {
 		// TODO (2021-06-01) rewrite file tree code, it's an accident waiting to happen!
 		let directories:[IFolderMarker, IDirEntryMeta[]][] = [];
 		let folderMarker:IFolderMarker|null = null;
-		let fileList:IDirEntryMeta[] = [];
+
 		let startIdx = 0;
 		let prevDir:string|null = null;
 		for(let idx = 0; idx < fileTree.length + 1; idx++){

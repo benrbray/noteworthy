@@ -32,6 +32,7 @@ class Route extends Window {
 					route,
 				}
 			})
+			
 			console.log("route :: production :: url", url);
 			this.window.loadURL(url);
 		}
