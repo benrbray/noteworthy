@@ -433,60 +433,10 @@ class Renderer {
 			if(evt.ctrlKey && evt.key === "n") {
 				let newFile = await this._mainProxy.dialog.dialogFileNew();
 				console.log("creating new file", newFile);
-			} 
-
-			if(evt.ctrlKey && evt.key === "t") {
-				this.launchCiteWindow();
 			}
 		}
 
 		document.addEventListener("keypress", keyboardHandler);
-	}
-
-	////////////////////////////////////////////////////////
-
-	createCitation() {
-
-	}
-
-	launchCiteWindow() {
-		if(this._react === null) { return; }
-
-		// TODO (Ben @ 2023/04/01) how to load css/html in child window?? webpack nightmare
-		let childWindow = window.open("", "new_citation");
-		if(childWindow === null) { return; }
-
-		const [bibtex, setBibtex] = createSignal("result here");
-
-		const CiteWindow = () => {
-			if(this._react === null) { return; }
-
-
-			return (<>
-				{/* <style>{this._react.state.themeCss}</style> --> */}
-				<textarea
-					onInput={(evt) => {
-						console.log("event", evt);
-						setBibtex((evt.target as HTMLTextAreaElement).value)
-					}}
-					oninput={(evt) => {
-						console.log("event", evt);
-						setBibtex((evt.target as HTMLTextAreaElement).value)
-					}}
-					onMouseDown={(evt) => {
-						console.log("event", evt);
-						setBibtex("blah")
-					}}
-					placeholder="Insert BibTeX here..."
-				/>
-				<div>{bibtex()}</div>
-			</>);
-		}
-
-		let elt = childWindow.document.createElement("div");
-		childWindow.document.body.appendChild(elt);
-
-		render(() => <CiteWindow/>, elt);
 	}
 
 	////////////////////////////////////////////////////////
