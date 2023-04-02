@@ -18,6 +18,7 @@ import { IFolderMarker, FileExplorer } from "./ui/explorer";
 import { TagSearch } from "./ui/tag-search";
 import { PanelBacklinks } from "./ui/panelBacklinks";
 import { BibliographyComponent } from "./ui/bibliography";
+import { Loading } from "./ui/loading";
 
 // unist / unified
 import * as Uni from "unist";
@@ -172,14 +173,6 @@ class Renderer {
 				let outline = await this._mainProxy.outline.requestOutlineForHash(hash);
 				console.log("outline found", outline);
 				return outline;
-			}
-
-			const getHistory = async () => {
-				return this._mainProxy.navigation.getNavigationHistory();
-			}
-
-			const Loading = () => {
-				return (<div>loading...</div>);
 			}
 
 			const tabLabels = [
