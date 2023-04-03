@@ -2,17 +2,67 @@
 import * as CV  from "@codemirror/view"
 import * as CC  from "@codemirror/commands"
 import * as CL  from "@codemirror/language"
-import * as CJS from "@codemirror/lang-javascript"
 
 // prosemirror
-import { PluginKey, PluginSpec, Plugin as ProsePlugin, EditorState, Transaction, TextSelection } from "prosemirror-state";
+import { PluginKey, TextSelection } from "prosemirror-state";
 import * as PC from "prosemirror-commands"
 import * as PH from "prosemirror-history"
 import * as PS from "prosemirror-state"
 import * as PV from "prosemirror-view"
 import * as PM from "prosemirror-model"
 
+////////////////////////////////////////////////////////////
+
+// codemirror languages
+import * as CJS from "@codemirror/lang-javascript"
+import { cppLanguage } from "@codemirror/lang-cpp"
+import { pythonLanguage } from "@codemirror/lang-python"
+import { javaLanguage } from "@codemirror/lang-java"
+import { jsonLanguage } from "@codemirror/lang-json"
+
+// codemirror legacy languages
+import {haskell} from "@codemirror/legacy-modes/mode/haskell"
+import {c, scala} from "@codemirror/legacy-modes/mode/clike"
+import {lua} from "@codemirror/legacy-modes/mode/lua"
+import {julia} from "@codemirror/legacy-modes/mode/julia"
+import {yaml} from "@codemirror/legacy-modes/mode/yaml"
+
+function getCodeMirrorLanguage(lang: string|null): CL.Language|null {
+	// javascript / typescript
+	if(lang === "javascript") { return CJS.javascriptLanguage;            }
+	if(lang === "js")         { return CJS.javascriptLanguage;            }
+	if(lang === "jsx")        { return CJS.jsxLanguage;                   }
+	if(lang === "typescript") { return CJS.typescriptLanguage;            }
+	if(lang === "js")         { return CJS.typescriptLanguage;            }
+	if(lang === "tsx")        { return CJS.tsxLanguage;                   }
+	// clike
+	if(lang === "c")          { return CL.StreamLanguage.define(c);       }
+	if(lang === "cpp")        { return cppLanguage;                       }
+	if(lang === "c++")        { return cppLanguage;                       }
+	if(lang === "java")       { return javaLanguage;                      }
+	if(lang === "scala")      { return CL.StreamLanguage.define(scala);   }
+	// scientific
+	if(lang === "julia")      { return CL.StreamLanguage.define(julia);   }
+	if(lang === "lua")        { return CL.StreamLanguage.define(lua);     }
+	if(lang === "python")     { return pythonLanguage;                    }
+	// functional
+	if(lang === "haskell")    { return CL.StreamLanguage.define(haskell); }
+	// config
+	if(lang === "json")       { jsonLanguage;                             }
+	if(lang === "yaml")       { return CL.StreamLanguage.define(yaml);    }
+
+	// default
+	return null;
+}
+
 //// PROSEMIRROR NODE VIEW /////////////////////////////////
+
+// TODO (Ben @ 2023/04/03) compare with Brian Hung's version,
+// which includes asynchronous loading of languages
+// https://gist.github.com/BrianHung/222b870dfe7917a9a4d73d8c42db03cc
+
+// TODO (Ben @ 2023/04/04) also experiment with prosemirror-highlightjs
+// https://github.com/b-kelly/prosemirror-highlightjs
 
 /**
  * Code and comments for `CodeMirrorView` were adapted from:
@@ -26,6 +76,7 @@ class CodeMirrorView implements PV.NodeView {
 	private _updating: boolean = false;
 
 	/** the NodeView's DOM representation */
+	private _lang: string|null;
 	public dom: Node|null = null;
 
 	constructor(
@@ -33,22 +84,47 @@ class CodeMirrorView implements PV.NodeView {
 		private _proseView: PV.EditorView,
 		private _getPos: (() => number)
 	) {
-		this._codeMirror = new CV.EditorView({
-			doc: this._node.textContent,
-			extensions: [
+
+
+		// extensions without lang
+		const extensionsWithoutLang = [
 				CV.keymap.of([
 					...this.codeMirrorKeymap(),
 					...CC.defaultKeymap
 				]),
 				CV.drawSelection(),
 				CL.syntaxHighlighting(CL.defaultHighlightStyle),
-				CJS.javascript(),
 				CV.EditorView.updateListener.of(update => this.forwardUpdate(update))
 			]
+		
+		// determine language
+		this._lang = this._node.attrs["lang"] || null;
+		const lang = getCodeMirrorLanguage(this._lang);
+		console.log("LANG", this._lang, "FOUND?", !!lang);
+
+		const extensions =
+			lang ? [...extensionsWithoutLang, lang] : extensionsWithoutLang;
+
+		// configure codemirror
+		this._codeMirror = new CV.EditorView({
+			doc: this._node.textContent,
+			extensions: extensions
 		})
 
-    // The editor's outer node is our DOM representation
-    this.dom = this._codeMirror.dom;
+		// lang label
+		const langLabel = document.createElement("span");
+		langLabel.className = "langLabel"
+		langLabel.textContent = this._lang || "";
+
+		// nodeview DOM representation
+		const dom = document.createElement("div");
+		if(this._lang) { dom.dataset.lang = this._lang; }
+		dom.className = "codeMirrorNodeView";
+
+		dom.appendChild(langLabel);
+		dom.appendChild(this._codeMirror.dom);
+
+		this.dom = dom;
 	}
 
 	/**

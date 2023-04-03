@@ -19,6 +19,8 @@
 	--color-primary-bg-4: #d0d0d0;
 	--color-primary-bg-5: #bbbbbb;
 
+	--color-primary-text-2: #999;
+
 	/** UI Colors **/
 	--color-bg: var(--color-primary-bg-1);
 	--color-bg-1: var(--color-primary-bg-2);
@@ -66,6 +68,9 @@
 	--color-inline-delims: #d0d0d0;
 	--color-heading-level: #e0e0e0;
 	--color-math-src: purple;
+
+	--editor-codeblock-bg: var(--color-primary-bg-2);
+	--editor-codeblock-langLabel: var(--color-primary-text-2);
 }
 
 .window-title {

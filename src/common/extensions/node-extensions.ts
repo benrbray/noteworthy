@@ -347,23 +347,25 @@ export class CodeBlockExtension extends NodeSyntaxExtension<Md.Code> {
 
 	get name() { return "code_block" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			content: "text*",
 			group: "block",
 			code: true,
 			defining: true,
 			marks: "",
-			attrs: { params: { default: "" } },
+			attrs: { lang: { default: null as null|string } },
 			parseDOM: [{
-				tag: "pre", preserveWhitespace: ("full" as "full"), getAttrs: (node:string|Node) => (
-					{ params: (node as HTMLElement).getAttribute("data-params") || "" }
+				tag: "pre",
+				preserveWhitespace: ("full" as "full"),
+				getAttrs: (node:string|Node) => (
+					{ lang: (node as HTMLElement).getAttribute("data-lang") || null }
 				)
 			}],
 			toDOM(node: ProseNode): DOMOutputSpec {
 				return [
 					"pre",
-					{ ...(node.attrs.params && { "data-params": node.attrs.params }) },
+					{ ...(node.attrs.lang && { "data-lang": node.attrs.lang }) },
 					["code", 0]
 				]
 			}
@@ -379,11 +381,37 @@ export class CodeBlockExtension extends NodeSyntaxExtension<Md.Code> {
 	// -- Conversion from Mdast -> ProseMirror ---------- //
 
 	get mdastNodeType() { return "code" as const };
-	createMdastMap() { return MdastNodeMapType.NODE_LITERAL }
+	createMdastMap(): MdastNodeMap<Md.Code> {
+		return {
+			mapType: "node_custom",
+			mapNode: (node: Md.Code) => {
+				// it is illegal to create an empty ProseMirror TextNode
+				if(node.value.length < 1) { return []; }
+
+				// create 
+				let result = this.nodeType.createAndFill(
+						{ lang : node.lang === undefined ? null : node.lang },
+						[this.nodeType.schema.text(node.value)]
+				);
+				return result ? [result] : [];
+			}
+		}
+	}
 
 	// -- Conversion from ProseMirror -> Mdast ---------- //
 
-	prose2mdast() { return Prose2Mdast_NodeMap_Presets.NODE_LIFT_LITERAL; }
+	prose2mdast() { return {
+		create: (node: ProseNode, children: Uni.Node[]): [Md.Code] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let codeAttrs = node.attrs as ExtensionNodeAttrs<CodeBlockExtension>;
+
+			return [{
+				type: this.mdastNodeType,
+				lang: codeAttrs.lang || undefined,
+				value: node.textContent
+			}];
+		}
+	}}
 }
 
 // /* -- Ordered List -------------------------------------- */

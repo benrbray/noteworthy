@@ -251,18 +251,13 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 			code: true,
 			defining: true,
 			marks: "",
-			attrs: {params: {default: ""}},
 			parseDOM: [{
 				tag: "pre.error-block",
 				preserveWhitespace: "full",
-				getAttrs: node => {
-					return {params: (node as HTMLElement).getAttribute("data-params") || ""}
-				}
+				getAttrs: node => { return {} }
 			}],
 			toDOM(node) { 
-				let dataParams = node.attrs.params ? {"data-params": node.attrs.params} : {};
-				let attrs = { ...dataParams, class: "error-block" }
-				return ["pre", attrs, ["code", 0]] 
+				return ["pre", { class: "error-block" }, ["code", 0]] 
 			}
 		}
 
