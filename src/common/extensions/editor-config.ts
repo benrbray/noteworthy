@@ -42,7 +42,6 @@ import { DefaultMap } from "@common/util/DefaultMap";
 import { NwtExtension, NodeExtension, MarkExtension, MdastNodeMapType, MdastMarkMapType, Prose2Mdast_NodeMap_Presets, Prose2Mdast_MarkMap_Presets, MarkSyntaxExtension, NodeSyntaxExtension } from "@common/extensions/extension";
 import * as prose2mdast from "@common/markdown/prose2mdast";
 import * as mdast2prose from "@common/markdown/mdast2prose";
-import { Decoration, EditorView, NodeView } from "prosemirror-view";
 
 //// EDITOR CONFIG /////////////////////////////////////////
 

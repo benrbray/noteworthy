@@ -38,16 +38,6 @@ function deserializeSetMap<V>(serialized: { [key: string]: V[] }): DefaultMap<st
 
 ////////////////////////////////////////////////////////////
 
-type BrandedString<T extends string> = { __brand : T } & string;
-type Hash = BrandedString<"hash">;
-type Tag  = BrandedString<"tag">;
-
-/* branded string constructors */
-function hashFromString (s:string): Hash { return s as Hash; }
-function TagFromString  (s:string): Tag  { return s as Tag;  }
-
-////////////////////////////////////////////////////////////
-
 /**
  * Document types should implement this interface in order
  * to be recognized by the built-in cross-reference system.
