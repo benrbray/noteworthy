@@ -2,6 +2,7 @@
 import * as CV  from "@codemirror/view"
 import * as CC  from "@codemirror/commands"
 import * as CL  from "@codemirror/language"
+import * as CS  from "@codemirror/state"
 
 // prosemirror
 import { PluginKey, TextSelection } from "prosemirror-state";
@@ -10,6 +11,7 @@ import * as PH from "prosemirror-history"
 import * as PS from "prosemirror-state"
 import * as PV from "prosemirror-view"
 import * as PM from "prosemirror-model"
+import * as PT from "prosemirror-transform"
 
 ////////////////////////////////////////////////////////////
 
@@ -26,6 +28,8 @@ import {c, scala} from "@codemirror/legacy-modes/mode/clike"
 import {lua} from "@codemirror/legacy-modes/mode/lua"
 import {julia} from "@codemirror/legacy-modes/mode/julia"
 import {yaml} from "@codemirror/legacy-modes/mode/yaml"
+import { ExtensionNodeAttrs } from "@common/extensions/extension";
+import { CodeBlockExtension } from "@common/extensions/node-extensions";
 
 function getCodeMirrorLanguage(lang: string|null): CL.Language|null {
 	// javascript / typescript
@@ -55,6 +59,62 @@ function getCodeMirrorLanguage(lang: string|null): CL.Language|null {
 	return null;
 }
 
+////////////////////////////////////////////////////////////
+
+import {Step, StepResult, StepMap, Mappable} from "prosemirror-transform"
+
+/// Update an attribute in a specific node.
+// TODO (Ben @ 2023/04/04) delete this and import from prosemirror-transform
+// after resolving https://github.com/benrbray/noteworthy/issues/31
+export class AttrStep extends Step {
+  /// Construct an attribute step.
+  constructor(
+    /// The position of the target node.
+    readonly pos: number,
+    /// The attribute to set.
+    readonly attr: string,
+    // The attribute's new value.
+    readonly value: any
+  ) {
+    super()
+  }
+
+  apply(doc: PM.Node) {
+    let node = doc.nodeAt(this.pos)
+    if (!node) return StepResult.fail("No node at attribute step's position")
+    let attrs = Object.create(null)
+    for (let name in node.attrs) attrs[name] = node.attrs[name]
+    attrs[this.attr] = this.value
+    let updated = node.type.create(attrs, undefined, node.marks)
+    return StepResult.fromReplace(doc, this.pos, this.pos + 1, new PM.Slice(PM.Fragment.from(updated), 0, node.isLeaf ? 0 : 1))
+  }
+
+  getMap() {
+    return new StepMap([]);
+  }
+
+  invert(doc: PM.Node) {
+    return new AttrStep(this.pos, this.attr, doc.nodeAt(this.pos)!.attrs[this.attr])
+  }
+
+  map(mapping: Mappable) {
+    let pos = mapping.mapResult(this.pos, 1)
+    return pos.deleted ? null : new AttrStep(pos.pos, this.attr, this.value)
+  }
+
+  toJSON(): any {
+    return {stepType: "attr", pos: this.pos, attr: this.attr, value: this.value}
+  }
+
+  static fromJSON(schema: PM.Schema, json: any) {
+    if (typeof json.pos != "number" || typeof json.attr != "string")
+      throw new RangeError("Invalid input for AttrStep.fromJSON")
+    return new AttrStep(json.pos, json.attr, json.value)
+  }
+}
+
+Step.jsonID("attr", AttrStep)
+
 //// PROSEMIRROR NODE VIEW /////////////////////////////////
 
 // TODO (Ben @ 2023/04/03) compare with Brian Hung's version,
@@ -77,6 +137,8 @@ class CodeMirrorView implements PV.NodeView {
 
 	/** the NodeView's DOM representation */
 	private _lang: string|null;
+	private _langCompartment: CS.Compartment;
+	private _langLabel: HTMLInputElement;
 	public dom: Node|null = null;
 
 	constructor(
@@ -102,29 +164,56 @@ class CodeMirrorView implements PV.NodeView {
 		const lang = getCodeMirrorLanguage(this._lang);
 		console.log("LANG", this._lang, "FOUND?", !!lang);
 
-		const extensions =
-			lang ? [...extensionsWithoutLang, lang] : extensionsWithoutLang;
+		this._langCompartment = new CS.Compartment();
+		const langExtension = this._langCompartment.of(lang || []);
 
 		// configure codemirror
 		this._codeMirror = new CV.EditorView({
 			doc: this._node.textContent,
-			extensions: extensions
+			extensions: [...extensionsWithoutLang, langExtension]
 		})
 
 		// lang label
-		const langLabel = document.createElement("span");
+		const langLabel = document.createElement("input");
 		langLabel.className = "langLabel"
-		langLabel.textContent = this._lang || "";
+		langLabel.value = this._lang || "";
+		
+		const nodeView = this;
+		langLabel.addEventListener("input", function (event) {
+			const lang = this.value;
+			console.log("LANG CHANGE", lang);
+			let step = new AttrStep(nodeView._getPos(), "lang", lang);
+			let tr = nodeView._proseView.state.tr.step(step);
+
+			nodeView._proseView.dispatch(tr);
+			nodeView.setCodeMirrorLanguage(getCodeMirrorLanguage(lang));
+		});
+		
+		// (elt, evt) => {
+		// 	console.log("LANG CHANGE");
+		// 	let step = new AttrStep(this._getPos(), "lang", this._langLabel.value);
+		// 	let tr = this._proseView.state.tr.step(step);
+		// 	this._proseView.dispatch(tr);
+		// })
+		this._langLabel = langLabel;
 
 		// nodeview DOM representation
 		const dom = document.createElement("div");
 		if(this._lang) { dom.dataset.lang = this._lang; }
 		dom.className = "codeMirrorNodeView";
 
-		dom.appendChild(langLabel);
+		dom.appendChild(this._langLabel);
 		dom.appendChild(this._codeMirror.dom);
 
 		this.dom = dom;
+	}
+
+	setCodeMirrorLanguage(lang: CL.Language|null) {
+		this._updating = true;
+		this._codeMirror.dispatch({
+			effects: this._langCompartment.reconfigure(lang || [])
+		});
+		this._updating = false;
 	}
 
 	/**
@@ -235,8 +324,19 @@ class CodeMirrorView implements PV.NodeView {
 		if (node.type != this._node.type) return false;
 		this._node = node;
 
+		// update attrs
+		let newLang = (node.attrs as ExtensionNodeAttrs<CodeBlockExtension>).lang;
+		let curLang = this._lang;
+		if (newLang !== curLang) {
+			this._langLabel.value = newLang || "";
+			this.setCodeMirrorLanguage(getCodeMirrorLanguage(newLang));
+		}
+
+		// update text
 		if (this._updating) return true;
-		let newText = node.textContent, curText = this._codeMirror.state.doc.toString()
+		let newText = node.textContent;
+		let curText = this._codeMirror.state.doc.toString();
+
 		if (newText != curText) {
 			let start = 0, curEnd = curText.length, newEnd = newText.length;
 			while (start < curEnd &&
@@ -257,6 +357,7 @@ class CodeMirrorView implements PV.NodeView {
 			});
 			this._updating = false;
 		}
+
 		return true;
 	}
 
