@@ -1,12 +1,11 @@
 // prosemirror imports
 import { Schema, Node as ProseNode, Mark as ProseMark, NodeSpec, MarkSpec, DOMOutputSpec } from "prosemirror-model";
-import {
-	InputRule, inputRules as makeInputRules,
-} from "prosemirror-inputrules"
+import { InputRule } from "prosemirror-inputrules"
 import {
 	chainCommands, baseKeymap, Keymap, Command as ProseCommand,
 } from "prosemirror-commands"
 import { Plugin as ProsePlugin } from "prosemirror-state";
+import { keymap as makeKeymap } from "prosemirror-keymap";
 
 // patched prosemirror types 
 import { NodeViewConstructor, ProseSchema } from "@common/types";
@@ -37,11 +36,11 @@ import { remarkConcretePlugin } from "@common/markdown/remark-plugins/concrete/r
 import { remarkUnwrapImagePlugin } from "@common/markdown/remark-plugins/unwrap-image/remark-unwrap-image";
 
 // project imports
-import { keymap as makeKeymap } from "prosemirror-keymap";
 import { DefaultMap } from "@common/util/DefaultMap";
 import { NwtExtension, NodeExtension, MarkExtension, MdastNodeMapType, MdastMarkMapType, Prose2Mdast_NodeMap_Presets, Prose2Mdast_MarkMap_Presets, MarkSyntaxExtension, NodeSyntaxExtension } from "@common/extensions/extension";
 import * as prose2mdast from "@common/markdown/prose2mdast";
 import * as mdast2prose from "@common/markdown/mdast2prose";
+import { makeInputRulePlugin } from "@common/prosemirror/inputRules";
 
 //// EDITOR CONFIG /////////////////////////////////////////
 
@@ -309,7 +308,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 
 		// combine all input rules as single ProseMirror plugin
 		let resultPlugins = [];
-		resultPlugins.push(makeInputRules({ rules: inputRules }));
+		resultPlugins.push(makeInputRulePlugin({ rules: inputRules }));
 
 		// include extension keymaps
 		/** @todo (9/27/20) sort keymap entries by priority? */

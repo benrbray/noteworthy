@@ -339,8 +339,13 @@ export class HorizontalRuleExtension extends NodeSyntaxExtension<Md.ThematicBrea
 // : (ProseNodeType) → InputRule
 // Given a code block node type, returns an input rule that turns a
 // textblock starting with three backticks into a code block.
-export function codeBlockRule<S extends ProseSchema>(nodeType: ProseNodeType<S>) {
-	return textblockTypeInputRule(/^```$/, nodeType)
+export function codeBlockRule<S extends ProseSchema>(nodeType: ProseNodeType<S>): InputRule<S> {
+	return textblockTypeInputRule(
+		/^```([a-z0-9]+)?\s$/,
+		nodeType,
+		(matches: string[]): ExtensionNodeAttrs<CodeBlockExtension> =>
+			({ lang: matches[1] || null })
+	);
 }
 
 export class CodeBlockExtension extends NodeSyntaxExtension<Md.Code> {
