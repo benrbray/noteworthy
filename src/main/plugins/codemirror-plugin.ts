@@ -147,7 +147,6 @@ class CodeMirrorView implements PV.NodeView {
 		private _getPos: (() => number)
 	) {
 
-
 		// extensions without lang
 		const extensionsWithoutLang = [
 				CV.keymap.of([
@@ -164,6 +163,7 @@ class CodeMirrorView implements PV.NodeView {
 		const lang = getCodeMirrorLanguage(this._lang);
 		console.log("LANG", this._lang, "FOUND?", !!lang);
 
+		// placeholder allowing the CodeMirror language to change dynamically
 		this._langCompartment = new CS.Compartment();
 		const langExtension = this._langCompartment.of(lang || []);
 
@@ -188,13 +188,7 @@ class CodeMirrorView implements PV.NodeView {
 			nodeView._proseView.dispatch(tr);
 			nodeView.setCodeMirrorLanguage(getCodeMirrorLanguage(lang));
 		});
-		
-		// (elt, evt) => {
-		// 	console.log("LANG CHANGE");
-		// 	let step = new AttrStep(this._getPos(), "lang", this._langLabel.value);
-		// 	let tr = this._proseView.state.tr.step(step);
-		// 	this._proseView.dispatch(tr);
-		// })
+
 		this._langLabel = langLabel;
 
 		// nodeview DOM representation
