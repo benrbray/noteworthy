@@ -11,11 +11,28 @@ import "./codicon/codicon.css";
 import "./main.css";
 import "./editor.css";
 
+// @ts-ignore
+import tikzJaxSource from "@lib/tikzjax/tikzjax.js"
+import "@lib/tikzjax/tikzjax.css"
+
+////////////////////////////////////////////////////////////
+
+function loadTikzJax(doc: Document) {
+	const s = document.createElement("script");
+	s.id = "tikzjax";
+	s.type = "text/javascript";
+	s.innerText = tikzJaxSource;
+	doc.body.appendChild(s);
+}
+
 ////////////////////////////////////////////////////////////
 
 let renderer:Renderer;
 
-onload = function(){
+window.onload = function(){
+	// tikzjax
+	loadTikzJax(window.document);
+	// renderer
 	renderer = new Renderer();
 	renderer.init();
 }

@@ -1,3 +1,10 @@
+// TODO (Ben @ 2023/04/03) compare with Brian Hung's version,
+// which includes asynchronous loading of languages
+// https://gist.github.com/BrianHung/222b870dfe7917a9a4d73d8c42db03cc
+
+// TODO (Ben @ 2023/04/04) also experiment with prosemirror-highlightjs
+// https://github.com/b-kelly/prosemirror-highlightjs
+
 // codemirror
 import * as CV  from "@codemirror/view"
 import * as CC  from "@codemirror/commands"
@@ -11,7 +18,6 @@ import * as PH from "prosemirror-history"
 import * as PS from "prosemirror-state"
 import * as PV from "prosemirror-view"
 import * as PM from "prosemirror-model"
-import * as PT from "prosemirror-transform"
 
 ////////////////////////////////////////////////////////////
 
@@ -54,6 +60,9 @@ function getCodeMirrorLanguage(lang: string|null): CL.Language|null {
 	// config
 	if(lang === "json")       { jsonLanguage;                             }
 	if(lang === "yaml")       { return CL.StreamLanguage.define(yaml);    }
+	// other
+	if(lang === "yaml")       { return CL.StreamLanguage.define(yaml);    }
+
 
 	// default
 	return null;
@@ -115,14 +124,44 @@ export class AttrStep extends Step {
 
 Step.jsonID("attr", AttrStep)
 
-//// PROSEMIRROR NODE VIEW /////////////////////////////////
+//// OPTIONS ///////////////////////////////////////////////
 
-// TODO (Ben @ 2023/04/03) compare with Brian Hung's version,
-// which includes asynchronous loading of languages
-// https://gist.github.com/BrianHung/222b870dfe7917a9a4d73d8c42db03cc
+interface BaseOptions {
 
-// TODO (Ben @ 2023/04/04) also experiment with prosemirror-highlightjs
-// https://github.com/b-kelly/prosemirror-highlightjs
+}
+
+type PlainOptions = BaseOptions & {
+	mode: "default"
+}
+
+type WithPreviewOptions = BaseOptions & {
+	mode: "preview",
+	render: (dom: HTMLElement) => void
+}
+
+export type CodeViewOptions = PlainOptions | WithPreviewOptions;
+
+export const defaultCodeViewOptions: CodeViewOptions = {
+	mode: "default"
+}
+
+//// NODE VIEW IMPLEMENTATION //////////////////////////////
+
+interface PreviewState {
+	dom: HTMLElement;
+	visible: boolean;
+}
+
+const CLASS_VISIBLE = "visible";
+const CLASS_HIDDEN = "hidden";
+
+type PreviewRenderer = (dom: HTMLElement, code: string) => void;
+
+const previewRenderers: { [lang:string] : PreviewRenderer } = {
+	"tikz" : (dom: HTMLElement, code: string): void => {
+		dom.innerHTML = `<script type="text/tikz" data-show-console="true">${code}</script>`;
+	}
+}
 
 /**
  * Code and comments for `CodeMirrorView` were adapted from:
@@ -141,10 +180,14 @@ class CodeMirrorView implements PV.NodeView {
 	private _langLabel: HTMLInputElement;
 	public dom: Node|null = null;
 
+	/** preview pane */
+	private _preview: PreviewState;
+
 	constructor(
 		private _node: PM.Node,
 		private _proseView: PV.EditorView,
-		private _getPos: (() => number)
+		private _getPos: (() => number),
+		options: CodeViewOptions = defaultCodeViewOptions
 	) {
 
 		// extensions without lang
@@ -161,7 +204,6 @@ class CodeMirrorView implements PV.NodeView {
 		// determine language
 		this._lang = this._node.attrs["lang"] || null;
 		const lang = getCodeMirrorLanguage(this._lang);
-		console.log("LANG", this._lang, "FOUND?", !!lang);
 
 		// placeholder allowing the CodeMirror language to change dynamically
 		this._langCompartment = new CS.Compartment();
@@ -181,34 +223,246 @@ class CodeMirrorView implements PV.NodeView {
 		const nodeView = this;
 		langLabel.addEventListener("input", function (event) {
 			const lang = this.value;
-			console.log("LANG CHANGE", lang);
-			let step = new AttrStep(nodeView._getPos(), "lang", lang);
-			let tr = nodeView._proseView.state.tr.step(step);
-
-			nodeView._proseView.dispatch(tr);
-			nodeView.setCodeMirrorLanguage(getCodeMirrorLanguage(lang));
+			nodeView.handleUserChangedLang(lang);
 		});
 
 		this._langLabel = langLabel;
 
+		// configure preview pane
+		const previewDom = document.createElement("div");
+		previewDom.className = `codeView-preview ${CLASS_HIDDEN}`;
+		this._preview = {
+			dom: previewDom,
+			visible: false
+		};
+
 		// nodeview DOM representation
+		const codeDom = document.createElement("div");
+		if(this._lang) { codeDom.dataset.lang = this._lang; }
+		codeDom.className = "codeView-code";
+
+		codeDom.appendChild(this._langLabel);
+		codeDom.appendChild(this._codeMirror.dom);
+
 		const dom = document.createElement("div");
-		if(this._lang) { dom.dataset.lang = this._lang; }
-		dom.className = "codeMirrorNodeView";
-
-		dom.appendChild(this._langLabel);
-		dom.appendChild(this._codeMirror.dom);
-
+		dom.className = "codeView";
+		dom.appendChild(this._preview.dom); 
+		dom.appendChild(codeDom);
 		this.dom = dom;
 	}
 
-	setCodeMirrorLanguage(lang: CL.Language|null) {
+	/* ==== NodeView implementation ======================= */
+
+	selectNode() {
+		console.log("codeView :: selectNode");
+		this.hidePreview();
+		this.showCodeMirror();
+		this._codeMirror.focus();
+	}
+
+	deselectNode() {
+		console.log("codeView :: deselectNode");
+		this.renderPreview();
+		this.hideCodeMirror();
+	}
+
+	stopEvent() {
+		console.log("codeView :: stopEvent");
+		return true;
+	}
+
+	setSelection(anchor: number, head: number) {
+		console.log("codeView :: setSelection");
+		/*
+		* The `setSelection` method on a node view will be called when ProseMirror
+		* tries to put the selection inside the node. Our implementation makes sure
+		* the CodeMirror selection is set to match the position that is passed in.
+		*/
+		this._codeMirror.focus();
+		this._updating = true;
+		this._codeMirror.dispatch({selection: {anchor, head}});
+		this._updating = false;
+	}
+
+	update(node: PM.Node): boolean {
+		console.log("codeView :: update");
+		/*
+		 * When a node update comes in from ProseMirror, for example because of an
+		 * undo action, we sort of have to do the inverse of what forwardUpdate did--
+		 * check for text changes, and if present, propagate them from the outer to
+		 * the inner editor.
+		 *
+		 * To avoid needlessly clobbering the state of the inner editor, this method
+		 * only generates a replacement for the range of the content that was changed,
+		 * by comparing the start and end of the old and new content.
+		 */
+
+		if (node.type != this._node.type) return false;
+		this._node = node;
+
+		// update attrs
+		let newLang = (node.attrs as ExtensionNodeAttrs<CodeBlockExtension>).lang;
+		this.handleProseMirrorChangedLang(newLang);
+
+		// update text
+		if (this._updating) return true;
+		let newText = node.textContent;
+		let curText = this._codeMirror.state.doc.toString();
+
+		if (newText != curText) {
+			let start = 0, curEnd = curText.length, newEnd = newText.length;
+			while (start < curEnd &&
+						curText.charCodeAt(start) == newText.charCodeAt(start)) {
+				++start;
+			}
+			while (curEnd > start && newEnd > start &&
+						curText.charCodeAt(curEnd - 1) == newText.charCodeAt(newEnd - 1)) {
+				curEnd--;
+				newEnd--;
+			}
+			this._updating = true;
+			this._codeMirror.dispatch({
+				changes: {
+					from: start, to: curEnd,
+					insert: newText.slice(start, newEnd)
+				}
+			});
+			this._updating = false;
+		}
+
+		return true;
+	}
+
+	/* ==================================================== */
+
+	getLang(): string|null {
+		return this._lang;
+	}
+
+	/** Returns a string containing the contents of this code block. */
+	getCode(): string {
+		let content = this._node.content.content;
+		let code = "";
+		if (content.length > 0 && content[0].textContent !== null) {
+			code = content[0].textContent.trim();
+		}
+		return code;
+	}
+
+	/* ==== LANGUAGE ====================================== */
+
+	/**
+	 * React to changes in the `lang` attribute of the ProseMirror node for this
+	 * code block.  Dispatches updates to CodeMirror. */
+	private handleProseMirrorChangedLang(lang: string|null): void {
+		// update internal state
+		if(lang === this._lang) { return; }
+		this._lang = lang;
+
+		// react to change
+		this.clearPreview();
+		this.updateCodeMirrorLanguage(getCodeMirrorLanguage(this._lang));
+	}
+
+	/**
+	 * React to changes in the `lang` attribute of the ProseMirror node for this
+	 * code block.  Dispatches updates to both CodeMirror and ProseMirror. */
+	private handleUserChangedLang(lang: string): void {
+		// update internal state
+		if(lang === this._lang) { return; }
+		this._lang = lang || null;
+
+		// react to change
+		this.clearPreview();
+		this.updateProseNodeLangAttr(this._lang || "");
+		this.updateCodeMirrorLanguage(getCodeMirrorLanguage(this._lang));
+	}
+
+	/**
+	 * Set the `lang` attribute of the ProseMirror node for this code block.
+	 */
+	private updateProseNodeLangAttr(lang: string): void {
+		console.log("codeView :: updateNodeLangAttr", `lang=${lang}`);
+
+		// update nodeview lang
+		if(lang === this._lang) { return; }
+		this._lang = lang;
+
+		// set lang attribute of prosemirror ndoe
+		let step = new AttrStep(this._getPos(), "lang", lang);
+		let tr = this._proseView.state.tr.step(step);
+		this._proseView.dispatch(tr);
+	}
+
+	private updateCodeMirrorLanguage(lang: CL.Language|null) {
+		console.log("codeView :: updateCodeMirrorLanguage");
 		this._updating = true;
 		this._codeMirror.dispatch({
 			effects: this._langCompartment.reconfigure(lang || [])
 		});
 		this._updating = false;
 	}
+
+	/* ==== PREVIEW ======================================= */
+
+	/** Set the contents of the preview pane by calling one of the registered renderers. */
+	renderPreview() {
+		// get code contents
+		const code = this.getCode();
+		const lang = this.getLang();
+
+		console.log("codeView :: renderPreview", code, `lang=${lang}`);
+
+		// select renderer
+		const renderFn = !lang ? undefined : previewRenderers[lang];
+		if(renderFn !== undefined) {
+			renderFn(this._preview.dom, code);
+			this.showPreview();
+		} else {
+			this.hidePreview();
+			this.clearPreview();
+		}
+	}
+
+	/** Erase the contents of the preview pane. */
+	clearPreview() {
+		console.log("codeView :: clearPreview");
+		this._preview.dom.innerHTML = "";
+	}
+
+	showPreview() {
+		console.log("codeView :: showPreview");
+		this._preview.dom.classList.remove(CLASS_HIDDEN);
+		this._preview.dom.classList.add(CLASS_VISIBLE);
+		this._preview.visible = true;
+	}
+
+	hidePreview() {
+		console.log("codeView :: hidePreview");
+		this._preview.dom.classList.remove(CLASS_VISIBLE);
+		this._preview.dom.classList.add(CLASS_HIDDEN);
+		this._preview.visible = false;
+
+		this._preview.dom.textContent = "hidden";
+	}
+
+	ensurePreviewHidden() {
+		if(this._preview.visible) { this.hidePreview(); }
+	}
+
+	ensurePreviewVisible() {
+		if(!this._preview.visible) { this.showPreview(); }
+	}
+
+	showCodeMirror() {
+
+	}
+
+	hideCodeMirror() {
+
+	}
+
+	/* ==================================================== */
 
 	/**
 	 * When the code editor is focused, translate any update that changes the
@@ -218,6 +472,15 @@ class CodeMirrorView implements PV.NodeView {
 	 * opening token).
 	 */
 	forwardUpdate(update: CV.ViewUpdate): void {
+		console.log("codeView :: forwardUpdate");
+
+		// manage preview visibility
+		if(update.focusChanged) {
+			if(this._codeMirror.hasFocus) { this.ensurePreviewHidden(); }
+			else                          { this.renderPreview();       } 
+		}
+
+		// ignore updates whenever codemirror editor is out of focus
 		if (this._updating || !this._codeMirror.hasFocus) return;
 
 		let offset = this._getPos() + 1, {main} = update.state.selection;
@@ -246,17 +509,6 @@ class CodeMirrorView implements PV.NodeView {
 		}
 	}
 
-	/**
-	 * The `setSelection` method on a node view will be called when ProseMirror
-	 * tries to put the selection inside the node. Our implementation makes sure
-	 * the CodeMirror selection is set to match the position that is passed in.
-	 */
-	setSelection(anchor: number, head: number) {
-		this._codeMirror.focus();
-		this._updating = true;
-		this._codeMirror.dispatch({selection: {anchor, head}});
-		this._updating = false;
-	}
 
 	codeMirrorKeymap() {
 		let view = this._proseView;
@@ -304,59 +556,6 @@ class CodeMirrorView implements PV.NodeView {
 		return true;
 	}
 
-	/**
-	 * When a node update comes in from ProseMirror, for example because of an
-	 * undo action, we sort of have to do the inverse of what forwardUpdate did--
-	 * check for text changes, and if present, propagate them from the outer to
-	 * the inner editor.
-	 *
-	 * To avoid needlessly clobbering the state of the inner editor, this method
-	 * only generates a replacement for the range of the content that was changed,
-	 * by comparing the start and end of the old and new content.
-	 */
-	update(node: PM.Node): boolean {
-		if (node.type != this._node.type) return false;
-		this._node = node;
-
-		// update attrs
-		let newLang = (node.attrs as ExtensionNodeAttrs<CodeBlockExtension>).lang;
-		let curLang = this._lang;
-		if (newLang !== curLang) {
-			this._langLabel.value = newLang || "";
-			this.setCodeMirrorLanguage(getCodeMirrorLanguage(newLang));
-		}
-
-		// update text
-		if (this._updating) return true;
-		let newText = node.textContent;
-		let curText = this._codeMirror.state.doc.toString();
-
-		if (newText != curText) {
-			let start = 0, curEnd = curText.length, newEnd = newText.length;
-			while (start < curEnd &&
-						curText.charCodeAt(start) == newText.charCodeAt(start)) {
-				++start;
-			}
-			while (curEnd > start && newEnd > start &&
-						curText.charCodeAt(curEnd - 1) == newText.charCodeAt(newEnd - 1)) {
-				curEnd--;
-				newEnd--;
-			}
-			this._updating = true;
-			this._codeMirror.dispatch({
-				changes: {
-					from: start, to: curEnd,
-					insert: newText.slice(start, newEnd)
-				}
-			});
-			this._updating = false;
-		}
-
-		return true;
-	}
-
-	selectNode() { this._codeMirror.focus(); }
-	stopEvent() { return true; }
 }
 
 //// PROSEMIRROR PLUGIN ////////////////////////////////////
@@ -376,7 +575,6 @@ namespace CodeMirrorPlugin {
 let codeMirrorPluginKey = new PluginKey<CodeMirrorPlugin.State>("noteworthy-codemirror");
 
 export const codemirrorPlugin = (options: CodeMirrorPlugin.Options): PS.Plugin<CodeMirrorPlugin.State> => {
-	
 	let pluginSpec: PS.PluginSpec<CodeMirrorPlugin.State> = {
 		key: codeMirrorPluginKey,
 		state: {
@@ -390,7 +588,9 @@ export const codemirrorPlugin = (options: CodeMirrorPlugin.Options): PS.Plugin<C
 		props: {
 			nodeViews: {
 				"code_block" : (node: PM.Node, view: PV.EditorView, getPos:boolean|(()=>number)): CodeMirrorView => {
-					console.log("\n\n\ncreating codemirror node view\n\n\n");
+					// TODO (Ben @ 2023/04/09) it should be possible to define a separate tikzJax plugin
+					// so the CodeMirror view should take a function that matches predicates against nodes,
+					// and a Noteworthy plugin can specify these predicates along with a render function
 					let nodeView = new CodeMirrorView(node, view, getPos as (() => number));
 					return nodeView;
 				}
