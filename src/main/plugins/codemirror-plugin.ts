@@ -159,7 +159,10 @@ type PreviewRenderer = (dom: HTMLElement, code: string) => void;
 
 const previewRenderers: { [lang:string] : PreviewRenderer } = {
 	"tikz" : (dom: HTMLElement, code: string): void => {
-		dom.innerHTML = `<script type="text/tikz" data-show-console="true">${code}</script>`;
+		function stripEmptyLines(s: string): string {
+			return s.replace(/^\n/gm, "");
+		}
+		dom.innerHTML = `<script type="text/tikz" data-show-console="true">${stripEmptyLines(code)}</script>`;
 	}
 }
 
