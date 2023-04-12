@@ -63,7 +63,6 @@ function getCodeMirrorLanguage(lang: string|null): CL.Language|null {
 	// other
 	if(lang === "yaml")       { return CL.StreamLanguage.define(yaml);    }
 
-
 	// default
 	return null;
 }
@@ -212,10 +211,17 @@ class CodeMirrorView implements PV.NodeView {
 		this._langCompartment = new CS.Compartment();
 		const langExtension = this._langCompartment.of(lang || []);
 
+		// PASTE 
+		const eventHandlers = CV.EditorView.domEventHandlers({
+			paste(event, view) {
+				console.log("codeMirror :: paste ::", event);
+			}
+		})
+
 		// configure codemirror
 		this._codeMirror = new CV.EditorView({
 			doc: this._node.textContent,
-			extensions: [...extensionsWithoutLang, langExtension]
+			extensions: [...extensionsWithoutLang, langExtension, eventHandlers],
 		})
 
 		// lang label
@@ -269,8 +275,8 @@ class CodeMirrorView implements PV.NodeView {
 		this.hideCodeMirror();
 	}
 
-	stopEvent() {
-		console.log("codeView :: stopEvent");
+	stopEvent(event: Event) {
+		console.log("codeView :: stopEvent", event);
 		return true;
 	}
 
@@ -471,11 +477,10 @@ class CodeMirrorView implements PV.NodeView {
 	 * When the code editor is focused, translate any update that changes the
 	 * document or selection to a ProseMirror transaction. The `getPos` that was
 	 * passed to the node view can be used to find out where our code content
-	 * starts, relative to the outer document (the + 1 skips the code block
-	 * opening token).
+	 * starts, relative to the outer document.
 	 */
 	forwardUpdate(update: CV.ViewUpdate): void {
-		console.log("codeView :: forwardUpdate");
+		console.log(`codeView :: forwardUpdate :: docChanged=${update.docChanged}`);
 
 		// manage preview visibility
 		if(update.focusChanged) {
@@ -486,18 +491,23 @@ class CodeMirrorView implements PV.NodeView {
 		// ignore updates whenever codemirror editor is out of focus
 		if (this._updating || !this._codeMirror.hasFocus) return;
 
-		let offset = this._getPos() + 1, {main} = update.state.selection;
-		let selection =
-			TextSelection.create(
-				this._proseView.state.doc,
-				offset + main.from,
-				offset + main.to
-			);
+		let codePos = this._getPos();
+		console.log(`%c[pm] codePos=${codePos}, nodeSize=${this._node.nodeSize}, docLength=${this._proseView.state.doc.nodeSize}`, `color: blue`);
+		console.log(`%c[pm] ${this._proseView.state.doc}`, `color: gray`);
 
-		if (update.docChanged || !this._proseView.state.selection.eq(selection)) {
-			let tr = this._proseView.state.tr.setSelection(selection);
+		let tr = this._proseView.state.tr;
+
+		if (update.docChanged) {
+			console.log("forwardUpdate :: changes", update.changes.toJSON());
+
+			// the +1 skips the code block opening token
+			let offset = codePos + 1;
+			console.log(`%c[pm] offset := ${offset}`, `color:blue`);
+			
 			update.changes.iterChanges((fromA, toA, fromB, toB, text) => {
 				if (text.length) {
+					console.log(`%c[cm] change :: before=(${fromA},${toA}) after=(${fromB},${toB})`, `color:green`);
+					console.log(`%c[pm] replaceWith :: (${offset+fromA},${offset+toA}) ${text.toString()}`, `color:blue`)
 					tr.replaceWith(
 						offset + fromA,
 						offset + toA,
@@ -507,9 +517,30 @@ class CodeMirrorView implements PV.NodeView {
 					tr.delete(offset + fromA, offset + toA)
 				}
 				offset += (toB - fromB) - (toA - fromA)
+				console.log(`%c[pm] offset <- ${offset}`, `color:blue`);
 			})
-			this._proseView.dispatch(tr)
 		}
+
+		// update selection
+		let { main: codeMirrorSelection} = update.state.selection; 
+		console.log(`%c[cm] codeMirrorSelection=(${codeMirrorSelection.from},${codeMirrorSelection.to})`, `color: green`);
+		let codePosAfterTr = tr.mapping.map(codePos);
+
+		let mappedProseSelection = this._proseView.state.selection.map(tr.doc, tr.mapping);
+		console.log(`%c[pm] codePos=${codePos} codePosAfterTr=${codePosAfterTr} mappedProseSelection=(${mappedProseSelection.from},${mappedProseSelection.to})`, `color:blue`);
+
+		let desiredProseSelection =
+			TextSelection.create(
+				tr.doc,
+				codePosAfterTr + 1 + codeMirrorSelection.from, // +1 skips code_block start token
+				codePosAfterTr + 1 + codeMirrorSelection.to    // +1 skips code_block start token
+			);
+		if(!mappedProseSelection.eq(desiredProseSelection)) {
+			console.log(`%c[pm] currentProseSelection=${mappedProseSelection}, desiredProseSelection=${desiredProseSelection}`, `color:blue`);
+			tr = tr.setSelection(desiredProseSelection);
+		}
+		
+		this._proseView.dispatch(tr)
 	}
 
 
