@@ -480,8 +480,6 @@ class CodeMirrorView implements PV.NodeView {
 	 * starts, relative to the outer document.
 	 */
 	forwardUpdate(update: CV.ViewUpdate): void {
-		console.log(`codeView :: forwardUpdate :: docChanged=${update.docChanged}`);
-
 		// manage preview visibility
 		if(update.focusChanged) {
 			if(this._codeMirror.hasFocus) { this.ensurePreviewHidden(); }
@@ -492,22 +490,13 @@ class CodeMirrorView implements PV.NodeView {
 		if (this._updating || !this._codeMirror.hasFocus) return;
 
 		let codePos = this._getPos();
-		console.log(`%c[pm] codePos=${codePos}, nodeSize=${this._node.nodeSize}, docLength=${this._proseView.state.doc.nodeSize}`, `color: blue`);
-		console.log(`%c[pm] ${this._proseView.state.doc}`, `color: gray`);
-
 		let tr = this._proseView.state.tr;
 
 		if (update.docChanged) {
-			console.log("forwardUpdate :: changes", update.changes.toJSON());
-
 			// the +1 skips the code block opening token
 			let offset = codePos + 1;
-			console.log(`%c[pm] offset := ${offset}`, `color:blue`);
-			
 			update.changes.iterChanges((fromA, toA, fromB, toB, text) => {
 				if (text.length) {
-					console.log(`%c[cm] change :: before=(${fromA},${toA}) after=(${fromB},${toB})`, `color:green`);
-					console.log(`%c[pm] replaceWith :: (${offset+fromA},${offset+toA}) ${text.toString()}`, `color:blue`)
 					tr.replaceWith(
 						offset + fromA,
 						offset + toA,
@@ -517,18 +506,13 @@ class CodeMirrorView implements PV.NodeView {
 					tr.delete(offset + fromA, offset + toA)
 				}
 				offset += (toB - fromB) - (toA - fromA)
-				console.log(`%c[pm] offset <- ${offset}`, `color:blue`);
 			})
 		}
 
 		// update selection
 		let { main: codeMirrorSelection} = update.state.selection; 
-		console.log(`%c[cm] codeMirrorSelection=(${codeMirrorSelection.from},${codeMirrorSelection.to})`, `color: green`);
 		let codePosAfterTr = tr.mapping.map(codePos);
-
 		let mappedProseSelection = this._proseView.state.selection.map(tr.doc, tr.mapping);
-		console.log(`%c[pm] codePos=${codePos} codePosAfterTr=${codePosAfterTr} mappedProseSelection=(${mappedProseSelection.from},${mappedProseSelection.to})`, `color:blue`);
-
 		let desiredProseSelection =
 			TextSelection.create(
 				tr.doc,
@@ -536,12 +520,13 @@ class CodeMirrorView implements PV.NodeView {
 				codePosAfterTr + 1 + codeMirrorSelection.to    // +1 skips code_block start token
 			);
 		if(!mappedProseSelection.eq(desiredProseSelection)) {
-			console.log(`%c[pm] currentProseSelection=${mappedProseSelection}, desiredProseSelection=${desiredProseSelection}`, `color:blue`);
 			tr = tr.setSelection(desiredProseSelection);
 		}
 		
 		this._proseView.dispatch(tr)
 	}
+
+	//// CODEMIRROR KEYMAP ///////////////////////////////////
 
 
 	codeMirrorKeymap() {
@@ -551,6 +536,7 @@ class CodeMirrorView implements PV.NodeView {
 			{key: "ArrowLeft",  run: () => this.maybeEscape("char", -1)},
 			{key: "ArrowDown",  run: () => this.maybeEscape("line",  1)},
 			{key: "ArrowRight", run: () => this.maybeEscape("char",  1)},
+			{key: "Backspace",  run: () => this.handleBackspace() },
 			{key: "Ctrl-Enter", run: () => {
 				if (!PC.exitCode(view.state, view.dispatch)) return false
 				view.focus()
@@ -566,12 +552,10 @@ class CodeMirrorView implements PV.NodeView {
 	 * Determine if the specified cursor movement will "escape" the NodeView or not.
 	 */
 	maybeEscape(unit: "line"|"char", dir: 1|0|-1): boolean {
-		let {state} = this._codeMirror;
-
 		// cannot escape when selection was nonempty
+		let {state} = this._codeMirror;
 		if(!state.selection.main.empty) { return false; }
-		
-		// 
+
 		let mainSelection = state.selection.main;
 		let range: { from: number, to: number };
 		if(unit === "line") { range = state.doc.lineAt(state.selection.main.head); }
@@ -582,8 +566,29 @@ class CodeMirrorView implements PV.NodeView {
 		
 		let targetPos = this._getPos() + (dir < 0 ? 0 : this._node.nodeSize)
 		let selection = PS.Selection.near(this._proseView.state.doc.resolve(targetPos), dir)
+		let tr = this._proseView.state.tr.setSelection(selection).scrollIntoView();
+		this._proseView.dispatch(tr)
+		this._proseView.focus();
+
+		return true;
+	}
+
+	/**
+	 * Determine if the specified cursor movement will "escape" the NodeView or not.
+	 */
+	handleBackspace(): boolean {
+		// cannot escape when selection was nonempty
+		let {state} = this._codeMirror;
+		if(!state.selection.main.empty)   { return false; }
+		if(state.selection.main.to !== 0) { return false; }
+
+		let pos = this._getPos();
+
+		// replace code_block with text node
+		let tr = this._proseView.state.tr.insertText(this._node.textContent, pos, pos + this._node.nodeSize);
+		// place selection before new text node
+		tr = tr.setSelection(TextSelection.create(tr.doc, pos)).scrollIntoView();
 		
-		let tr = this._proseView.state.tr.setSelection(selection).scrollIntoView()
 		this._proseView.dispatch(tr)
 		this._proseView.focus();
 
