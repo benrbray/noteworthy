@@ -156,12 +156,28 @@ const CLASS_HIDDEN = "hidden";
 
 type PreviewRenderer = (dom: HTMLElement, code: string) => void;
 
+// TODO (Ben @ 2023/04/15) where does this belong?
+function stripEmptyLines(s: string): string {
+	return s.replace(/^\n/gm, "");
+}
+
+function makeTikzCdDocument(code: string): string {
+	return stripEmptyLines(`
+\\usepackage{tikz-cd}
+\\begin{document}
+\\begin{tikzcd}
+${code}
+\\end{tikzcd}
+\\end{document}
+`);
+}
+
 const previewRenderers: { [lang:string] : PreviewRenderer } = {
 	"tikz" : (dom: HTMLElement, code: string): void => {
-		function stripEmptyLines(s: string): string {
-			return s.replace(/^\n/gm, "");
-		}
 		dom.innerHTML = `<script type="text/tikz" data-show-console="true">${stripEmptyLines(code)}</script>`;
+	},
+	"tikzcd" : (dom: HTMLElement, code: string): void => {
+		dom.innerHTML = `<script type="text/tikz" data-show-console="true">${makeTikzCdDocument(code)}</script>`;
 	}
 }
 
