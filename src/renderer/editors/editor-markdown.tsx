@@ -60,9 +60,9 @@ import {
 // this transformation.  So, we must explicitly declare them here:
 import { WindowAfterPreload } from "@renderer/preload_types";
 import { ProseSchema } from "@common/types";
-import { makeDefaultMarkdownExtensions } from "@common/doctypes/markdown-doc";
 import { createStore } from "solid-js/store";
 import { codemirrorPlugin } from "@main/plugins/codemirror-plugin";
+import { tikzjaxRenderers } from "@main/plugins/tikzjax-plugin";
 declare let window: Window & typeof globalThis & WindowAfterPreload;
 
 ////////////////////////////////////////////////////////////
@@ -157,7 +157,10 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 		let plugins:ProsePlugin[] = [
 			mathSelectPlugin,
 			mathPlugin,
-			codemirrorPlugin({}),
+			codemirrorPlugin({
+				mode: "preview",
+				previewRenderers: tikzjaxRenderers
+			}),
 			citationPlugin({
 				handleCitationOpen: async (tag:string): Promise<void> => {
 					/** @todo (10/4/20) where should new files be created? */

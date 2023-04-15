@@ -135,7 +135,7 @@ type PlainOptions = BaseOptions & {
 
 type WithPreviewOptions = BaseOptions & {
 	mode: "preview",
-	render: (dom: HTMLElement) => void
+	previewRenderers: { [lang:string] : PreviewRenderer }
 }
 
 export type CodeViewOptions = PlainOptions | WithPreviewOptions;
@@ -153,33 +153,6 @@ interface PreviewState {
 
 const CLASS_VISIBLE = "visible";
 const CLASS_HIDDEN = "hidden";
-
-type PreviewRenderer = (dom: HTMLElement, code: string) => void;
-
-// TODO (Ben @ 2023/04/15) where does this belong?
-function stripEmptyLines(s: string): string {
-	return s.replace(/^\n/gm, "");
-}
-
-function makeTikzCdDocument(code: string): string {
-	return stripEmptyLines(`
-\\usepackage{tikz-cd}
-\\begin{document}
-\\begin{tikzcd}
-${code}
-\\end{tikzcd}
-\\end{document}
-`);
-}
-
-const previewRenderers: { [lang:string] : PreviewRenderer } = {
-	"tikz" : (dom: HTMLElement, code: string): void => {
-		dom.innerHTML = `<script type="text/tikz" data-show-console="true">${stripEmptyLines(code)}</script>`;
-	},
-	"tikzcd" : (dom: HTMLElement, code: string): void => {
-		dom.innerHTML = `<script type="text/tikz" data-show-console="true">${makeTikzCdDocument(code)}</script>`;
-	}
-}
 
 /**
  * Code and comments for `CodeMirrorView` were adapted from:
@@ -205,7 +178,7 @@ class CodeMirrorView implements PV.NodeView {
 		private _node: PM.Node,
 		private _proseView: PV.EditorView,
 		private _getPos: (() => number),
-		options: CodeViewOptions = defaultCodeViewOptions
+		private _options: CodeViewOptions = defaultCodeViewOptions
 	) {
 
 		// extensions without lang
@@ -430,6 +403,14 @@ class CodeMirrorView implements PV.NodeView {
 
 	/* ==== PREVIEW ======================================= */
 
+	getPreviewRenderer(lang: string): PreviewRenderer | null {
+		if(this._options.mode === "preview") {
+			return this._options.previewRenderers[lang] || null;
+		} else {
+			return null;
+		}
+	}
+
 	/** Set the contents of the preview pane by calling one of the registered renderers. */
 	renderPreview() {
 		// get code contents
@@ -439,8 +420,8 @@ class CodeMirrorView implements PV.NodeView {
 		console.log("codeView :: renderPreview", code, `lang=${lang}`);
 
 		// select renderer
-		const renderFn = !lang ? undefined : previewRenderers[lang];
-		if(renderFn !== undefined) {
+		const renderFn = !lang ? null : this.getPreviewRenderer(lang);
+		if(renderFn !== null) {
 			renderFn(this._preview.dom, code);
 			this.showPreview();
 		} else {
@@ -615,10 +596,12 @@ class CodeMirrorView implements PV.NodeView {
 
 //// PROSEMIRROR PLUGIN ////////////////////////////////////
 
+export type PreviewRenderer = (dom: HTMLElement, code: string) => void;
+
 namespace CodeMirrorPlugin {
 
-	export interface Options {
-		// empty
+	export type Options = CodeViewOptions & {
+		previewRenderers: { [lang:string] : PreviewRenderer }
 	}
 
 	export interface State {
@@ -646,8 +629,12 @@ export const codemirrorPlugin = (options: CodeMirrorPlugin.Options): PS.Plugin<C
 					// TODO (Ben @ 2023/04/09) it should be possible to define a separate tikzJax plugin
 					// so the CodeMirror view should take a function that matches predicates against nodes,
 					// and a Noteworthy plugin can specify these predicates along with a render function
-					let nodeView = new CodeMirrorView(node, view, getPos as (() => number));
-					return nodeView;
+					return new CodeMirrorView(
+						node,
+						view,
+						getPos as (() => number),
+						options
+					);
 				}
 			}
 		}
