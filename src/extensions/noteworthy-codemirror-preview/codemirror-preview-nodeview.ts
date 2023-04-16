@@ -349,7 +349,7 @@ export class CodeMirrorView implements PV.NodeView {
 		this.selectProseNode();
 	}
 
-		/**
+	/**
 	 * React to changes in the `lang` attribute of the ProseMirror node for this
 	 * code block.  Dispatches updates to CodeMirror. */
 	private handleProseMirrorChangedLang(lang: string|null): void {
@@ -374,6 +374,24 @@ export class CodeMirrorView implements PV.NodeView {
 		this.clearPreview();
 		this.updateProseNodeLangAttr(this._lang || "");
 		this.updateCodeMirrorLanguage(getCodeMirrorLanguage(this._lang));
+	}
+
+	/**
+	 * Triggered when the CodeMirror view gains focus.
+	 */
+	handleCodeMirrorGainedFocus() {
+		console.log(`%ccodeMirrorPreview :: gained focus`, "color:blue");
+		this.ensurePreviewHidden();
+		this.showCodeMirror();
+	}
+
+	/**
+	 * Triggered when the CodeMirror view loses focus.
+	 */
+	handleCodeMirrorLostFocus() {
+		console.log(`%ccodeMirrorPreview :: lost focus`, "color:blue");
+		this.renderPreview();
+		this.hideCodeMirror();
 	}
 
 	/* ==================================================== */
@@ -471,18 +489,6 @@ export class CodeMirrorView implements PV.NodeView {
 	}
 
 	/* ==================================================== */
-
-	handleCodeMirrorGainedFocus() {
-		console.log(`%ccodeMirrorPreview :: gained focus`, "color:blue");
-		this.ensurePreviewHidden();
-		this.showCodeMirror();
-	}
-
-	handleCodeMirrorLostFocus() {
-		console.log(`%clost focus`, "color:blue");
-		this.renderPreview();
-		this.hideCodeMirror();
-	}
 
 	/**
 	 * When the code editor is focused, translate any update that changes the
