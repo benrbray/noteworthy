@@ -40,11 +40,13 @@ ${code}
 }
 
 export const tikzjaxRenderers: { [lang:string]: PreviewRenderer } = {
-	"tikz" : (dom: HTMLElement, code: string): void => {
+	"tikz" : (dom: HTMLElement, code: string): boolean => {
 		dom.innerHTML = `<script type="text/tikz" data-show-console="true">${stripEmptyLines(code)}</script>`;
+		return true;
 	},
-	"tikzcd" : (dom: HTMLElement, code: string): void => {
+	"tikzcd" : (dom: HTMLElement, code: string): boolean => {
 		dom.innerHTML = `<script type="text/tikz" data-show-console="true">${makeTikzCdDocument(code)}</script>`;
+		return true;
 	}
 }
 

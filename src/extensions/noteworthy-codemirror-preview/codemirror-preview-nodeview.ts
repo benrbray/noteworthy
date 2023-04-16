@@ -53,6 +53,7 @@ export const defaultCodeViewOptions: CodeViewOptions = {
 
 interface State {
 	previewVisible: boolean;
+	editorFocused: boolean;
 }
 
 const CLASS_VISIBLE = "visible";
@@ -102,9 +103,11 @@ export class CodeMirrorView implements PV.NodeView {
 
 		// placeholder allowing the CodeMirror language to change dynamically
 		this._langCompartment = new CS.Compartment();
-
+		
+		// TODO (Ben @ 2023/04/16) correct initial value for editorActive?  what if initial selection lies within code block?
 		this._state = {
-			previewVisible: false
+			previewVisible: false,
+			editorFocused: false
 		};
 
 		// initialize
@@ -123,6 +126,8 @@ export class CodeMirrorView implements PV.NodeView {
 		const langLabel = document.createElement("input");
 		langLabel.className = "langLabel"
 		langLabel.value = this._lang || "";
+		langLabel.addEventListener("blur", () => this.handleLangLabelLostFocus());
+		langLabel.addEventListener("focus", () => this.handleLangLabelGainedFocus());
 
 		const nodeView = this;
 		langLabel.addEventListener("input", function (event) {
@@ -209,14 +214,13 @@ export class CodeMirrorView implements PV.NodeView {
 	selectNode() {
 		console.log("codeView :: selectNode");
 		this.hidePreview();
-		this.showCodeMirror();
+		this.openCodeMirrorEditor();
 		this._codeMirror?.focus();
 	}
 
 	deselectNode() {
 		console.log("codeView :: deselectNode");
-		this.renderPreview();
-		this.hideCodeMirror();
+		this.closeEditorIfPreviewAvailableOtherwiseOpen();
 	}
 
 	stopEvent(event: Event) {
@@ -317,11 +321,6 @@ export class CodeMirrorView implements PV.NodeView {
 	private updateProseNodeLangAttr(lang: string): void {
 		console.log("codeView :: updateNodeLangAttr", `lang=${lang}`);
 
-		// update nodeview lang
-		if(lang === this._lang) { return; }
-		this._lang = lang;
-
-		// set lang attribute of prosemirror ndoe
 		let step = new AttrStep(this._getPos(), "lang", lang);
 		let tr = this._proseView.state.tr.step(step);
 		this._proseView.dispatch(tr);
@@ -344,7 +343,7 @@ export class CodeMirrorView implements PV.NodeView {
 	 * Triggered when the user clicks on the NodeView.
 	 */
 	private handlePreviewClicked(): void {
-		this.showCodeMirror();
+		this.openCodeMirrorEditor();
 		this.hidePreview();
 		this.selectProseNode();
 	}
@@ -358,8 +357,9 @@ export class CodeMirrorView implements PV.NodeView {
 		this._lang = lang;
 
 		// react to change
-		this.clearPreview();
 		this.updateCodeMirrorLanguage(getCodeMirrorLanguage(this._lang));
+		this.clearPreview();
+		this.handlePreviewRequiresUpdate();
 	}
 
 	/**
@@ -371,82 +371,146 @@ export class CodeMirrorView implements PV.NodeView {
 		this._lang = lang || null;
 
 		// react to change
-		this.clearPreview();
 		this.updateProseNodeLangAttr(this._lang || "");
 		this.updateCodeMirrorLanguage(getCodeMirrorLanguage(this._lang));
+		this.clearPreview();
+		this.handlePreviewRequiresUpdate();
+	}
+
+	/**
+	 * Should be called whenever the preview is stale and needs a refresh.
+	 * If the render is currently visible, it will be updated.
+	 * No change will be made to the visibility of the preview or editor.
+	 */
+	handlePreviewRequiresUpdate() {
+		this.clearPreview();
+		let renderSuccessful = this.renderPreviewIfAvailable();
 	}
 
 	/**
 	 * Triggered when the CodeMirror view gains focus.
 	 */
 	handleCodeMirrorGainedFocus() {
-		console.log(`%ccodeMirrorPreview :: gained focus`, "color:blue");
-		this.ensurePreviewHidden();
-		this.showCodeMirror();
+		console.log(`%ccodeMirrorPreview :: handleCodeMirrorGainedFocus`, "color:blue");
+		this.handleEditorGainedFocus();
 	}
 
 	/**
 	 * Triggered when the CodeMirror view loses focus.
 	 */
 	handleCodeMirrorLostFocus() {
-		console.log(`%ccodeMirrorPreview :: lost focus`, "color:blue");
-		this.renderPreview();
-		this.hideCodeMirror();
+		console.log(`%ccodeMirrorPreview :: handleCodeMirrorLostFocus`, "color:blue");
+		// if the langLabel currently has focus, keep the editor open
+		if(this._dom && document.activeElement === this._dom.langLabel) { return; }
+		// otherwise, focus has left the editor
+		this.handleEditorLostFocus();
+	}
+
+	handleLangLabelGainedFocus() {
+		this.handleEditorGainedFocus();
+	}
+
+	handleLangLabelLostFocus() {
+		console.log(`%ccodeMirrorPreview :: handleLangLabelLostFocus`, "color:blue");
+		// do nothing if focus moved to CodeMirror view
+		if(this._codeMirror && this._codeMirror.hasFocus) { return; }
+		// otherwise, focus has left the editor
+		this.handleEditorLostFocus();
+	}
+
+	handleEditorGainedFocus() {
+		this._state.editorFocused = true;
+		this.hidePreview();
+		this.openCodeMirrorEditor();
+	}
+
+	handleEditorLostFocus() {
+		console.log(`%ccodeMirrorPreview :: handleEditorLostFocus`, "color:blue");
+		this._state.editorFocused = false;
+		this.closeEditorIfPreviewAvailableOtherwiseOpen();
 	}
 
 	/* ==================================================== */
+	/**
+	 * If a preview is available for this code block,
+	 *   render the preview and collapse the CodeMirror editor.
+	 * If no preview is available,
+	 *   keep the CodeMirror editor open if it's already open,
+	 *   or open it if it's currently closed.
+	 *
+	 * @returns `true` the preview was rendered, `false` otherwise.
+	 */
+	closeEditorIfPreviewAvailableOtherwiseOpen() {
+		console.log(`codeMirrorPreview :: closeEditorIfPreviewAvailableOtherwiseOpen`);
+		const renderSuccessful = this.closeEditorIfPreviewAvailable();
+		if(!renderSuccessful) {
+			this.openCodeMirrorEditor();
+		}
+	}
 
 	/**
 	 * If a preview is available for this code block,
 	 *   render the preview and collapse the CodeMirror editor.
 	 * If no preview is available,
-	 *   keep the CodeMirror editor open.
+	 *   make no change to the CodeMirror editor visibility.
+	 *
+	 * @returns `true` the preview was rendered, `false` otherwise.
 	 */
-	closeEditorIfPreviewAvailable(): void {
+	closeEditorIfPreviewAvailable(): boolean {
+		console.log(`codeMirrorPreview :: closeEditorIfPreviewAvailable`);
+		this.showPreview();
+		const renderSuccessful: boolean = this.renderPreviewIfAvailable();
+		console.log(`%crenderSuccessful = ${renderSuccessful}`, "color:red")
 
+		if(renderSuccessful) {
+			this.closeCodeMirrorEditor();
+			return true;
+		} else {
+			this.hidePreview();
+			return false;
+		}
+	}
+
+	/**
+	 * Call the render function for the current language, if available.
+	 * Requires that the preview DOM is already visible.
+	 * @returns `true` if the render was successful, `false` otherwise.
+	 */
+	private renderPreviewIfAvailable(): boolean {
+		// get code contents
+		const code = this.getCode();
+		const lang = this.getLang();
+		console.log(`codeMirrorPreview :: renderPreviewIfAvailable :: lang=${lang}, code=${code}`);
+		if(!this._dom) { console.warn("no dom!"); return false; }
+
+		if(!this._state.previewVisible)      { console.warn("no preview!"); return false; }
+		if(this._options.mode !== "preview") { console.warn("preview disabled!"); return false; }
+		if(!lang)                            { console.warn("no lang!"); return false; }
+
+		// check if lang has a preview renderer defined
+		let rendererFn = this._options.previewRenderers[lang];
+		if(!rendererFn) { console.warn(`no renderer for lang=${lang}`); return false; }
+
+		// if so, collapse the editor and render the preview
+		return rendererFn(this._dom.preview, code);
 	}
 
 	/* ==== PREVIEW ======================================= */
 
-	getPreviewRenderer(lang: string): PreviewRenderer | null {
-		if(this._options.mode === "preview") {
-			console.log(`finding renderer for lang=${lang}`, this._options.previewRenderers); 
-			return this._options.previewRenderers[lang] || null;
-		} else {
-			console.log("%c\n\n\nPREVIEW DISABLED\n\n\n", "color:red");
-			return null;
-		}
-	}
-
-	/** Set the contents of the preview pane by calling one of the registered renderers. */
-	renderPreview() {
-		// get code contents
-		const code = this.getCode();
-		const lang = this.getLang();
-
-		console.log("codeView :: renderPreview", code, `lang=${lang}`);
-		if(!this._dom) { return; }
-
-		// select renderer
-		const renderFn = !lang ? null : this.getPreviewRenderer(lang);
-		if(renderFn !== null) {
-			renderFn(this._dom.preview, code);
-			this.showPreview();
-		} else {
-			this.hidePreview();
-			this.clearPreview();
-			this.showCodeMirror();
-		}
-	}
-
 	/** Erase the contents of the preview pane. */
-	clearPreview() {
+	private clearPreview() {
 		if(!this._dom) { return; }
 		console.log("codeView :: clearPreview");
 		this._dom.preview.innerHTML = "";
 	}
 
-	showPreview() {
+	/**
+	 * Performs only the steps needed to make the preview visible.
+	 * Idempotent.  Does not update preview contents.  
+	 * 
+	 * (**Warning:** Internal use only.  May break invariants if not called responsibly.)
+	 */
+	private showPreview() {
 		if(!this._dom) { return; }
 		console.log("codeView :: showPreview");
 
@@ -455,34 +519,39 @@ export class CodeMirrorView implements PV.NodeView {
 		this._state.previewVisible = true;
 	}
 
-	hidePreview() {
+	/**
+	 * Performs only the steps needed to hide the preview.
+	 * Idempotent.  Does not update preview contents.  
+	 * 
+	 * (**Warning:** Internal use only.  May break invariants if not called responsibly.)
+	 */
+	private hidePreview() {
 		if(!this._dom) { return; }
 		console.log("codeView :: hidePreview");
 
 		this._dom.preview.classList.remove(CLASS_VISIBLE);
 		this._dom.preview.classList.add(CLASS_HIDDEN);
-		this._dom.preview.textContent = "hidden";
+		this._dom.preview.textContent = "";
 		this._state.previewVisible = false;
 	}
 
-	ensurePreviewHidden() {
-		if(this._state.previewVisible) { this.hidePreview(); }
-	}
-
-	ensurePreviewVisible() {
-		if(!this._state.previewVisible) { this.showPreview(); }
-	}
-
-	showCodeMirror() {
+	private openCodeMirrorEditor() {
 		this.createCodeMirrorView();
+		this.showCodeDom();
+	}
+
+	private closeCodeMirrorEditor() {
+		this.destroyCodeMirrorView();
+		this.hideCodeDom();
+	}
+
+	private showCodeDom() {
 		// show code dom
 		if(!this._dom) { return; }
 		this._dom.codeDom.classList.remove(CLASS_HIDDEN);
 	}
 
-	hideCodeMirror() {
-		this.destroyCodeMirrorView();
-
+	private hideCodeDom() {
 		// hide code dom
 		if(!this._dom) { return; }
 		this._dom.codeDom.classList.add(CLASS_HIDDEN);

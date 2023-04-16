@@ -11,6 +11,22 @@
   margin: 0 auto;
   height: auto;
   max-width: 100%;
+
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+#editor img::before {
+  content: "Failed to Load Image\A(url: " attr(src) ")";
+  padding: 0.5em;
+  white-space: pre;
+  background-color: var(--color-bg-error);
+  display: block;
+  text-align: center;
+  font-family: var(--code-font);
 }
 
 /* images should snuggle up between paragraphs */
