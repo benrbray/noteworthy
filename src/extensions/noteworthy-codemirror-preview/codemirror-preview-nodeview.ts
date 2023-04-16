@@ -12,116 +12,21 @@ import * as CL  from "@codemirror/language"
 import * as CS  from "@codemirror/state"
 
 // prosemirror
-import { PluginKey, TextSelection } from "prosemirror-state";
 import * as PC from "prosemirror-commands"
 import * as PH from "prosemirror-history"
 import * as PS from "prosemirror-state"
 import * as PV from "prosemirror-view"
 import * as PM from "prosemirror-model"
 
-////////////////////////////////////////////////////////////
-
-// codemirror languages
-import * as CJS from "@codemirror/lang-javascript"
-import { cppLanguage } from "@codemirror/lang-cpp"
-import { pythonLanguage } from "@codemirror/lang-python"
-import { javaLanguage } from "@codemirror/lang-java"
-import { jsonLanguage } from "@codemirror/lang-json"
-
-// codemirror legacy languages
-import {haskell} from "@codemirror/legacy-modes/mode/haskell"
-import {c, scala} from "@codemirror/legacy-modes/mode/clike"
-import {lua} from "@codemirror/legacy-modes/mode/lua"
-import {julia} from "@codemirror/legacy-modes/mode/julia"
-import {yaml} from "@codemirror/legacy-modes/mode/yaml"
+// noteworthy
+// TODO (Ben @ 2023/04/15) try to eliminate the need to import CodeBlockExtension
 import { ExtensionNodeAttrs } from "@common/extensions/extension";
 import { CodeBlockExtension } from "@common/extensions/node-extensions";
 
-function getCodeMirrorLanguage(lang: string|null): CL.Language|null {
-	// javascript / typescript
-	if(lang === "javascript") { return CJS.javascriptLanguage;            }
-	if(lang === "js")         { return CJS.javascriptLanguage;            }
-	if(lang === "jsx")        { return CJS.jsxLanguage;                   }
-	if(lang === "typescript") { return CJS.typescriptLanguage;            }
-	if(lang === "js")         { return CJS.typescriptLanguage;            }
-	if(lang === "tsx")        { return CJS.tsxLanguage;                   }
-	// clike
-	if(lang === "c")          { return CL.StreamLanguage.define(c);       }
-	if(lang === "cpp")        { return cppLanguage;                       }
-	if(lang === "c++")        { return cppLanguage;                       }
-	if(lang === "java")       { return javaLanguage;                      }
-	if(lang === "scala")      { return CL.StreamLanguage.define(scala);   }
-	// scientific
-	if(lang === "julia")      { return CL.StreamLanguage.define(julia);   }
-	if(lang === "lua")        { return CL.StreamLanguage.define(lua);     }
-	if(lang === "python")     { return pythonLanguage;                    }
-	// functional
-	if(lang === "haskell")    { return CL.StreamLanguage.define(haskell); }
-	// config
-	if(lang === "json")       { jsonLanguage;                             }
-	if(lang === "yaml")       { return CL.StreamLanguage.define(yaml);    }
-	// other
-	if(lang === "yaml")       { return CL.StreamLanguage.define(yaml);    }
-
-	// default
-	return null;
-}
-
-////////////////////////////////////////////////////////////
-
-import {Step, StepResult, StepMap, Mappable} from "prosemirror-transform"
-
-/// Update an attribute in a specific node.
-// TODO (Ben @ 2023/04/04) delete this and import from prosemirror-transform
-// after resolving https://github.com/benrbray/noteworthy/issues/31
-export class AttrStep extends Step {
-  /// Construct an attribute step.
-  constructor(
-    /// The position of the target node.
-    readonly pos: number,
-    /// The attribute to set.
-    readonly attr: string,
-    // The attribute's new value.
-    readonly value: any
-  ) {
-    super()
-  }
-
-  apply(doc: PM.Node) {
-    let node = doc.nodeAt(this.pos)
-    if (!node) return StepResult.fail("No node at attribute step's position")
-    let attrs = Object.create(null)
-    for (let name in node.attrs) attrs[name] = node.attrs[name]
-    attrs[this.attr] = this.value
-    let updated = node.type.create(attrs, undefined, node.marks)
-    return StepResult.fromReplace(doc, this.pos, this.pos + 1, new PM.Slice(PM.Fragment.from(updated), 0, node.isLeaf ? 0 : 1))
-  }
-
-  getMap() {
-    return new StepMap([]);
-  }
-
-  invert(doc: PM.Node) {
-    return new AttrStep(this.pos, this.attr, doc.nodeAt(this.pos)!.attrs[this.attr])
-  }
-
-  map(mapping: Mappable) {
-    let pos = mapping.mapResult(this.pos, 1)
-    return pos.deleted ? null : new AttrStep(pos.pos, this.attr, this.value)
-  }
-
-  toJSON(): any {
-    return {stepType: "attr", pos: this.pos, attr: this.attr, value: this.value}
-  }
-
-  static fromJSON(schema: PM.Schema, json: any) {
-    if (typeof json.pos != "number" || typeof json.attr != "string")
-      throw new RangeError("Invalid input for AttrStep.fromJSON")
-    return new AttrStep(json.pos, json.attr, json.value)
-  }
-}
-
-Step.jsonID("attr", AttrStep)
+// noteworthy-codemirror-preview
+import { getCodeMirrorLanguage } from "./codemirror-utils";
+import { PreviewRenderer } from "./codemirror-preview-types";
+import { AttrStep } from "./prosemirror-utils";
 
 //// OPTIONS ///////////////////////////////////////////////
 
@@ -158,7 +63,7 @@ const CLASS_HIDDEN = "hidden";
  * Code and comments for `CodeMirrorView` were adapted from:
  * https://prosemirror.net/examples/codemirror/
  */
-class CodeMirrorView implements PV.NodeView {
+export class CodeMirrorView implements PV.NodeView {
 
 	private _codeMirror: CV.EditorView;
 	
@@ -405,8 +310,10 @@ class CodeMirrorView implements PV.NodeView {
 
 	getPreviewRenderer(lang: string): PreviewRenderer | null {
 		if(this._options.mode === "preview") {
+			console.log(`finding renderer for lang=${lang}`, this._options.previewRenderers); 
 			return this._options.previewRenderers[lang] || null;
 		} else {
+			console.log("%c\n\n\nPREVIEW DISABLED\n\n\n", "color:red");
 			return null;
 		}
 	}
@@ -511,7 +418,7 @@ class CodeMirrorView implements PV.NodeView {
 		let codePosAfterTr = tr.mapping.map(codePos);
 		let mappedProseSelection = this._proseView.state.selection.map(tr.doc, tr.mapping);
 		let desiredProseSelection =
-			TextSelection.create(
+			PS.TextSelection.create(
 				tr.doc,
 				codePosAfterTr + 1 + codeMirrorSelection.from, // +1 skips code_block start token
 				codePosAfterTr + 1 + codeMirrorSelection.to    // +1 skips code_block start token
@@ -584,7 +491,7 @@ class CodeMirrorView implements PV.NodeView {
 		// replace code_block with text node
 		let tr = this._proseView.state.tr.insertText(this._node.textContent, pos, pos + this._node.nodeSize);
 		// place selection before new text node
-		tr = tr.setSelection(TextSelection.create(tr.doc, pos)).scrollIntoView();
+		tr = tr.setSelection(PS.TextSelection.create(tr.doc, pos)).scrollIntoView();
 		
 		this._proseView.dispatch(tr)
 		this._proseView.focus();
@@ -592,53 +499,4 @@ class CodeMirrorView implements PV.NodeView {
 		return true;
 	}
 
-}
-
-//// PROSEMIRROR PLUGIN ////////////////////////////////////
-
-export type PreviewRenderer = (dom: HTMLElement, code: string) => void;
-
-namespace CodeMirrorPlugin {
-
-	export type Options = CodeViewOptions & {
-		previewRenderers: { [lang:string] : PreviewRenderer }
-	}
-
-	export interface State {
-		// empty
-	}
-
-}
-
-let codeMirrorPluginKey = new PluginKey<CodeMirrorPlugin.State>("noteworthy-codemirror");
-
-export const codemirrorPlugin = (options: CodeMirrorPlugin.Options): PS.Plugin<CodeMirrorPlugin.State> => {
-	let pluginSpec: PS.PluginSpec<CodeMirrorPlugin.State> = {
-		key: codeMirrorPluginKey,
-		state: {
-			init(config, instance): CodeMirrorPlugin.State {
-				return { };
-			},
-			apply(tr, value, oldState, newState){
-				return value;
-			},
-		},
-		props: {
-			nodeViews: {
-				"code_block" : (node: PM.Node, view: PV.EditorView, getPos:boolean|(()=>number)): CodeMirrorView => {
-					// TODO (Ben @ 2023/04/09) it should be possible to define a separate tikzJax plugin
-					// so the CodeMirror view should take a function that matches predicates against nodes,
-					// and a Noteworthy plugin can specify these predicates along with a render function
-					return new CodeMirrorView(
-						node,
-						view,
-						getPos as (() => number),
-						options
-					);
-				}
-			}
-		}
-	}
-	
-	return new PS.Plugin(pluginSpec);
 }

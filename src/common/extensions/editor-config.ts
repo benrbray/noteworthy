@@ -37,7 +37,7 @@ import { remarkUnwrapImagePlugin } from "@common/markdown/remark-plugins/unwrap-
 
 // project imports
 import { DefaultMap } from "@common/util/DefaultMap";
-import { NwtExtension, NodeExtension, MarkExtension, MdastNodeMapType, MdastMarkMapType, Prose2Mdast_NodeMap_Presets, Prose2Mdast_MarkMap_Presets, MarkSyntaxExtension, NodeSyntaxExtension } from "@common/extensions/extension";
+import { SyntaxExtension, NodeExtension, MarkExtension, MdastNodeMapType, MdastMarkMapType, Prose2Mdast_NodeMap_Presets, Prose2Mdast_MarkMap_Presets, MarkSyntaxExtension, NodeSyntaxExtension } from "@common/extensions/extension";
 import * as prose2mdast from "@common/markdown/prose2mdast";
 import * as mdast2prose from "@common/markdown/mdast2prose";
 import { makeInputRulePlugin } from "@common/prosemirror/inputRules";
@@ -114,7 +114,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 	private _parser: MdParser<S>;
 	private _serializer: MdSerializer;
 
-	constructor(extensions:NwtExtension<S>[], plugins:ProsePlugin[], keymap:Keymap){
+	constructor(extensions:SyntaxExtension<S>[], plugins:ProsePlugin[], keymap:Keymap){
 		/** Step 1: Build Schema
 		 * @effect Populates the `.type` field of each extension with a
 		 *    ProseMirror NodeType, which can be referenced during plugin creation.
@@ -208,7 +208,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 
 	// -- Build Schema ------------------------------------------------------ //
 
-	private _buildSchema(extensions:NwtExtension<S>[]): S & ProseSchema<"error_block","error_inline"> {
+	private _buildSchema(extensions:SyntaxExtension<S>[]): S & ProseSchema<"error_block","error_inline"> {
 		// default mark specs
 		let markSpecs: { [x:string] : MarkSpec } = {
 			error_inline: {
@@ -278,7 +278,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 
 	// -- Build Plugins ----------------------------------------------------- //
 
-	private _buildPlugins(extensions:NwtExtension<S>[], plugins:ProsePlugin[] = []): ProsePlugin[] {
+	private _buildPlugins(extensions:SyntaxExtension<S>[], plugins:ProsePlugin[] = []): ProsePlugin[] {
 		let inputRules: InputRule[] = [];
 
 		// keymap
@@ -328,7 +328,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 
 	// -- Build NodeViews --------------------------------------------------- //
 
-	private _buildNodeViews(extensions:NwtExtension<S>[]): { [nodeType:string] : NodeViewConstructor } {
+	private _buildNodeViews(extensions:SyntaxExtension<S>[]): { [nodeType:string] : NodeViewConstructor } {
 		let nodeViews: { [nodeType:string] : NodeViewConstructor } = { };
 
 		// create node and mark specs
@@ -347,7 +347,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 
 	// -- Build Mdast2Prose ------------------------------------------------- //
 
-	private _buildMdast2Prose(extensions: NwtExtension<S>[]): UnistMapper {
+	private _buildMdast2Prose(extensions: SyntaxExtension<S>[]): UnistMapper {
 		// maintain a map from AST nodes -> ProseMirror nodes
 		// each value in the map is an array of mappers, which
 		// are tested in order until one returns `true`
@@ -421,7 +421,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 
 	// -- Build Prose2Mdast ------------------------------------------------- //
 
-	private _buildProse2Mdast(extensions: NwtExtension<S>[]): ProseMapper {
+	private _buildProse2Mdast(extensions: SyntaxExtension<S>[]): ProseMapper {
 		// maintain a map from ProseMirror nodes -> AST nodes
 		// each value in the map is an array of mappers, which
 		// are tested in order until one returns `true`
