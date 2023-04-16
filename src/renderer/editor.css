@@ -188,6 +188,10 @@ li.task-list-item input[type='checkbox'] {
   position: relative;
 }
 
+.codeView-code.hidden {
+  display: none;
+}
+
 .codeView-code .langLabel {
   display: inline-block;
   position: absolute;

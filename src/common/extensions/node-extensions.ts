@@ -356,6 +356,7 @@ export class CodeBlockExtension extends NodeSyntaxExtension<Md.Code> {
 		return {
 			content: "text*",
 			group: "block",
+			atom: true,           // TODO (Ben @ 2023/04/16) this is needed for the codemirror-preview extension -- can we define it inside of the ext, not here?
 			code: true,
 			defining: true,
 			marks: "",

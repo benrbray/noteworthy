@@ -420,7 +420,6 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 
 				// forward selection info to ui
 				this._setSelectionInfo({ to: tr.selection.to, from: tr.selection.from });
-				console.log("selection :: ", tr.selection.from, tr.selection.to)
 
 				// apply transaction
 				proseView.updateState(proseView.state.apply(tr));

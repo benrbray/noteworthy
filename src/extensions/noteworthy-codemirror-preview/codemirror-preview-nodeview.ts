@@ -51,9 +51,8 @@ export const defaultCodeViewOptions: CodeViewOptions = {
 
 //// NODE VIEW IMPLEMENTATION //////////////////////////////
 
-interface PreviewState {
-	dom: HTMLElement;
-	visible: boolean;
+interface State {
+	previewVisible: boolean;
 }
 
 const CLASS_VISIBLE = "visible";
@@ -65,19 +64,32 @@ const CLASS_HIDDEN = "hidden";
  */
 export class CodeMirrorView implements PV.NodeView {
 
-	private _codeMirror: CV.EditorView;
+	private _codeMirror: CV.EditorView|null = null;
 	
+	/* ---- nodeview state ---- */
+
+	private _lang: string|null;
 	/** used to avoid an update loop between the outer and inner editor */
 	private _updating: boolean = false;
 
-	/** the NodeView's DOM representation */
-	private _lang: string|null;
+	/* ---- codemirror ---- */
+
 	private _langCompartment: CS.Compartment;
-	private _langLabel: HTMLInputElement;
+
+	/* ---- nodeview dom ---- */
+
 	public dom: Node|null = null;
 
-	/** preview pane */
-	private _preview: PreviewState;
+	private _dom: {
+		langLabel        : HTMLInputElement;
+		codeDom          : HTMLDivElement;
+		codeMirrorHolder : HTMLSpanElement;
+		preview          : HTMLSpanElement;
+	} | null = null;
+
+	/* ---- preview state ---- */
+	
+	private _state: State;
 
 	constructor(
 		private _node: PM.Node,
@@ -85,73 +97,111 @@ export class CodeMirrorView implements PV.NodeView {
 		private _getPos: (() => number),
 		private _options: CodeViewOptions = defaultCodeViewOptions
 	) {
-
-		// extensions without lang
-		const extensionsWithoutLang = [
-				CV.keymap.of([
-					...this.codeMirrorKeymap(),
-					...CC.defaultKeymap
-				]),
-				CV.drawSelection(),
-				CL.syntaxHighlighting(CL.defaultHighlightStyle),
-				CV.EditorView.updateListener.of(update => this.forwardUpdate(update))
-			]
-		
 		// determine language
 		this._lang = this._node.attrs["lang"] || null;
-		const lang = getCodeMirrorLanguage(this._lang);
 
 		// placeholder allowing the CodeMirror language to change dynamically
 		this._langCompartment = new CS.Compartment();
-		const langExtension = this._langCompartment.of(lang || []);
 
-		// PASTE 
-		const eventHandlers = CV.EditorView.domEventHandlers({
-			paste(event, view) {
-				console.log("codeMirror :: paste ::", event);
-			}
-		})
+		this._state = {
+			previewVisible: false
+		};
 
-		// configure codemirror
-		this._codeMirror = new CV.EditorView({
-			doc: this._node.textContent,
-			extensions: [...extensionsWithoutLang, langExtension, eventHandlers],
-		})
+		// initialize
+		this.initDom();
+		this.createCodeMirrorView();
 
+		// initialize preview state
+	}
+
+	/**
+	 * Initialize the NodeView's DOM.
+	 * Intended to be called exactly once, during initialization.
+	 */
+	private initDom(): void {
 		// lang label
 		const langLabel = document.createElement("input");
 		langLabel.className = "langLabel"
 		langLabel.value = this._lang || "";
-		
+
 		const nodeView = this;
 		langLabel.addEventListener("input", function (event) {
 			const lang = this.value;
 			nodeView.handleUserChangedLang(lang);
 		});
 
-		this._langLabel = langLabel;
-
-		// configure preview pane
-		const previewDom = document.createElement("div");
+		// preview pane
+		const previewDom = document.createElement("span");
 		previewDom.className = `codeView-preview ${CLASS_HIDDEN}`;
-		this._preview = {
-			dom: previewDom,
-			visible: false
-		};
+		previewDom.addEventListener("click", () => { this.handlePreviewClicked(); });
 
 		// nodeview DOM representation
 		const codeDom = document.createElement("div");
-		if(this._lang) { codeDom.dataset.lang = this._lang; }
 		codeDom.className = "codeView-code";
+		codeDom.appendChild(langLabel);
 
-		codeDom.appendChild(this._langLabel);
-		codeDom.appendChild(this._codeMirror.dom);
+		const codeMirrorDom = document.createElement("span");
+		codeMirrorDom.className = "codeView-codeMirror";
+		codeDom.appendChild(codeMirrorDom);
 
 		const dom = document.createElement("div");
 		dom.className = "codeView";
-		dom.appendChild(this._preview.dom); 
+		dom.appendChild(previewDom); 
 		dom.appendChild(codeDom);
 		this.dom = dom;
+
+		// save dom elements for later
+		this._dom = {
+			langLabel: langLabel,
+			preview: previewDom,
+			codeDom: codeDom,
+			codeMirrorHolder: codeMirrorDom
+		}
+	}
+
+	private createCodeMirrorView(): void {
+		if(this._codeMirror) { return; }
+		if(!this._dom)       { return; }
+
+				// extensions without lang
+		const extensionsWithoutLang = [
+			CV.keymap.of([
+				...this.codeMirrorKeymap(),
+				...CC.defaultKeymap
+			]),
+			CV.drawSelection(),
+			CL.syntaxHighlighting(CL.defaultHighlightStyle),
+			CV.EditorView.updateListener.of(update => this.forwardUpdate(update))
+		]
+
+		const lang = getCodeMirrorLanguage(this.getLang());
+		const langExtension = this._langCompartment.of(lang || []);
+
+		this._codeMirror = new CV.EditorView({
+			doc: this._node.textContent,
+			extensions: [...extensionsWithoutLang, langExtension],
+		});
+
+		this._dom.codeMirrorHolder.replaceChildren(this._codeMirror.dom);
+	}
+
+	private destroyCodeMirrorView(): void {
+		if(this._codeMirror) {
+			this._codeMirror.destroy();
+			this._codeMirror = null;
+
+			if(this._dom) { this._dom.codeMirrorHolder.replaceChildren(); }
+		}
+	}
+
+	/**
+	 * Update the ProseMirror view with a NodeSelection around this NodeView.
+	 * Useful for bringing focus to this NodeView.
+	 */
+	private selectProseNode() {
+		let tr = this._proseView.state.tr;
+		tr.setSelection(PS.NodeSelection.create(tr.doc, this._getPos()));
+		this._proseView.dispatch(tr);
 	}
 
 	/* ==== NodeView implementation ======================= */
@@ -160,7 +210,7 @@ export class CodeMirrorView implements PV.NodeView {
 		console.log("codeView :: selectNode");
 		this.hidePreview();
 		this.showCodeMirror();
-		this._codeMirror.focus();
+		this._codeMirror?.focus();
 	}
 
 	deselectNode() {
@@ -170,7 +220,6 @@ export class CodeMirrorView implements PV.NodeView {
 	}
 
 	stopEvent(event: Event) {
-		console.log("codeView :: stopEvent", event);
 		return true;
 	}
 
@@ -181,6 +230,11 @@ export class CodeMirrorView implements PV.NodeView {
 		* tries to put the selection inside the node. Our implementation makes sure
 		* the CodeMirror selection is set to match the position that is passed in.
 		*/
+
+		// open codemirror node if not exists
+		this.createCodeMirrorView();
+		if(!this._codeMirror) { return; }
+
 		this._codeMirror.focus();
 		this._updating = true;
 		this._codeMirror.dispatch({selection: {anchor, head}});
@@ -207,8 +261,13 @@ export class CodeMirrorView implements PV.NodeView {
 		let newLang = (node.attrs as ExtensionNodeAttrs<CodeBlockExtension>).lang;
 		this.handleProseMirrorChangedLang(newLang);
 
-		// update text
+		// if there is no active codemirror view, there is nothing left to do
+		if(!this._codeMirror) { return true; }
+		// avoid update cycles & race conditions
 		if (this._updating) return true;
+
+		// otherwise, we need to propagate the changes from ProseMirror
+		// into the CodeMirror view so that the editor shows the latest text
 		let newText = node.textContent;
 		let curText = this._codeMirror.state.doc.toString();
 
@@ -236,7 +295,7 @@ export class CodeMirrorView implements PV.NodeView {
 		return true;
 	}
 
-	/* ==================================================== */
+	/* ==== LANGUAGE ====================================== */
 
 	getLang(): string|null {
 		return this._lang;
@@ -252,9 +311,45 @@ export class CodeMirrorView implements PV.NodeView {
 		return code;
 	}
 
-	/* ==== LANGUAGE ====================================== */
+	/**
+	 * Set the `lang` attribute of the ProseMirror node for this code block.
+	 */
+	private updateProseNodeLangAttr(lang: string): void {
+		console.log("codeView :: updateNodeLangAttr", `lang=${lang}`);
+
+		// update nodeview lang
+		if(lang === this._lang) { return; }
+		this._lang = lang;
+
+		// set lang attribute of prosemirror ndoe
+		let step = new AttrStep(this._getPos(), "lang", lang);
+		let tr = this._proseView.state.tr.step(step);
+		this._proseView.dispatch(tr);
+	}
+
+	private updateCodeMirrorLanguage(lang: CL.Language|null): void {
+		console.log("codeView :: updateCodeMirrorLanguage");
+		if(!this._codeMirror) { return; }
+
+		this._updating = true;
+		this._codeMirror.dispatch({
+			effects: this._langCompartment.reconfigure(lang || [])
+		});
+		this._updating = false;
+	}
+
+	/* ==== EVENTS ======================================== */
 
 	/**
+	 * Triggered when the user clicks on the NodeView.
+	 */
+	private handlePreviewClicked(): void {
+		this.showCodeMirror();
+		this.hidePreview();
+		this.selectProseNode();
+	}
+
+		/**
 	 * React to changes in the `lang` attribute of the ProseMirror node for this
 	 * code block.  Dispatches updates to CodeMirror. */
 	private handleProseMirrorChangedLang(lang: string|null): void {
@@ -281,29 +376,16 @@ export class CodeMirrorView implements PV.NodeView {
 		this.updateCodeMirrorLanguage(getCodeMirrorLanguage(this._lang));
 	}
 
+	/* ==================================================== */
+
 	/**
-	 * Set the `lang` attribute of the ProseMirror node for this code block.
+	 * If a preview is available for this code block,
+	 *   render the preview and collapse the CodeMirror editor.
+	 * If no preview is available,
+	 *   keep the CodeMirror editor open.
 	 */
-	private updateProseNodeLangAttr(lang: string): void {
-		console.log("codeView :: updateNodeLangAttr", `lang=${lang}`);
+	closeEditorIfPreviewAvailable(): void {
 
-		// update nodeview lang
-		if(lang === this._lang) { return; }
-		this._lang = lang;
-
-		// set lang attribute of prosemirror ndoe
-		let step = new AttrStep(this._getPos(), "lang", lang);
-		let tr = this._proseView.state.tr.step(step);
-		this._proseView.dispatch(tr);
-	}
-
-	private updateCodeMirrorLanguage(lang: CL.Language|null) {
-		console.log("codeView :: updateCodeMirrorLanguage");
-		this._updating = true;
-		this._codeMirror.dispatch({
-			effects: this._langCompartment.reconfigure(lang || [])
-		});
-		this._updating = false;
 	}
 
 	/* ==== PREVIEW ======================================= */
@@ -325,57 +407,82 @@ export class CodeMirrorView implements PV.NodeView {
 		const lang = this.getLang();
 
 		console.log("codeView :: renderPreview", code, `lang=${lang}`);
+		if(!this._dom) { return; }
 
 		// select renderer
 		const renderFn = !lang ? null : this.getPreviewRenderer(lang);
 		if(renderFn !== null) {
-			renderFn(this._preview.dom, code);
+			renderFn(this._dom.preview, code);
 			this.showPreview();
 		} else {
 			this.hidePreview();
 			this.clearPreview();
+			this.showCodeMirror();
 		}
 	}
 
 	/** Erase the contents of the preview pane. */
 	clearPreview() {
+		if(!this._dom) { return; }
 		console.log("codeView :: clearPreview");
-		this._preview.dom.innerHTML = "";
+		this._dom.preview.innerHTML = "";
 	}
 
 	showPreview() {
+		if(!this._dom) { return; }
 		console.log("codeView :: showPreview");
-		this._preview.dom.classList.remove(CLASS_HIDDEN);
-		this._preview.dom.classList.add(CLASS_VISIBLE);
-		this._preview.visible = true;
+
+		this._dom.preview.classList.remove(CLASS_HIDDEN);
+		this._dom.preview.classList.add(CLASS_VISIBLE);
+		this._state.previewVisible = true;
 	}
 
 	hidePreview() {
+		if(!this._dom) { return; }
 		console.log("codeView :: hidePreview");
-		this._preview.dom.classList.remove(CLASS_VISIBLE);
-		this._preview.dom.classList.add(CLASS_HIDDEN);
-		this._preview.visible = false;
 
-		this._preview.dom.textContent = "hidden";
+		this._dom.preview.classList.remove(CLASS_VISIBLE);
+		this._dom.preview.classList.add(CLASS_HIDDEN);
+		this._dom.preview.textContent = "hidden";
+		this._state.previewVisible = false;
 	}
 
 	ensurePreviewHidden() {
-		if(this._preview.visible) { this.hidePreview(); }
+		if(this._state.previewVisible) { this.hidePreview(); }
 	}
 
 	ensurePreviewVisible() {
-		if(!this._preview.visible) { this.showPreview(); }
+		if(!this._state.previewVisible) { this.showPreview(); }
 	}
 
 	showCodeMirror() {
-
+		this.createCodeMirrorView();
+		// show code dom
+		if(!this._dom) { return; }
+		this._dom.codeDom.classList.remove(CLASS_HIDDEN);
 	}
 
 	hideCodeMirror() {
+		this.destroyCodeMirrorView();
 
+		// hide code dom
+		if(!this._dom) { return; }
+		this._dom.codeDom.classList.add(CLASS_HIDDEN);
 	}
 
 	/* ==================================================== */
+
+	handleCodeMirrorGainedFocus() {
+		console.log(`%ccodeMirrorPreview :: gained focus`, "color:blue");
+		this.ensurePreviewHidden();
+		this.showCodeMirror();
+	}
+
+	handleCodeMirrorLostFocus() {
+		console.log(`%clost focus`, "color:blue");
+		this.renderPreview();
+		this.hideCodeMirror();
+	}
 
 	/**
 	 * When the code editor is focused, translate any update that changes the
@@ -384,14 +491,13 @@ export class CodeMirrorView implements PV.NodeView {
 	 * starts, relative to the outer document.
 	 */
 	forwardUpdate(update: CV.ViewUpdate): void {
-		// manage preview visibility
-		if(update.focusChanged) {
-			if(this._codeMirror.hasFocus) { this.ensurePreviewHidden(); }
-			else                          { this.renderPreview();       } 
-		}
+		console.log("codeMirrorView :: forwardUpdate");
+
+		if(!this._codeMirror) { return; }
 
 		// ignore updates whenever codemirror editor is out of focus
-		if (this._updating || !this._codeMirror.hasFocus) return;
+		// (however, we still handle document changes when the focus has just changed)
+		if (this._updating || (!update.focusChanged && !this._codeMirror.hasFocus)) { return; }
 
 		let codePos = this._getPos();
 		let tr = this._proseView.state.tr;
@@ -413,18 +519,10 @@ export class CodeMirrorView implements PV.NodeView {
 			})
 		}
 
-		// update selection
-		let { main: codeMirrorSelection} = update.state.selection; 
-		let codePosAfterTr = tr.mapping.map(codePos);
-		let mappedProseSelection = this._proseView.state.selection.map(tr.doc, tr.mapping);
-		let desiredProseSelection =
-			PS.TextSelection.create(
-				tr.doc,
-				codePosAfterTr + 1 + codeMirrorSelection.from, // +1 skips code_block start token
-				codePosAfterTr + 1 + codeMirrorSelection.to    // +1 skips code_block start token
-			);
-		if(!mappedProseSelection.eq(desiredProseSelection)) {
-			tr = tr.setSelection(desiredProseSelection);
+		// manage preview visibility
+		if(update.focusChanged) {
+			if(this._codeMirror.hasFocus) { this.handleCodeMirrorGainedFocus(); }
+			else                          { this.handleCodeMirrorLostFocus();   }
 		}
 		
 		this._proseView.dispatch(tr)
@@ -433,14 +531,14 @@ export class CodeMirrorView implements PV.NodeView {
 	//// CODEMIRROR KEYMAP ///////////////////////////////////
 
 
-	codeMirrorKeymap() {
+	codeMirrorKeymap(): CV.KeyBinding[] {
 		let view = this._proseView;
 		return [
 			{key: "ArrowUp",    run: () => this.maybeEscape("line", -1)},
 			{key: "ArrowLeft",  run: () => this.maybeEscape("char", -1)},
 			{key: "ArrowDown",  run: () => this.maybeEscape("line",  1)},
 			{key: "ArrowRight", run: () => this.maybeEscape("char",  1)},
-			{key: "Backspace",  run: () => this.handleBackspace() },
+			{key: "Backspace",  run: (view) => this.handleBackspace() },
 			{key: "Ctrl-Enter", run: () => {
 				if (!PC.exitCode(view.state, view.dispatch)) return false
 				view.focus()
@@ -456,6 +554,8 @@ export class CodeMirrorView implements PV.NodeView {
 	 * Determine if the specified cursor movement will "escape" the NodeView or not.
 	 */
 	maybeEscape(unit: "line"|"char", dir: 1|0|-1): boolean {
+		if(!this._codeMirror) { return true; }
+
 		// cannot escape when selection was nonempty
 		let {state} = this._codeMirror;
 		if(!state.selection.main.empty) { return false; }
@@ -468,6 +568,7 @@ export class CodeMirrorView implements PV.NodeView {
 		// if movement does not bring cursor over edge, no escape
 		if (dir < 0 ? range.from > 0 : range.to < state.doc.length) { return false; }
 		
+		// perform the escape
 		let targetPos = this._getPos() + (dir < 0 ? 0 : this._node.nodeSize)
 		let selection = PS.Selection.near(this._proseView.state.doc.resolve(targetPos), dir)
 		let tr = this._proseView.state.tr.setSelection(selection).scrollIntoView();
@@ -477,10 +578,9 @@ export class CodeMirrorView implements PV.NodeView {
 		return true;
 	}
 
-	/**
-	 * Determine if the specified cursor movement will "escape" the NodeView or not.
-	 */
 	handleBackspace(): boolean {
+		if(!this._codeMirror) { return true; }
+
 		// cannot escape when selection was nonempty
 		let {state} = this._codeMirror;
 		if(!state.selection.main.empty)   { return false; }
