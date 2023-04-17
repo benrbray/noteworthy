@@ -218,10 +218,10 @@ export class CodeMirrorView implements PV.NodeView {
 		this._codeMirror?.focus();
 	}
 
-	deselectNode() {
-		console.log("codeView :: deselectNode");
-		this.closeEditorIfPreviewAvailableOtherwiseOpen();
-	}
+	// deselectNode() {
+	// 	console.log("codeView :: deselectNode");
+	// 	this.closeEditorIfPreviewAvailableOtherwiseOpen();
+	// }
 
 	stopEvent(event: Event) {
 		return true;
