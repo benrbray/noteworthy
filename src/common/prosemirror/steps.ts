@@ -42,4 +42,4 @@ export class SetDocAttrStep<T=unknown> extends Step {
 	static fromJSON<T = unknown>(schema:ProseSchema, json:{ key : string, value: T, stepType: string }) {
 		return new SetDocAttrStep<T>(json.key, json.value, json.stepType);
 	}
-	}
+}

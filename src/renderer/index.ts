@@ -15,7 +15,7 @@ import "./editor.css";
 
 let renderer:Renderer;
 
-onload = function(){
+window.onload = function(){
 	renderer = new Renderer();
 	renderer.init();
 }

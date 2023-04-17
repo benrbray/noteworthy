@@ -11,6 +11,22 @@
   margin: 0 auto;
   height: auto;
   max-width: 100%;
+
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+#editor img::before {
+  content: "Failed to Load Image\A(url: " attr(src) ")";
+  padding: 0.5em;
+  white-space: pre;
+  background-color: var(--color-bg-error);
+  display: block;
+  text-align: center;
+  font-family: var(--code-font);
 }
 
 /* images should snuggle up between paragraphs */
@@ -27,7 +43,7 @@
 
 /* code */
 #editor pre      { font-family: var(--code-font); display: block; }
-#editor code     { font-family: var(--code-font); background-color: var(--color-bg-2); }
+#editor code     { font-family: var(--code-font); background-color: var(--editor-codeblock-bg); }
 #editor pre code { display: block; }
 
 /* inline code */
@@ -175,6 +191,66 @@ li.task-list-item input[type='checkbox'] {
 	display: inline;
 	cursor: pointer;
 }
+
+/* == CODEMIRROR ======================================== */
+
+.codeView {
+  margin: 1em 0;
+}
+
+/* ---- code -------------------------------------------- */
+
+.codeView-code {
+  position: relative;
+}
+
+.codeView-code.hidden {
+  display: none;
+}
+
+.codeView-code .langLabel {
+  display: inline-block;
+  position: absolute;
+  z-index: 10;
+  width: 7em;
+  right: 0.4em;
+  top: 0.4em;
+  color: var(--editor-codeblock-langLabel);
+  font-size: 0.8em;
+  font-family: var(--code-font);
+  
+  background: none;
+  border: none;
+  text-align: right;
+  outline: none;
+}
+
+.codeView-code:focus-within .langLabel {
+  text-decoration: underline;
+}
+
+.codeView-code .cm-editor {
+  background-color: var(--editor-codeblock-bg);
+}
+
+/* ---- preview ----------------------------------------- */
+
+.codeView-preview {
+  min-height: 1em;
+  background-color: white;
+  user-select: none;
+}
+
+.codeView-preview.hidden {
+  display: none;
+}
+
+/** TODO (Ben @ 2023/04/09) move this to plugin css */
+.codeView-preview svg {
+  display: block;
+  margin: 0 auto;
+}
+
 
 /* == MATH ============================================== */
 

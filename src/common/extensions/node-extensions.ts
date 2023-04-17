@@ -339,31 +339,39 @@ export class HorizontalRuleExtension extends NodeSyntaxExtension<Md.ThematicBrea
 // : (ProseNodeType) → InputRule
 // Given a code block node type, returns an input rule that turns a
 // textblock starting with three backticks into a code block.
-export function codeBlockRule<S extends ProseSchema>(nodeType: ProseNodeType<S>) {
-	return textblockTypeInputRule(/^```$/, nodeType)
+export function codeBlockRule<S extends ProseSchema>(nodeType: ProseNodeType<S>): InputRule<S> {
+	return textblockTypeInputRule(
+		/^```([a-z0-9]+)?\s$/,
+		nodeType,
+		(matches: string[]): ExtensionNodeAttrs<CodeBlockExtension> =>
+			({ lang: matches[1] || null })
+	);
 }
 
 export class CodeBlockExtension extends NodeSyntaxExtension<Md.Code> {
 
 	get name() { return "code_block" as const; }
 
-	createNodeSpec(): NodeSpec {
+	createNodeSpec() {
 		return {
 			content: "text*",
 			group: "block",
+			atom: true,           // TODO (Ben @ 2023/04/16) this is needed for the codemirror-preview extension -- can we define it inside of the ext, not here?
 			code: true,
 			defining: true,
 			marks: "",
-			attrs: { params: { default: "" } },
+			attrs: { lang: { default: null as null|string } },
 			parseDOM: [{
-				tag: "pre", preserveWhitespace: ("full" as "full"), getAttrs: (node:string|Node) => (
-					{ params: (node as HTMLElement).getAttribute("data-params") || "" }
+				tag: "pre",
+				preserveWhitespace: ("full" as "full"),
+				getAttrs: (node:string|Node) => (
+					{ lang: (node as HTMLElement).getAttribute("data-lang") || null }
 				)
 			}],
 			toDOM(node: ProseNode): DOMOutputSpec {
 				return [
 					"pre",
-					{ ...(node.attrs.params && { "data-params": node.attrs.params }) },
+					{ ...(node.attrs.lang && { "data-lang": node.attrs.lang }) },
 					["code", 0]
 				]
 			}
@@ -379,11 +387,37 @@ export class CodeBlockExtension extends NodeSyntaxExtension<Md.Code> {
 	// -- Conversion from Mdast -> ProseMirror ---------- //
 
 	get mdastNodeType() { return "code" as const };
-	createMdastMap() { return MdastNodeMapType.NODE_LITERAL }
+	createMdastMap(): MdastNodeMap<Md.Code> {
+		return {
+			mapType: "node_custom",
+			mapNode: (node: Md.Code) => {
+				// it is illegal to create an empty ProseMirror TextNode
+				if(node.value.length < 1) { return []; }
+
+				// create 
+				let result = this.nodeType.createAndFill(
+						{ lang : node.lang === undefined ? null : node.lang },
+						[this.nodeType.schema.text(node.value)]
+				);
+				return result ? [result] : [];
+			}
+		}
+	}
 
 	// -- Conversion from ProseMirror -> Mdast ---------- //
 
-	prose2mdast() { return Prose2Mdast_NodeMap_Presets.NODE_LIFT_LITERAL; }
+	prose2mdast() { return {
+		create: (node: ProseNode, children: Uni.Node[]): [Md.Code] => {
+			// TODO (2021-05-17) better solution for casting attrs?
+			let codeAttrs = node.attrs as ExtensionNodeAttrs<CodeBlockExtension>;
+
+			return [{
+				type: this.mdastNodeType,
+				lang: codeAttrs.lang || undefined,
+				value: node.textContent
+			}];
+		}
+	}}
 }
 
 // /* -- Ordered List -------------------------------------- */
