@@ -31,11 +31,8 @@ completed editor features
 - [x] custom CSS with live reload
 - [x] fail gracefully on unsupported markdown syntax extensions
 - [x] support `\providecommand` in math nodes
-
-in-progress
-
-- [ ] ([WIP](https://github.com/benrbray/noteworthy/pull/36)) code block syntax highlighting via [`codemirror`](https://codemirror.net/)
-- [ ] ([WIP](https://github.com/benrbray/noteworthy/pull/36)) support for `tikz` diagrams via [`@drgrice1/tikzjax`](https://github.com/drgrice1/tikzjax/tree/ww-modifications)
+- [x] code block syntax highlighting via [`codemirror`](https://codemirror.net/)
+- [x] support for `tikz` diagrams via [`@drgrice1/tikzjax`](https://github.com/drgrice1/tikzjax/tree/ww-modifications) (inspired by [`obsidian-tikzjax`](https://github.com/artisticat1/obsidian-tikzjax))
 
 planned
 
