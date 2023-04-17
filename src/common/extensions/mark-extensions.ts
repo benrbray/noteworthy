@@ -251,7 +251,7 @@ export class LinkExtension extends MarkSyntaxExtension<Md.Link> {
 /* -- Code ---------------------------------------------- */
 
 export function inlineCodeRule(markType: MarkType): InputRule {
-	return markInputRule(/`([^\s](?:.*[^\s])?)`(.)$/, markType);
+	return markInputRule(/`([^\s`](?:.*[^\s])?)` $/, markType);
 }
 
 export class CodeExtension extends MarkSyntaxExtension<Md.InlineCode> {

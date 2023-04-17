@@ -52,6 +52,12 @@ Display Math:
 
 ![display math](img/prosemirror-math_display.gif)
 
+### `tikz` Diagrams
+
+Noteworthy supports [`tikz` diagrams](https://www.overleaf.com/learn/latex/TikZ_package) via [`@drgrice1/tikzjax`](https://github.com/drgrice1/tikzjax/tree/ww-modifications), which was created by compiling the original Pascal source of TeX to WebAssembly, with only the dependencies needed to run `tikz`.
+
+![](img/noteworthy-tikzjax.gif)
+
 ## Screenshot
 
 > (screenshot taken 12 July 2021)

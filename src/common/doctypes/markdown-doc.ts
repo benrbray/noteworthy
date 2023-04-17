@@ -29,7 +29,7 @@ import {
 } from "@common/extensions/mark-extensions";
 
 import { unistPredicate, visit, visitNodeType } from "@common/markdown/unist-utils";
-import { NwtExtension } from "@common/extensions/extension";
+import { SyntaxExtension } from "@common/extensions/extension";
 import { mdastTextContent } from "@common/markdown/mdast-to-string";
 import { Citation, ICitationProvider } from "@main/plugins/citation-plugin";
 import { pick } from "@common/util/pick";
@@ -46,7 +46,7 @@ let paragraphExt: ParagraphExtension;
 /**
  * Initialize a list of all the default Markdown syntax extensions.
  */
-export function makeDefaultMarkdownExtensions(): NwtExtension[] {
+export function makeDefaultMarkdownExtensions(): SyntaxExtension[] {
 	return [
 		// nodes: formatting
 		new RootExtension(),

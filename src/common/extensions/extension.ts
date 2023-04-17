@@ -21,7 +21,7 @@ export interface ExtensionStore<S extends ProseSchema> {
 	schema: S;
 }
 
-export abstract class NwtExtension<S extends ProseSchema = ProseSchema, N extends string = string> {
+export abstract class SyntaxExtension<S extends ProseSchema = ProseSchema, N extends string = string> {
 	abstract get name(): N;
 	
 	/**
@@ -46,7 +46,7 @@ export abstract class NwtExtension<S extends ProseSchema = ProseSchema, N extend
 	createKeymap(): Keymap          { return {}; }
 }
 
-export abstract class NodeExtension<N extends string = string> extends NwtExtension<ProseSchema<N,string>, N> {
+export abstract class NodeExtension<N extends string = string> extends SyntaxExtension<ProseSchema<N,string>, N> {
 	/** 
 	 * Returns the ProseMirror NodeType defined by this extension.
 	 * (not available until the extension has been used to create a schema) 
@@ -61,7 +61,7 @@ export abstract class NodeExtension<N extends string = string> extends NwtExtens
 	createNodeView(): NodeViewConstructor|null { return null; }
 }
 
-export abstract class MarkExtension<M extends string = string> extends NwtExtension<ProseSchema<string,M>, M> {
+export abstract class MarkExtension<M extends string = string> extends SyntaxExtension<ProseSchema<string,M>, M> {
 	/** 
 	 * Returns the ProseMirror MarkType defined by this extension.
 	 * (not available until the extension has been used to create a schema) 

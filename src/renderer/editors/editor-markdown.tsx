@@ -33,7 +33,7 @@ import { makeSuggestionPlugin, SuggestionPopup } from "@renderer/ui/suggestions"
 import { moveSelectionDown, moveSelectionUp } from "@common/prosemirror/commands/moveSelection";
 import { insertTab } from "@common/prosemirror/commands/insertTab";
 import { EditorConfig } from "@common/extensions/editor-config";
-import { NwtExtension } from "@common/extensions/extension";
+import { SyntaxExtension } from "@common/extensions/extension";
 import { citationPlugin } from "@main/plugins/crossref-plugin";
 
 import {
@@ -60,11 +60,17 @@ import {
 // this transformation.  So, we must explicitly declare them here:
 import { WindowAfterPreload } from "@renderer/preload_types";
 import { ProseSchema } from "@common/types";
-import { makeDefaultMarkdownExtensions } from "@common/doctypes/markdown-doc";
 import { createStore } from "solid-js/store";
-declare let window: Window & typeof globalThis & WindowAfterPreload;
+import { NoteworthyExtension, NoteworthyExtensionInitializer, NoteworthyExtensionSpec, RegisteredExtensionName } from "@main/extensions/noteworthy-extension";
+
+// extensions
+import codeMirrorPreviewExtension from "@root/src/extensions/noteworthy-codemirror-preview";
+import tikzJaxExtension from "@root/src/extensions/noteworthy-tikzjax";
+
 
 ////////////////////////////////////////////////////////////
+
+declare let window: Window & typeof globalThis & WindowAfterPreload;
 
 /** @todo (9/27/20) where to put check for macos? */
 const mac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform) : false
@@ -114,8 +120,45 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 		// create popup elt
 		this.popup = null;
 
-		// editor extensions
-		let extensions:NwtExtension[] = [
+		/* ---- noteworthy extensions ------------------- */
+
+		// TODO (Ben @ 2023/04/16) topologically sort extensions, rather than doing it by hand
+		// TODO (Ben @ 2023/04/16) is it possible to assign a more specific type here?  (existential? path-dependent?)
+		let extensionInitializers: NoteworthyExtensionInitializer<RegisteredExtensionName, RegisteredExtensionName[]>[] = [
+			codeMirrorPreviewExtension,
+			tikzJaxExtension
+		];
+
+		// initialize noteworthy extensions
+		let extensions: { [N in RegisteredExtensionName] ?: NoteworthyExtension<N, RegisteredExtensionName[]> } = {};
+
+		function isNameOfRegisteredExtension(s: string): s is RegisteredExtensionName {
+			return s in extensions;
+		}
+
+		extensionInitializers.forEach((initializer) => {
+			const ext = initializer.initialize();
+			const name = initializer.spec.name;
+			extensions[name] = ext;
+
+			// share config from this extension with its dependencies
+			const sharedConfig = initializer.spec.config;
+			if(sharedConfig !== undefined) {
+				Object.keys(sharedConfig).forEach(name => {
+					if(!isNameOfRegisteredExtension(name)) { return; }
+					
+					// TODO (Ben @ 2023/04/16) remove this ts-ignore
+					// after updating typescript, perhaps this is solved by correlated record types?
+					// @ts-ignore
+					extensions[name]?.updateConfig(sharedConfig[name]);
+				});
+			}
+		});
+
+		/* ---- syntax extensions ----------------------- */
+
+		// syntax extensions
+		let syntaxExtensions: SyntaxExtension[] = [
 			// nodes: formatting
 			new RootExtension(),
 			(this._paragraphExt = new ParagraphExtension()),
@@ -133,27 +176,36 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 			new InlineMathExtension(),
 			new BlockMathExtension(),
 			// nodes: directives
-			// new TextDirectiveExtension(),
-			// new LeafDirectiveExtension(),
 			new ContainerDirectiveExtension(),
-			// nodes: special
-			// new RegionExtension(),
-			// new EmbedExtension(),
 			// marks
 			new BoldExtension(),
 			new ItalicExtension(),
-			//new DefinitionExtension(),
 			new LinkExtension(),
-			//new UnderlineExtension(),
 			new CodeExtension(),
-			//new StrikethroughExtension(),
 			// plugins: crossrefs
 			new WikilinkExtension(),
-			//new TagExtension(),
 			(this._citationExt = new CitationExtension())
 		];
 
+		/* ---- prosemirror plugins --------------------- */
+
+		function flatMapExtensions<R>(
+			fn: <N extends RegisteredExtensionName>(n: NoteworthyExtension<N>) => R[]
+		): R[] {
+			return Object.entries(extensions).flatMap(([name,ext]) => {
+				if(!isNameOfRegisteredExtension(name)) { return []; }
+				return fn(ext);
+			});
+		}
+
+		const makeProseMirrorPlugins = <N extends RegisteredExtensionName>(n: NoteworthyExtension<N>): ProsePlugin[] => {
+			return n.makeProseMirrorPlugins();
+		}
+
+		let pluginsFromExtensions = flatMapExtensions(makeProseMirrorPlugins);
+
 		let plugins:ProsePlugin[] = [
+			...pluginsFromExtensions,
 			mathSelectPlugin,
 			mathPlugin,
 			citationPlugin({
@@ -266,7 +318,7 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 
 		// create editor config
 		this._config = new EditorConfig(
-			extensions,
+			syntaxExtensions,
 			plugins,
 			keymap
 		);
@@ -368,7 +420,6 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 
 				// forward selection info to ui
 				this._setSelectionInfo({ to: tr.selection.to, from: tr.selection.from });
-				console.log("selection :: ", tr.selection.from, tr.selection.to)
 
 				// apply transaction
 				proseView.updateState(proseView.state.apply(tr));

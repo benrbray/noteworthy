@@ -1,5 +1,5 @@
 import { Suspense, For, createResource, JSX } from "solid-js";
-import { LoadingSpinner } from "./loading";
+import { Loading } from "./loading";
 import { ITagSearchResult, IFileSearchResult } from "@main/plugins/crossref-plugin";
 
 interface ITagSearchProps {
@@ -21,7 +21,7 @@ export const TagSearch = (props:ITagSearchProps) => {
 		<div id="tab_tags" class="tab-contents">
 			<input onInput={onChange} placeholder="Search Tags..." />
 			<div id="tag_results">
-				<Suspense fallback={<LoadingSpinner />}>
+				<Suspense fallback={<Loading />}>
 					<For each={results()?.files || []}>
 					{ entry => {
 						if(entry.type == "tag-result"){
