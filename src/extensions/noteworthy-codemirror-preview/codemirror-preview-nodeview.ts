@@ -218,12 +218,13 @@ export class CodeMirrorView implements PV.NodeView {
 		this._codeMirror?.focus();
 	}
 
-	// deselectNode() {
-	// 	console.log("codeView :: deselectNode");
-	// 	this.closeEditorIfPreviewAvailableOtherwiseOpen();
-	// }
+	deselectNode() {
+		console.log("codeView :: deselectNode");
+		// this.closeEditorIfPreviewAvailableOtherwiseOpen();
+	}
 
 	stopEvent(event: Event) {
+		console.log("codeView :: stopEvent", event);
 		return true;
 	}
 
@@ -608,6 +609,7 @@ export class CodeMirrorView implements PV.NodeView {
 
 	codeMirrorKeymap(): CV.KeyBinding[] {
 		let view = this._proseView;
+
 		return [
 			{key: "ArrowUp",    run: () => this.maybeEscape("line", -1)},
 			{key: "ArrowLeft",  run: () => this.maybeEscape("char", -1)},
@@ -615,9 +617,32 @@ export class CodeMirrorView implements PV.NodeView {
 			{key: "ArrowRight", run: () => this.maybeEscape("char",  1)},
 			{key: "Backspace",  run: (view) => this.handleBackspace() },
 			{key: "Ctrl-Enter", run: () => {
-				if (!PC.exitCode(view.state, view.dispatch)) return false
-				view.focus()
-				return true
+				// modified version of `exitCode` from prosemirror-commands
+				// (https://github.com/ProseMirror/prosemirror-commands/blob/master/src/commands.ts#L305-L316)
+
+				function defaultBlockAt(match: PM.ContentMatch) {
+					for (let i = 0; i < match.edgeCount; i++) {
+						let {type} = match.edge(i)
+						if (type.isTextblock && !type.hasRequiredAttrs()) return type
+					}
+					return null
+				}
+
+				let $pos = view.state.doc.resolve(this._getPos() + 1);
+				let above1 = $pos.node(-1);
+				let after1 = $pos.indexAfter(-1);
+
+				let type = defaultBlockAt(above1.contentMatchAt(after1))
+				if (!type || !above1.canReplaceWith(after1, after1, type)) { return false; }
+
+				let pos = $pos.after();
+				let tr = view.state.tr.replaceWith(pos, pos, type.createAndFill()!);
+				tr.setSelection(PS.Selection.near(tr.doc.resolve(pos), 1));
+				
+				view.dispatch(tr.scrollIntoView());
+				view.focus();
+
+				return true;
 			}},
 			{key: "Ctrl-z",       mac: "Cmd-z",       run: () => PH.undo(view.state, view.dispatch)},
 			{key: "Shift-Ctrl-z", mac: "Shift-Cmd-z", run: () => PH.redo(view.state, view.dispatch)},
