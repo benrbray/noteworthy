@@ -49,6 +49,18 @@ export const defaultCodeViewOptions: CodeViewOptions = {
 	mode: "default"
 }
 
+////////////////////////////////////////////////////////////
+
+// from prosemirror-commands but exported
+// TODO (Ben @ 2023/04/24) move this elsewhere?
+function defaultBlockAt(match: PM.ContentMatch) {
+	for (let i = 0; i < match.edgeCount; i++) {
+		let {type} = match.edge(i)
+		if (type.isTextblock && !type.hasRequiredAttrs()) return type
+	}
+	return null
+}
+
 //// NODE VIEW IMPLEMENTATION //////////////////////////////
 
 interface State {
@@ -619,15 +631,6 @@ export class CodeMirrorView implements PV.NodeView {
 			{key: "Ctrl-Enter", run: () => {
 				// modified version of `exitCode` from prosemirror-commands
 				// (https://github.com/ProseMirror/prosemirror-commands/blob/master/src/commands.ts#L305-L316)
-
-				function defaultBlockAt(match: PM.ContentMatch) {
-					for (let i = 0; i < match.edgeCount; i++) {
-						let {type} = match.edge(i)
-						if (type.isTextblock && !type.hasRequiredAttrs()) return type
-					}
-					return null
-				}
-
 				let $pos = view.state.doc.resolve(this._getPos() + 1);
 				let above1 = $pos.node(-1);
 				let after1 = $pos.indexAfter(-1);
@@ -687,12 +690,27 @@ export class CodeMirrorView implements PV.NodeView {
 		if(state.selection.main.to !== 0) { return false; }
 
 		let pos = this._getPos();
+		let $pos = this._proseView.state.doc.resolve(pos + 1);
+		let above1 = $pos.node(-1);
+		let after1 = $pos.indexAfter(-1);
 
-		// replace code_block with text node
-		let tr = this._proseView.state.tr.insertText(this._node.textContent, pos, pos + this._node.nodeSize);
-		// place selection before new text node
-		tr = tr.setSelection(PS.TextSelection.create(tr.doc, pos)).scrollIntoView();
-		
+		let type = defaultBlockAt(above1.contentMatchAt(after1))
+		if (!type || !above1.canReplaceWith(after1, after1, type)) { return false; }
+
+		// replace code_block with text
+		let textContent = this._node.textContent;
+		let replacementNode: PM.Node;
+
+		if(textContent.length > 0) {
+			let textNode = (this._proseView.state.schema as PM.Schema).text(textContent);
+			replacementNode = type.create(undefined, textNode)!;
+		} else {
+			replacementNode = type.createAndFill()!;
+		}
+
+		let tr = this._proseView.state.tr.replaceWith(pos, pos + this._node.nodeSize, replacementNode);
+		tr.setSelection(PS.Selection.near(tr.doc.resolve(pos), 1));
+
 		this._proseView.dispatch(tr)
 		this._proseView.focus();
 
