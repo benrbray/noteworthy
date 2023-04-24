@@ -39,6 +39,16 @@ ${code}
 `);
 }
 
+function makeQuiverDocument(code: string): string {
+	return stripEmptyLines(`
+\\usepackage{tikz-cd}
+\\usepackage{quiver}
+\\begin{document}
+${code}
+\\end{document}
+`);
+}
+
 export const tikzjaxRenderers: { [lang:string]: PreviewRenderer } = {
 	"tikz" : (dom: HTMLElement, code: string): boolean => {
 		dom.innerHTML = `<script type="text/tikz" data-show-console="true">${stripEmptyLines(code)}</script>`;
@@ -46,6 +56,10 @@ export const tikzjaxRenderers: { [lang:string]: PreviewRenderer } = {
 	},
 	"tikzcd" : (dom: HTMLElement, code: string): boolean => {
 		dom.innerHTML = `<script type="text/tikz" data-show-console="true">${makeTikzCdDocument(code)}</script>`;
+		return true;
+	},
+	"quiver" : (dom: HTMLElement, code: string): boolean => {
+		dom.innerHTML = `<script type="text/tikz" data-show-console="true">${makeQuiverDocument(code)}</script>`;
 		return true;
 	}
 }
