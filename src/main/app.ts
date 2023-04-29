@@ -81,6 +81,9 @@ export default class NoteworthyApp extends EventEmitter {
 	 * simple enough for us to manage dependencies manually.
 	 */
 	makeHandlers(): MainIpcHandlers {
+		console.log("app :: makeHandlers");
+		console.log("app :: makeHandlers :: pluginService", this._pluginService);
+		console.log("app :: makeHandlers :: themeService", this._themeService);
 		// handlers with no dependencies
 		let lifecycleHandlers  = new MainIpc_LifecycleHandlers(this);
 		let shellHandlers      = new MainIpc_ShellHandlers();
@@ -186,13 +189,17 @@ export default class NoteworthyApp extends EventEmitter {
 			channel: C,
 			name: T,
 			/** @todo now we only take the FIRST parameter of each handler -- should we take them all? */
-			data?: Parameters<MainIpcHandlers[C][T]>[0]
+			data?: unknown //Parameters<MainIpcHandlers[C][T]>[0]
 	) {
 		/** @remark (6/25/20) cannot properly type-check this call
 		 *  without support for "correlated record types", see e.g.
 		 *  (https://github.com/Microsoft/TypeScript/issues/30581)
 		 */
-		return this._eventHandlers[channel][name](data as any);
+
+		// TODO (Ben @ 2023/04/29) workaround to breaking change in TypeScript 4.5
+		// (https://github.com/benrbray/noteworthy/issues/30)
+		// @ts-ignore
+		return this._eventHandlers[channel][name](data)
 	}
 
 	async handleFileTreeChanged(fileTree: IDirEntryMeta[]): Promise<void> {
