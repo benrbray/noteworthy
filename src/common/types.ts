@@ -3,6 +3,7 @@ import { Command } from "prosemirror-state";
 
 declare module "prosemirror-model" {
 	interface Fragment {
+		// TODO (Ben @ 2023/04/30) stop relying on undocumented field, find workaround
 		// as of (3/31/20) official @types/prosemirror-model
 		// was missing Fragment.content, so we define it here
 		content: Node[];
