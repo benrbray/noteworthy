@@ -1,0 +1,38 @@
+{
+  "include": [
+    "electron.vite.config.*",
+    "src/main/**/*",
+    "src/preload/**/*",
+    "src/common/**/*",
+  ],
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "sourceMap": false,
+    "strict": true,
+    "jsx": "preserve",
+
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@common/*": ["src/common/*"],
+      "@extensions/*": ["src/extensions/*"],
+      "@main/*": ["src/main/*"],
+      "@root/*": ["./*"],
+      "@lib/*": ["lib/*"]
+    },
+    "types": ["electron-vite/node"],
+    // "typeRoots": ["./src/types"],
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "noImplicitReturns": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "include": [
+    "src/renderer/src/**/*",
+    "src/renderer/src/**/*.tsx",
+    "src/preload/*.d.ts",
+    "src/common/**/*",
+    "src/extensions/**/*",
+	],
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "sourceMap": false,
+    "strict": true,
+
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@common/*": ["src/common/*"],
+      "@extensions/*": ["src/extensions/*"],
+      "@preload/*": ["src/preload/*"],
+      "@main/*": ["src/main/*"],
+      "@renderer/*": ["src/renderer/src/*"],
+      "@lib/*": ["lib/*"],
+    },
+    "typeRoots": ["./src/types"],
+
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "noImplicitReturns": true,
+  }
+}

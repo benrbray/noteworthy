@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>Noteworthy</title>
+		<!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
+		<meta
+			http-equiv="Content-Security-Policy"
+			content="
+			default-src blob: 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval';
+			script-src
+				'self'
+				'unsafe-eval'
+				'sha256-S/Xk+qSetfpPKg7TovOfhZvv9zMfigR6WioUH5RpPLM=';
+			style-src 'self' 'unsafe-inline';
+			font-src data: 'self';
+			img-src data: https://* 'self';
+			worker-src data: blob: 'unsafe-eval' 'wasm-unsafe-eval' 'unsafe-inline' 'self'"
+		/>
+		<!-- (default from vite-electron) content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'" -->
+	</head>
+
+	<body>
+		<div id="main"></div>
+		<!-- <script type="module" src="/src/vite-default/main.tsx"></script> -->
+		<script type="module" src="/src/index.tsx"></script>
+	</body>
+</html>
