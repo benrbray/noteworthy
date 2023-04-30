@@ -112,16 +112,17 @@ function makeYamlEditor(
 	});
 
 	// create document
-	let list:ProseNode[] = [];
+	let list: ProseNode[] = [];
 	for(let key in yamlData){
 		let value = YAML.stringify(yamlData[key], { customTags: ["timestamp"] }).trim();
 		let dt = schema.nodes.dt.createAndFill(undefined, schema.text(key));
 		let dd = schema.nodes.dd.createAndFill(undefined, schema.text(value));
-		list.push(dt, dd);
+		if(dt && dd) { list.push(dt, dd); }
 	}
 
 	let dl = schema.nodes.dl.createAndFill(undefined, list);
 	let doc = schema.nodes.doc.createAndFill(undefined, dl);
+	if(!dl || !doc) { throw new Error("failed to create ProseMirror nodes required for Yaml editor!"); }
 
 	// create prosemirror state
 	let plugins = [keymap(buildKeymap_yaml(schema))];
