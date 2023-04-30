@@ -1,11 +1,10 @@
 // prosemirror imports
-import { Node as ProseNode, NodeSpec, MarkSpec } from "prosemirror-model";
+import { Schema as ProseSchema, Node as ProseNode, NodeSpec, MarkSpec } from "prosemirror-model";
 import { InputRule } from "prosemirror-inputrules"
-import { Keymap } from "prosemirror-commands"
-import { NodeView } from "prosemirror-view";
+import { NodeViewConstructor } from "prosemirror-view";
 
 // project imports
-import { ProseSchema, ProseNodeType, ProseMarkType, NodeViewConstructor } from "@common/types";
+import { ProseNodeType, ProseMarkType, ProseKeymap } from "@common/types";
 
 // unist
 import * as Uni from "unist";
@@ -43,7 +42,7 @@ export abstract class SyntaxExtension<S extends ProseSchema = ProseSchema, N ext
 	}
 	
 	createInputRules(): InputRule[] { return []; }
-	createKeymap(): Keymap          { return {}; }
+	createKeymap(): ProseKeymap     { return {}; }
 }
 
 export abstract class NodeExtension<N extends string = string> extends SyntaxExtension<ProseSchema<N,string>, N> {
@@ -51,7 +50,7 @@ export abstract class NodeExtension<N extends string = string> extends SyntaxExt
 	 * Returns the ProseMirror NodeType defined by this extension.
 	 * (not available until the extension has been used to create a schema) 
 	 */
-	get nodeType(): ProseNodeType<ProseSchema, N> {
+	get nodeType(): ProseNodeType {
 		let type = this.store.schema.nodes[this.name];
 		if(type === undefined) { throw new Error(`error retrieving node type for extension ${this.name}`); }
 		return type;
@@ -66,7 +65,7 @@ export abstract class MarkExtension<M extends string = string> extends SyntaxExt
 	 * Returns the ProseMirror MarkType defined by this extension.
 	 * (not available until the extension has been used to create a schema) 
 	 */
-	get markType(): ProseMarkType<ProseSchema<string, M>, M> {
+	get markType(): ProseMarkType {
 		let type = this.store.schema.marks[this.name];
 		if(type === undefined) { throw new Error(`error retrieving mark type for extension ${this.name}`); }
 		return type;
@@ -133,7 +132,7 @@ export type MdNodeMap_Custom<
 	S extends ProseSchema = ProseSchema
 > = {
 	mapType: "node_custom",
-	mapNode: (node: N, children: ProseNode<S>[], ctx: unknown, state: unknown) => ProseNode<S>[];
+	mapNode: (node: N, children: ProseNode[], ctx: unknown, state: unknown) => ProseNode[];
 }
 
 export type MdMarkMap_Custom<
@@ -141,7 +140,7 @@ export type MdMarkMap_Custom<
 	S extends ProseSchema = ProseSchema
 > = {
 	mapType: "mark_custom",
-	mapMark: (node: N, children: ProseNode<S>[]) => ProseNode<S>[];
+	mapMark: (node: N, children: ProseNode[]) => ProseNode[];
 }
 
 export enum MdastNodeMapType {

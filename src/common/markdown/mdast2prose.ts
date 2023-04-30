@@ -5,10 +5,10 @@ import * as Md from "@common/markdown/markdown-ast";
 import { unistIsParent, unistSource } from "./unist-utils";
 
 // prosemirror imports
-import { Node as ProseNode } from "prosemirror-model";
+import { Schema as ProseSchema, Node as ProseNode } from "prosemirror-model";
 
 // patched prosemirror types
-import { ProseSchema, ProseMarkType, ProseNodeType } from "@common/types";
+import { ProseMarkType, ProseNodeType } from "@common/types";
 import { UnistMapper } from "@common/extensions/editor-config";
 
 // yaml / toml 
@@ -57,7 +57,7 @@ export type AnyChildren<T extends Uni.Parent, ChildT=Uni.Node>
 export type MdTypeMap = MapDiscriminatedUnion<Md.Node, "type"> //UnionTypeMap<"type", MdNodes>
 
 export type MdMapper<S extends ProseSchema> = {
-	[key in keyof MdTypeMap]? : (x: MdTypeMap[key], children: ProseNode<S>[]) => ProseNode<S>[];
+	[key in keyof MdTypeMap]? : (x: MdTypeMap[key], children: ProseNode[]) => ProseNode[];
 }
 
 ////////////////////////////////////////////////////////////
@@ -66,17 +66,17 @@ export type MdMapper<S extends ProseSchema> = {
 
 // TODO (2021/05/09) these functions should all be relocated
 
-export const nodeMapBasic = <S extends ProseSchema>(nodeType: ProseNodeType<S>) => (node: Uni.Node, children: ProseNode<S>[]) => {
+export const nodeMapBasic = <S extends ProseSchema>(nodeType: ProseNodeType) => (node: Uni.Node, children: ProseNode[]) => {
 	let result = nodeType.createAndFill({}, children || undefined);
 	return result ? [result] : [];
 }
 
-export const nodeMapLeaf = <S extends ProseSchema>(nodeType: ProseNodeType<S>) => (node: Uni.Node, _: ProseNode<S>[]) => {
+export const nodeMapLeaf = <S extends ProseSchema>(nodeType: ProseNodeType) => (node: Uni.Node, _: ProseNode[]) => {
 	let result = nodeType.createAndFill({});
 	return result ? [result] : [];
 }
 
-export const nodeMapStringLiteral = <S extends ProseSchema>(nodeType: ProseNodeType<S>) => (node: Uni.Node & { value: string }, _: ProseNode<S>[]) => {
+export const nodeMapStringLiteral = <S extends ProseSchema>(nodeType: ProseNodeType) => (node: Uni.Node & { value: string }, _: ProseNode[]) => {
 	// it is illegal to create an empty ProseMirror TextNode
 	if(node.value.length < 1) { return []; }
 
@@ -86,9 +86,9 @@ export const nodeMapStringLiteral = <S extends ProseSchema>(nodeType: ProseNodeT
 }
 
 export const markMapBasic = <S extends ProseSchema, T extends Uni.Node>(
-	markType: ProseMarkType<S>,
+	markType: ProseMarkType,
 	getAttrs?: (node: T) => Record<string,any>
-) => (node: T, children: ProseNode<S>[]) => {
+) => (node: T, children: ProseNode[]) => {
 	let attrs = getAttrs ? getAttrs(node) : { };
 
 	return children.flatMap(childNode => {
@@ -101,9 +101,9 @@ export const markMapBasic = <S extends ProseSchema, T extends Uni.Node>(
 }
 
 export const markMapStringLiteral = <S extends ProseSchema, T extends Uni.Node = Uni.Node>(
-	markType: ProseMarkType<S>,
+	markType: ProseMarkType,
 	getAttrs?: (node: T) => Record<string,any>
-) => (node: T & { value: string }, _: ProseNode<S>[]) => {
+) => (node: T & { value: string }, _: ProseNode[]) => {
 	// it is illegal to create an empty ProseMirror TextNode
 	// TODO: (2021-05-09) this should probably return an error node
 	if(node.value.length < 1) { return []; }
@@ -137,7 +137,7 @@ type MdStateMapper<St> = {
  *   instead of context/state being specified by separate maps?
  */
 type NodeMap<Ctx=unknown, St=unknown, S extends ProseSchema = ProseSchema>
-	= (node: Uni.Node, children:ProseNode<S>[], parseContext: Ctx, parseState: St) => ProseNode<S>[];
+	= (node: Uni.Node, children:ProseNode[], parseContext: Ctx, parseState: St) => ProseNode[];
 
 /**
  * Returns a new local parse context based on the contents of `node`.
@@ -193,11 +193,11 @@ export function treeMap<S extends ProseSchema, Ctx, St>(
 	node: Md.Node,
 	parseContext: Ctx, 
 	parseState: St,
-	nodeMap: UnistMapper<string, S>, 
+	nodeMap: UnistMapper<string>, 
 	contextMap: MdContextMapper<Ctx>,
 	stateMap: MdStateMapper<St>,
 	errorMap: NodeMap<Ctx, St, S>
-): [ProseNode<S>[], St] {
+): [ProseNode[], St] {
 	// postorder depth-first traversal
 
 	// 1. use what we know about the parent Mdast node to update the parse context
@@ -206,7 +206,7 @@ export function treeMap<S extends ProseSchema, Ctx, St>(
 	let newParseContext = contextMapper ? contextMapper(node, parseContext) : parseContext; 
 
 	// 2. visit the children, from left to right, accumulating global state
-	let nodeContents: ProseNode<S>[] = [];
+	let nodeContents: ProseNode[] = [];
 	let newParseState = parseState;
 
 	if(unistIsParent(node)) {
@@ -253,7 +253,7 @@ export function treeMap<S extends ProseSchema, Ctx, St>(
 	// TypeScript has trouble threading the schema type through this entire function,
 	// so this cast is our pinky-promise that we will return a node belonging to the
 	// same schema instance as defined by the input
-	return [result as ProseNode<S>[], newParseState];
+	return [result as ProseNode[], newParseState];
 }
 
 /**
@@ -274,8 +274,8 @@ export type MdParseState = {
 ////////////////////////////////////////////////////////////
 
 function makeNodeErrorHandler<S extends ProseSchema>(
-	inlineErrorType: ProseMarkType<S>,
-	blockErrorType : ProseNodeType<S>,
+	inlineErrorType: ProseMarkType,
+	blockErrorType : ProseNodeType,
 	node2src: (node:Uni.Node)=>string|null
 ): NodeMap<MdParseContext, MdParseState, S> {
 	return (node, _, context) => {
@@ -305,7 +305,7 @@ function makeNodeErrorHandler<S extends ProseSchema>(
 
 ////////////////////////////////////////////////////////////
 
-export type MdParser<S extends ProseSchema> = (markdown: string) => ProseNode<S> | null;
+export type MdParser<S extends ProseSchema> = (markdown: string) => ProseNode | null;
 
 /**
  * Uses the given configuration to create a parser capable of converting
@@ -321,7 +321,7 @@ export type MdParser<S extends ProseSchema> = (markdown: string) => ProseNode<S>
  */
 export const makeParser = <S extends ProseSchema<"error_block","error_inline">>(
 	proseSchema: S,
-	nodeMap: UnistMapper<string, S>,
+	nodeMap: UnistMapper<string>,
 	md2ast: Processor
 ): MdParser<S> => {
 

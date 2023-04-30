@@ -8,7 +8,8 @@ export class SetDocAttrStep<T=unknown> extends Step {
 
 	/**
 	 * A Step representing a change to the attrs of a ProseMirror document.
-	 * As of (7/25/20), This is not possible without 
+	 * As of (7/25/20), This is not possible without a custom Step.  See:
+	 * https://discuss.prosemirror.net/t/changing-doc-attrs/784
 	 */
 	constructor(public key: string, public value: T, public stepType: string = 'SetDocAttr') {
 		super();
@@ -18,7 +19,11 @@ export class SetDocAttrStep<T=unknown> extends Step {
 		this.prevValue = doc.attrs[this.key];
 		/** @todo (7/26/19) re-apply this fix if defaultAttrs needed */
 		//if (doc.attrs == doc.type.defaultAttrs) doc.attrs = Object.assign({}, doc.attrs);
+
+		// TODO (Ben @ 2023/04/30) doc.attrs is read-only, create new doc instead
+		// @ts-ignore
 		doc.attrs[this.key] = this.value;
+
 		return StepResult.ok(doc);
 	}
 	

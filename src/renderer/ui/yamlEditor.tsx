@@ -8,8 +8,8 @@ import { SetStoreFunction } from "solid-js/store";
 // prosemirror imports
 import { Schema as ProseSchema, NodeSpec, Node as ProseNode } from "prosemirror-model";
 import { EditorState as ProseEditorState, Transaction, TextSelection } from "prosemirror-state";
-import { EditorView as ProseEditorView } from "prosemirror-view";
-import { Command as ProseCommand } from "prosemirror-commands";
+import { EditorView, EditorView as ProseEditorView } from "prosemirror-view";
+import { Command as ProseCommand } from "prosemirror-state";
 import { undo, redo } from "prosemirror-history"
 import { keymap } from "prosemirror-keymap";
 
@@ -112,16 +112,17 @@ function makeYamlEditor(
 	});
 
 	// create document
-	let list:ProseNode[] = [];
+	let list: ProseNode[] = [];
 	for(let key in yamlData){
 		let value = YAML.stringify(yamlData[key], { customTags: ["timestamp"] }).trim();
 		let dt = schema.nodes.dt.createAndFill(undefined, schema.text(key));
 		let dd = schema.nodes.dd.createAndFill(undefined, schema.text(value));
-		list.push(dt, dd);
+		if(dt && dd) { list.push(dt, dd); }
 	}
 
 	let dl = schema.nodes.dl.createAndFill(undefined, list);
 	let doc = schema.nodes.doc.createAndFill(undefined, dl);
+	if(!dl || !doc) { throw new Error("failed to create ProseMirror nodes required for Yaml editor!"); }
 
 	// create prosemirror state
 	let plugins = [keymap(buildKeymap_yaml(schema))];
@@ -131,7 +132,7 @@ function makeYamlEditor(
 	// create prosemirror instance
 	let view = new ProseEditorView(elt, {
 		state: state,
-		dispatchTransaction(tr:Transaction){
+		dispatchTransaction(this: EditorView, tr:Transaction) {
 			// apply transaction
 			this.updateState(this.state.apply(tr));
 

@@ -1,13 +1,11 @@
 // prosemirror imports
-import { Node as ProseNode, NodeSpec, DOMOutputSpec } from "prosemirror-model";
+import { Schema as ProseSchema, Node as ProseNode, NodeSpec, DOMOutputSpec } from "prosemirror-model";
 import { wrapInList, splitListItem, liftListItem, sinkListItem } from "prosemirror-schema-list"
-import { NodeSelection } from "prosemirror-state";
 import {
 	wrappingInputRule, textblockTypeInputRule, InputRule,
 } from "prosemirror-inputrules"
 import {
-	setBlockType, chainCommands, exitCode,
-	Keymap,
+	setBlockType, chainCommands, exitCode
 } from "prosemirror-commands"
 
 // unist imports
@@ -26,7 +24,7 @@ import {
 import YAML from "yaml";
 
 // patched prosemirror types
-import { ProseNodeType, ProseSchema } from "@common/types";
+import { ProseNodeType, ProseKeymap } from "@common/types";
 
 ////////////////////////////////////////////////////////////
 
@@ -143,7 +141,7 @@ export class ParagraphExtension extends NodeSyntaxExtension<Md.Paragraph> {
 // : (ProseNodeType) → InputRule
 // Given a blockquote node type, returns an input rule that turns `"> "`
 // at the start of a textblock into a blockquote.
-export function blockQuoteRule<S extends ProseSchema>(nodeType:ProseNodeType<S>) {
+export function blockQuoteRule<S extends ProseSchema>(nodeType:ProseNodeType) {
 	return wrappingInputRule(/^\s*>\s$/, nodeType)
 }
 
@@ -160,7 +158,7 @@ export class BlockQuoteExtension extends NodeSyntaxExtension<Md.Blockquote> {
 		};
 	}
 
-	createKeymap(): Keymap {
+	createKeymap(): ProseKeymap {
 		return { "Mod->" : setBlockType(this.nodeType) }
 	}
 	
@@ -183,7 +181,7 @@ export class BlockQuoteExtension extends NodeSyntaxExtension<Md.Blockquote> {
 // turns up to that number of `#` characters followed by a space at
 // the start of a textblock into a heading whose level corresponds to
 // the number of `#` signs.
-export function headingRule<S extends ProseSchema>(nodeType: ProseNodeType<S>, maxLevel:number) {
+export function headingRule<S extends ProseSchema>(nodeType: ProseNodeType, maxLevel:number) {
 	return textblockTypeInputRule(new RegExp("^(#{1," + maxLevel + "})\\s$"),
 		nodeType, match => ({ level: match[1].length }))
 }
@@ -216,8 +214,8 @@ export class HeadingExtension extends NodeSyntaxExtension<Md.Heading> {
 		};
 	}
 
-	createKeymap(): Keymap {
-		let keymap:Keymap = {
+	createKeymap(): ProseKeymap {
+		let keymap:ProseKeymap = {
 			"Tab"       : incrHeadingLevelCmd(+1, { requireTextblockStart: false, requireEmptySelection: false }),
 			"#"         : incrHeadingLevelCmd(+1, { requireTextblockStart: true,  requireEmptySelection: true  }),
 			"Shift-Tab" : incrHeadingLevelCmd(-1, { requireTextblockStart: false, requireEmptySelection: false }, this._bottomType.nodeType),
@@ -289,7 +287,7 @@ export class HorizontalRuleExtension extends NodeSyntaxExtension<Md.ThematicBrea
 		};
 	}
 
-	createKeymap(): Keymap { return {
+	createKeymap(): ProseKeymap { return {
 		"Mod-_" : (state, dispatch) => {
 			if(dispatch) { 
 				dispatch(state.tr.replaceSelectionWith(this.nodeType.create()).scrollIntoView())
@@ -339,7 +337,7 @@ export class HorizontalRuleExtension extends NodeSyntaxExtension<Md.ThematicBrea
 // : (ProseNodeType) → InputRule
 // Given a code block node type, returns an input rule that turns a
 // textblock starting with three backticks into a code block.
-export function codeBlockRule<S extends ProseSchema>(nodeType: ProseNodeType<S>): InputRule<S> {
+export function codeBlockRule<S extends ProseSchema>(nodeType: ProseNodeType): InputRule {
 	return textblockTypeInputRule(
 		/^```([a-z0-9]+)?\s$/,
 		nodeType,
@@ -378,7 +376,7 @@ export class CodeBlockExtension extends NodeSyntaxExtension<Md.Code> {
 		};
 	}
 
-	createKeyMap(): Keymap { return {
+	createKeyMap(): ProseKeymap { return {
 		"Shift-Mod-\\" : setBlockType(this.nodeType) };
 	}
 	
@@ -430,7 +428,7 @@ export class CodeBlockExtension extends NodeSyntaxExtension<Md.Code> {
 // : (ProseNodeType) → InputRule
 // Given a list node type, returns an input rule that turns a number
 // followed by a dot at the start of a textblock into an ordered list.
-export function orderedListRule<S extends ProseSchema>(nodeType:ProseNodeType<S>) {
+export function orderedListRule<S extends ProseSchema>(nodeType:ProseNodeType) {
 	return wrappingInputRule(/^(\d+)\.\s$/, nodeType, match => ({ order: +match[1] }),
 		(match, node) => node.childCount + node.attrs.order == +match[1])
 }
@@ -462,7 +460,7 @@ export class OrderedListExtension extends NodeSyntaxExtension<Md.List> {
 		};
 	}
 
-	createKeymap(): Keymap { return {
+	createKeymap(): ProseKeymap { return {
 		"Shift-Mod-9" : wrapInList(this.nodeType)
 	}}
 	
@@ -527,7 +525,7 @@ function normalizeBullet(bullet:string|undefined): string|null {
 // Given a list node type, returns an input rule that turns a bullet
 // (dash, plush, or asterisk) at the start of a textblock into a
 // bullet list.
-export function bulletListRule<S extends ProseSchema>(nodeType:ProseNodeType<S>) {
+export function bulletListRule<S extends ProseSchema>(nodeType:ProseNodeType) {
 	return wrappingInputRule(
 		/^\s*([-+*])\s$/,
 		nodeType,
@@ -564,7 +562,7 @@ export class UnorderedListExtension extends NodeSyntaxExtension<Md.List> {
 		};
 	}
 
-	createKeymap(): Keymap { return {
+	createKeymap(): ProseKeymap { return {
 		"Shift-Mod-8" : wrapInList(this.nodeType)
 	}}
 	
@@ -637,7 +635,7 @@ export class ListItemExtension extends NodeSyntaxExtension<Md.ListItem> {
 		};
 	}
 
-	createKeymap(): Keymap { return {
+	createKeymap(): ProseKeymap { return {
 		"Enter"     : splitListItem(this.nodeType),
 		"Shift-Tab" : liftListItem(this.nodeType),
 		"Tab"       : sinkListItem(this.nodeType)
@@ -1098,7 +1096,7 @@ export class ContainerDirectiveExtension extends NodeSyntaxExtension<Md.Containe
 
 ////////////////////////////////////////////////////////////
 
-export function inlineInputRule<S extends ProseSchema>(pattern: RegExp, nodeType: ProseNodeType<S>, getAttrs?: (match: string[]) => any) {
+export function inlineInputRule<S extends ProseSchema>(pattern: RegExp, nodeType: ProseNodeType, getAttrs?: (match: string[]) => any) {
 	return new InputRule(pattern, (state, match, start, end) => {
 		let $start = state.doc.resolve(start);
 		let index = $start.index();
@@ -1121,7 +1119,7 @@ export function inlineInputRule<S extends ProseSchema>(pattern: RegExp, nodeType
 
 import { MdParseState, AnyChildren } from "@common/markdown/mdast2prose";
 
-export function citationRule<S extends ProseSchema>(nodeType: ProseNodeType<S>): InputRule {
+export function citationRule<S extends ProseSchema>(nodeType: ProseNodeType): InputRule {
 	return inlineInputRule(/@\[([^\s](?:[^\]]*[^\s])?)\](.)$/, nodeType);
 }
 
@@ -1159,7 +1157,7 @@ export class CitationExtension extends NodeSyntaxExtension<Md.Cite> {
 		};
 	}
 
-	createKeymap(): Keymap { return {
+	createKeymap(): ProseKeymap { return {
 		//"Mod-@" : toggleMark(this.type)
 	}}
 

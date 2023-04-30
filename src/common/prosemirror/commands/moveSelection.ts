@@ -1,5 +1,4 @@
-import { Command as ProseCommand } from "prosemirror-commands";
-import { TextSelection } from "prosemirror-state";
+import { Command as ProseCommand } from "prosemirror-state";
 
 /** @todo (10/4/20) code review wanted for this command */
 export const moveSelection = (dir:(1|-1)): ProseCommand => {

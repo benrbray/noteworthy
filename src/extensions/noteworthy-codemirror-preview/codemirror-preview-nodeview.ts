@@ -26,7 +26,7 @@ import { CodeBlockExtension } from "@common/extensions/node-extensions";
 // noteworthy-codemirror-preview
 import { getCodeMirrorLanguage } from "./codemirror-utils";
 import { PreviewRenderer } from "./codemirror-preview-types";
-import { AttrStep } from "./prosemirror-utils";
+import { AttrStep } from "prosemirror-transform";
 
 //// OPTIONS ///////////////////////////////////////////////
 
@@ -91,7 +91,7 @@ export class CodeMirrorView implements PV.NodeView {
 
 	/* ---- nodeview dom ---- */
 
-	public dom: Node|null = null;
+	public dom: Node;
 
 	private _dom: {
 		langLabel        : HTMLInputElement;
@@ -123,17 +123,15 @@ export class CodeMirrorView implements PV.NodeView {
 		};
 
 		// initialize
-		this.initDom();
+		this.dom = this.initDom();
 		this.createCodeMirrorView();
-
-		// initialize preview state
 	}
 
 	/**
 	 * Initialize the NodeView's DOM.
 	 * Intended to be called exactly once, during initialization.
 	 */
-	private initDom(): void {
+	private initDom(): HTMLDivElement {
 		// lang label
 		const langLabel = document.createElement("input");
 		langLabel.className = "langLabel"
@@ -165,7 +163,6 @@ export class CodeMirrorView implements PV.NodeView {
 		dom.className = "codeView";
 		dom.appendChild(previewDom); 
 		dom.appendChild(codeDom);
-		this.dom = dom;
 
 		// save dom elements for later
 		this._dom = {
@@ -174,6 +171,8 @@ export class CodeMirrorView implements PV.NodeView {
 			codeDom: codeDom,
 			codeMirrorHolder: codeMirrorDom
 		}
+
+		return dom;
 	}
 
 	private createCodeMirrorView(): void {

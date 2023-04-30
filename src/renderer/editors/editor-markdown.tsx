@@ -1,7 +1,7 @@
 // prosemirror imports
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
 import { Mark, Slice, Node as ProseNode } from "prosemirror-model";
-import { chainCommands, Keymap, joinUp, joinDown, lift, selectParentNode } from "prosemirror-commands";
+import { chainCommands, joinUp, joinDown, lift, selectParentNode } from "prosemirror-commands";
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
 import { history, undo, redo } from "prosemirror-history";
 import { gapCursor } from "prosemirror-gapcursor";
@@ -17,16 +17,17 @@ import * as Md from "@common/markdown/markdown-ast";
 
 // solidjs
 import { render } from "solid-js/web";
-import { createEffect, createSignal } from "solid-js";
+import { createEffect } from "solid-js";
+
+// prosemirror
+import { Schema as ProseSchema } from "prosemirror-model";
 
 // views
 import { mathPlugin, mathBackspaceCmd, mathSelectPlugin } from "@benrbray/prosemirror-math";
 import { MainIpcHandlers } from "@main/MainIPC";
 
 import { YamlEditor } from "../ui/yamlEditor";
-import { SetDocAttrStep } from "@common/prosemirror/steps";
 import { shallowEqual } from "@common/util/equal";
-//import { EmbedView } from "@common/nwt/embed-view";
 import { makeSuggestionPlugin, SuggestionPopup } from "@renderer/ui/suggestions";
 
 // editor commands
@@ -42,15 +43,14 @@ import {
 	OrderedListExtension, UnorderedListExtension, ListItemExtension, 
 	ContainerDirectiveExtension,
 	ImageExtension, HardBreakExtension,
-	//RegionExtension, EmbedExtension, 
 	RootExtension, ParagraphExtension, CitationExtension
 } from "@common/extensions/node-extensions";
 import {
 	BoldExtension, ItalicExtension, LinkExtension,
-	//DefinitionExtension, UnderlineExtension, StrikethroughExtension,
 	CodeExtension, WikilinkExtension,
-	//TagExtension
 } from "@common/extensions/mark-extensions";
+import { ProseKeymap } from "@common/types";
+import { SetDocAttrStep } from "@common/prosemirror/steps";
 
 ////////////////////////////////////////////////////////////
 
@@ -59,7 +59,6 @@ import {
 // globally at runtime, and I haven't found clever enough typings yet to express
 // this transformation.  So, we must explicitly declare them here:
 import { WindowAfterPreload } from "@renderer/preload_types";
-import { ProseSchema } from "@common/types";
 import { createStore } from "solid-js/store";
 import { NoteworthyExtension, NoteworthyExtensionInitializer, NoteworthyExtensionSpec, RegisteredExtensionName } from "@main/extensions/noteworthy-extension";
 
@@ -78,7 +77,7 @@ const mac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform) : f
 ////////////////////////////////////////////////////////////
 
 // editor class
-export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<ProseEditorState<S>> {
+export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<ProseEditorState> {
 
 	_proseEditorView: ProseEditorView | null;
 	_initialized:boolean;
@@ -298,7 +297,7 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 		];
 
 		// TODO: (2021-05-30) move default keymap to "makeDefaultMarkdownConfig" function?
-		let keymap: Keymap = {
+		let keymap: ProseKeymap = {
 			"Tab" : insertTab,
 			"Backspace" : chainCommands(mathBackspaceCmd, undoInputRule),
 			"Ctrl-s": () => {
@@ -414,9 +413,7 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 				/** @todo (7/26/20) make sure the metadata editor is notified
 				 * about any changes to the document metadata.
 				 */
-				if(tr.steps.find((value) => (value instanceof SetDocAttrStep))){
-				
-				}
+				if(tr.steps.find((value) => (value instanceof SetDocAttrStep))) { }
 
 				// forward selection info to ui
 				this._setSelectionInfo({ to: tr.selection.to, from: tr.selection.from });
@@ -424,7 +421,7 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 				// apply transaction
 				proseView.updateState(proseView.state.apply(tr));
 			},
-			handleClick: (view: ProseEditorView<any>, pos: number, event: MouseEvent) => {
+			handleClick: (view: ProseEditorView, pos: number, event: MouseEvent) => {
 				let node = view.state.doc.nodeAt(pos);
 				if(!node){ return false; }
 

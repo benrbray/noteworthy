@@ -9,6 +9,13 @@ import * as PS from "prosemirror-state";
 
 ////////////////////////////////////////////////////////////
 
+export type InputRulePluginState = {
+	transform: PS.Transaction,
+	from: number,
+	to: number,
+	text: string
+} | null;
+
 /** Create an input rules plugin. When enabled, it will cause text
  * input that matches any of the given rules to trigger the rule's
  * action.
@@ -16,7 +23,7 @@ import * as PS from "prosemirror-state";
  * (unchanged from prosemirror-inputrules except for handleKeyDown)
  */
 export function makeInputRulePlugin({rules}: {rules: readonly PI.InputRule[]}) {
-	let plugin: PS.Plugin<{transform: PS.Transaction, from: number, to: number, text: string} | null> = new PS.Plugin({
+	let plugin: PS.Plugin<InputRulePluginState> = new PS.Plugin<InputRulePluginState>({
 		state: {
 			init() { return null },
 			apply(this: typeof plugin, tr, prev) {
