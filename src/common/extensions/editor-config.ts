@@ -1,14 +1,14 @@
 // prosemirror imports
-import { Schema, Node as ProseNode, Mark as ProseMark, NodeSpec, MarkSpec, DOMOutputSpec } from "prosemirror-model";
+import { Schema as ProseSchema, Node as ProseNode, Mark as ProseMark, NodeSpec, MarkSpec } from "prosemirror-model";
 import { InputRule } from "prosemirror-inputrules"
 import {
-	chainCommands, baseKeymap, Keymap, Command as ProseCommand,
+	chainCommands, baseKeymap,
 } from "prosemirror-commands"
-import { Plugin as ProsePlugin } from "prosemirror-state";
+import { Plugin as ProsePlugin, Command as ProseCommand } from "prosemirror-state";
 import { keymap as makeKeymap } from "prosemirror-keymap";
 
 // patched prosemirror types 
-import { NodeViewConstructor, ProseSchema } from "@common/types";
+import { ProseKeymap } from "@common/types";
 import { markMapBasic, markMapStringLiteral, MdParser, nodeMapBasic, nodeMapLeaf, nodeMapStringLiteral } from "@common/markdown/mdast2prose";
 
 // unist / unified
@@ -41,6 +41,7 @@ import { SyntaxExtension, NodeExtension, MarkExtension, MdastNodeMapType, MdastM
 import * as prose2mdast from "@common/markdown/prose2mdast";
 import * as mdast2prose from "@common/markdown/mdast2prose";
 import { makeInputRulePlugin } from "@common/prosemirror/inputRules";
+import { NodeViewConstructor } from "prosemirror-view";
 
 //// EDITOR CONFIG /////////////////////////////////////////
 
@@ -51,13 +52,13 @@ type AstParent<BaseT extends Uni.Node> = Uni.Parent & BaseT & { children: AstNod
 
 // -- Mdast2Prose --------------------------------------------------------------
 
-export type UnistNodeTest<S extends ProseSchema = ProseSchema, T extends Uni.Node = Uni.Node> = {
+export type UnistNodeTest<T extends Uni.Node = Uni.Node> = {
 	test?: (x: T) => boolean;
-	map:  (x: T, children: ProseNode<S>[], ctx: unknown, state: unknown) => ProseNode<S>[];
+	map:  (x: T, children: ProseNode[], ctx: unknown, state: unknown) => ProseNode[];
 }
 
-export type UnistMapper<K extends string = string, S extends ProseSchema = ProseSchema>
-	= DefaultMap<K, UnistNodeTest<S>[]>;
+export type UnistMapper<K extends string = string>
+	= DefaultMap<K, UnistNodeTest[]>;
 
 // -- Prose2Mdast --------------------------------------------------------------
 
@@ -78,7 +79,7 @@ export type ProseNodeMap<Ctx=unknown, St=unknown>
 export type ProseMarkMap
 	= (mark: ProseMark, node:Uni.Node) => Uni.Node;
 
-export type ProseNodeTest<S extends ProseSchema = ProseSchema, N extends ProseNode<S> = ProseNode<S>> = {
+export type ProseNodeTest<N extends ProseNode = ProseNode> = {
 	test?: (x: N) => boolean;
 	map: ProseNodeMap<unknown, unknown>
 }
@@ -91,11 +92,10 @@ export type ProseMarkTest<M extends ProseMark = ProseMark> = {
 
 export type ProseMapper<
 	N extends string = string,
-	M extends string = string,
-	S extends ProseSchema<N,M> = ProseSchema<N,M>
+	M extends string = string
 > = {
 	/** A map from ProseMirror Nodes -> Unist Nodes */
-	nodes: DefaultMap<N, ProseNodeTest<S>[]>;
+	nodes: DefaultMap<N, ProseNodeTest[]>;
 	/** A map from ProseMirror Marks -> Unist Nodes */
 	marks: DefaultMap<M, ProseMarkTest[]>;
 }
@@ -114,7 +114,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 	private _parser: MdParser<S>;
 	private _serializer: MdSerializer;
 
-	constructor(extensions:SyntaxExtension<S>[], plugins:ProsePlugin[], keymap:Keymap){
+	constructor(extensions:SyntaxExtension<S>[], plugins:ProsePlugin[], keymap: ProseKeymap){
 		/** Step 1: Build Schema
 		 * @effect Populates the `.type` field of each extension with a
 		 *    ProseMirror NodeType, which can be referenced during plugin creation.
@@ -263,7 +263,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 		// build schema
 		// TODO: speicalize to ProseSchema<N,M> for some N,M?
 		// TODO: is this cast sound?
-		let schema = new Schema({
+		let schema = new ProseSchema({
 			"nodes" : nodeSpecs,
 			"marks" : markSpecs
 		}) as S & ProseSchema<"error_block","error_inline">;
@@ -312,7 +312,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 
 		// include extension keymaps
 		/** @todo (9/27/20) sort keymap entries by priority? */
-		let keymap:Keymap = { };
+		let keymap: ProseKeymap = { };
 		keymaps.forEach((cmds, key) => { 
 			keymap[key] = chainCommands(...cmds);
 		});

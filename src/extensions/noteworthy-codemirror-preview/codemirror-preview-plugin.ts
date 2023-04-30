@@ -34,7 +34,7 @@ export const codeMirrorPlugin = (options: CodeMirrorPlugin.Options): PS.Plugin<C
 		},
 		props: {
 			nodeViews: {
-				"code_block" : (node: PM.Node, view: PV.EditorView, getPos:boolean|(()=>number)): CodeMirrorView => {
+				"code_block" : (node: PM.Node, view: PV.EditorView, getPos: ()=>(number|undefined)): CodeMirrorView => {
 					return new CodeMirrorView(
 						node,
 						view,

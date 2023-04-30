@@ -8,8 +8,8 @@ import { SetStoreFunction } from "solid-js/store";
 // prosemirror imports
 import { Schema as ProseSchema, NodeSpec, Node as ProseNode } from "prosemirror-model";
 import { EditorState as ProseEditorState, Transaction, TextSelection } from "prosemirror-state";
-import { EditorView as ProseEditorView } from "prosemirror-view";
-import { Command as ProseCommand } from "prosemirror-commands";
+import { EditorView, EditorView as ProseEditorView } from "prosemirror-view";
+import { Command as ProseCommand } from "prosemirror-state";
 import { undo, redo } from "prosemirror-history"
 import { keymap } from "prosemirror-keymap";
 
@@ -131,7 +131,7 @@ function makeYamlEditor(
 	// create prosemirror instance
 	let view = new ProseEditorView(elt, {
 		state: state,
-		dispatchTransaction(tr:Transaction){
+		dispatchTransaction(this: EditorView, tr:Transaction) {
 			// apply transaction
 			this.updateState(this.state.apply(tr));
 

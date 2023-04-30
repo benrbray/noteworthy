@@ -1,7 +1,7 @@
 // prosemirror imports
 import { MarkType, MarkSpec, DOMOutputSpec, Mark as ProseMark } from "prosemirror-model";
 import { InputRule } from "prosemirror-inputrules"
-import { toggleMark, Keymap } from "prosemirror-commands"
+import { toggleMark } from "prosemirror-commands"
 
 // project imports
 import * as Md from "@common/markdown/markdown-ast";
@@ -14,6 +14,7 @@ import * as Uni from "unist";
 import * as Mdast from "mdast";
 import { AnyChildren, markMapBasic } from "@common/markdown/mdast2prose";
 import { unistIsStringLiteral } from "@common/markdown/unist-utils";
+import { ProseKeymap } from "@common/types";
 
 //// MARK EXTENSIONS ///////////////////////////////////////
 
@@ -41,11 +42,11 @@ export class BoldExtension extends MarkSyntaxExtension<Md.Strong> {
 		};
 	}
 
-	createInputRules(): InputRule<any>[] {
+	createInputRules(): InputRule[] {
 		return [boldRule(this.markType)];
 	}
 
-	createKeymap(): Keymap { return { 
+	createKeymap(): ProseKeymap { return { 
 		"Mod-b" : toggleMark(this.markType),
 		"Mod-B" : toggleMark(this.markType)
 	}}
@@ -81,11 +82,11 @@ export class ItalicExtension extends MarkSyntaxExtension<Md.Emphasis> {
 		};
 	}
 
-	createInputRules(): InputRule<any>[] {
+	createInputRules(): InputRule[] {
 		return [italicRule(this.markType)];
 	}
 
-	createKeymap(): Keymap { return { 
+	createKeymap(): ProseKeymap { return { 
 		"Mod-i" : toggleMark(this.markType),
 		"Mod-I" : toggleMark(this.markType)
 	}}
@@ -116,7 +117,7 @@ export class ItalicExtension extends MarkSyntaxExtension<Md.Emphasis> {
 // 		};
 // 	}
 
-// 	createKeymap(): Keymap { return { 
+// 	createKeymap(): ProseKeymap { return { 
 // 		"Mod-d" : toggleMark(this.type),
 // 		"Mod-D" : toggleMark(this.type)
 // 	}}
@@ -152,7 +153,7 @@ export class LinkExtension extends MarkSyntaxExtension<Md.Link> {
 		};
 	}
 
-	createKeymap(): Keymap {
+	createKeymap(): ProseKeymap {
 		return { "Mod-k" : (state, dispatch, view) => {
 			// only insert link when highlighting text
 			if(state.selection.empty){ return false; }
@@ -240,7 +241,7 @@ export class LinkExtension extends MarkSyntaxExtension<Md.Link> {
 // 		};
 // 	}
 
-// 	createKeymap(): Keymap { return {
+// 	createKeymap(): ProseKeymap { return {
 // 		"Mod-u" : toggleMark(this.type)
 // 	}}
 
@@ -266,7 +267,7 @@ export class CodeExtension extends MarkSyntaxExtension<Md.InlineCode> {
 		};
 	}
 
-	createKeymap(): Keymap {
+	createKeymap(): ProseKeymap {
 		// note: on mac, pressing Cmd+` does not register as an event
 		// https://github.com/ProseMirror/prosemirror/issues/540 
 		return { "Ctrl-`" : toggleMark(this.markType) };
@@ -307,7 +308,7 @@ export class CodeExtension extends MarkSyntaxExtension<Md.InlineCode> {
 // 		};
 // 	}
 
-// 	createKeymap(): Keymap { return {
+// 	createKeymap(): ProseKeymap { return {
 // 		"Mod-u" : toggleMark(this.type)
 // 	}}
 
@@ -334,7 +335,7 @@ export class WikilinkExtension extends MarkSyntaxExtension<Md.Wikilink> {
 		};
 	}
 
-	createKeymap(): Keymap { return {
+	createKeymap(): ProseKeymap { return {
 		"Mod-[" : toggleMark(this.markType) 
 	}}
 

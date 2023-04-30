@@ -12,7 +12,7 @@ import { IDoc } from "@common/doctypes/doctypes";
 // fuzzy search
 import fuzzysort from "fuzzysort";
 import { DefaultMap } from "@common/util/DefaultMap";
-import { EditorView, NodeView, Decoration } from "prosemirror-view";
+import { EditorView, NodeView, Decoration, NodeViewConstructor } from "prosemirror-view";
 import { PluginKey, PluginSpec, Plugin as ProsePlugin, EditorState, Transaction, TextSelection } from "prosemirror-state";
 import { StepMap } from "prosemirror-transform";
 import { keymap } from "prosemirror-keymap";
@@ -401,8 +401,8 @@ interface ICitationPluginOptions {
 /** 
  * @see https://prosemirror.net/docs/ref/#view.EditorProps.nodeViews
  */
-function createCitationView(renderCitation: RenderCitationFn){
-	return (node: ProseNode, view: EditorView, getPos:boolean|(()=>number)): CitationView => {
+function createCitationView(renderCitation: RenderCitationFn): NodeViewConstructor {
+	return (node, view, getPos): CitationView => {
 		/** @todo is this necessary?
 		* Docs says that for any function proprs, the current plugin instance
 		* will be bound to `this`.  However, the typings don't reflect this.
@@ -570,7 +570,7 @@ export class CitationView implements NodeView {
 
 	// == Updates ======================================= //
 
-	update(node: ProseNode, decorations: Decoration[]) {
+	update(node: ProseNode, decorations: readonly Decoration[]) {
 		if (!node.sameMarkup(this._node)) return false
 		this._node = node;
 
@@ -702,6 +702,7 @@ export class CitationView implements NodeView {
 
 	openEditor() {
 		if (this._innerView) { throw Error("inner view should not exist!"); }
+		if (!this._nodeSrcElt) { return; }
 
 		// create a nested ProseMirror view
 		this._innerView = new EditorView(this._nodeSrcElt, {
