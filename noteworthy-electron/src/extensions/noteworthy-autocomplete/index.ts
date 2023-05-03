@@ -22,10 +22,14 @@ export default autocompleteExtension;
 
 const makeProviders = (api: NoteworthyExtensionApi): AutocompleteProviders => ({
 	wikilink : {
-		trigger: "[[",
+		startTrigger: "[[",
+		endTrigger: "]]",
 		allowSpace: false,
 		search: async (query: string) => {
 			const result = await api.fuzzyTagSearch(query);
+
+			if(result.length === 0) { return []; }
+
 			const data: SuggestData = [{
 				label: "Tag Search",
 				items: result.map(tag => ({
@@ -47,10 +51,14 @@ const makeProviders = (api: NoteworthyExtensionApi): AutocompleteProviders => ({
 		}
 	},
 	citation : {
-		trigger: "@[",
+		startTrigger: "@[",
+		endTrigger: "]",
 		allowSpace: false,
 		search: async (query: string) => {
 			const result = await api.fuzzyTagSearch(query);
+
+			if(result.length === 0) { return []; }
+
 			const data: SuggestData = [{
 				label: "Citation Search",
 				items: result.map(tag => ({

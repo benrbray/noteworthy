@@ -52,7 +52,10 @@ export type SuggestItemFancy = {
 }
 
 export type AutocompleteProvider = {
-	trigger: string|RegExp,
+	/** An input string matching `startTrigger` will trigger autocompletion. */
+	startTrigger: string|RegExp,
+	/** A filter matching `endTrigger` will cancel autocompletion. */
+	endTrigger?: string,
 	/** When `true`, entering `space` will end the autocompletion. */
 	allowSpace: boolean,
 	/** Returns a list of suggestions based on a user-provided query. */
@@ -161,7 +164,7 @@ extends NoteworthyExtension<Autocomplete.Name> {
 		const triggers = providers.map(([name, provider]) => {
 			return {
 				name,
-				trigger: provider.trigger,
+				trigger: provider.startTrigger,
 				cancelOnSpace: !provider.allowSpace
 			}
 		});
@@ -202,6 +205,10 @@ extends NoteworthyExtension<Autocomplete.Name> {
 			this._state.provider = providerName;
 		}
 
+		// get provider
+		const provider = this.getCurrentProvider();
+		if(!provider)    { return false; }
+
 		// position info
 		let rect = action.view.dom.getBoundingClientRect();
 
@@ -212,12 +219,12 @@ extends NoteworthyExtension<Autocomplete.Name> {
 				this.placeSuggestion(rect, true);
 
 				this._state.hasResults = true;
-				var ok: boolean = this.getSuggestionsFromProvider(action.filter || "");
-				return ok;
+				this.getSuggestionsFromProvider(provider, action.filter || "");
+				return false;
 			case ActionKind.close:
 				this._signals.setIsOpen(false);
 				this.placeSuggestion(rect, false);
-				return true;
+				return false;
 			case ActionKind.up:
 				this.setSelectedIdx(this._state.selectedIdx - 1);
 				this.placeSuggestion(rect, true);
@@ -230,9 +237,16 @@ extends NoteworthyExtension<Autocomplete.Name> {
 				this.acceptSuggestion(this._state.selectedIdx);
 				return true;
 			case ActionKind.filter:
+				const filter = action.filter || "";
+
+				if(provider.endTrigger && filter.endsWith(provider.endTrigger)) {
+					this.triggerClose();
+					return false;
+				}
+
 				this.placeSuggestion(rect, true);
-				var ok: boolean = this.getSuggestionsFromProvider(action.filter || "");
-				return ok;
+				this.getSuggestionsFromProvider(provider, filter);
+				return false;
 			default:
 				return false;
 		}
@@ -264,9 +278,7 @@ extends NoteworthyExtension<Autocomplete.Name> {
 	 *
 	 * @returns `true` if successful, `false` if failed
 	 */
-	private getSuggestionsFromProvider(query: string): boolean {
-		const provider = this.getCurrentProvider();
-		if(!provider)    { return false; }
+	private getSuggestionsFromProvider(provider: AutocompleteProvider, query: string): boolean {
 		if(!this._state) { return false; }
 
 		provider.search(query).then(data => {
