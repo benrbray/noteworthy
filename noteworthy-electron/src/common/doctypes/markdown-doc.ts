@@ -1,9 +1,16 @@
 // noteworthy imports
-import { ICrossRefProvider } from "@main/plugins/crossref-plugin";
 import { IDoc, DocMeta, AstParser } from "./doctypes";
-import type { IOutlineProvider, IOutlineEntry } from "@main/plugins/outline-plugin";
-import type { IMetadataProvider, IMetadata } from "@main/plugins/metadata-plugin";
 import { EditorConfig } from "@common/extensions/editor-config";
+
+// TODO (Ben @ 2023/05/03) refactor so plugin types are available here
+// @ts-ignore
+import type { ICrossRefProvider } from "@main/plugins/crossref-plugin";
+// @ts-ignore
+import type { IOutlineProvider, IOutlineEntry } from "@main/plugins/outline-plugin";
+// @ts-ignore
+import type { IMetadataProvider, IMetadata } from "@main/plugins/metadata-plugin";
+// @ts-ignore
+import type { Citation, ICitationProvider } from "@main/plugins/citation-plugin";
 
 // markdown / mdast
 import * as Md from "@common/markdown/markdown-ast";
@@ -30,7 +37,6 @@ import {
 import { unistPredicate, visit, visitNodeType } from "@common/markdown/unist-utils";
 import { SyntaxExtension } from "@common/extensions/extension";
 import { mdastTextContent } from "@common/markdown/mdast-to-string";
-import type { Citation, ICitationProvider } from "@main/plugins/citation-plugin";
 import { pick } from "@common/util/pick";
 import { parseDate, formatDate } from "@common/util/date";
 
