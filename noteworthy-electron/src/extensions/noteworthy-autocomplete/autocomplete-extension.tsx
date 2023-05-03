@@ -97,9 +97,8 @@ extends NoteworthyExtension<Autocomplete.Name> {
 		private _providers: AutocompleteProviders
 	){
 		super();
-		console.log("autocomplete :: constructor");
 
-		// add suggest
+		// create suggestion overlay
 		let suggestElt: HTMLDivElement|null = document.getElementById("suggest-wrapper") as HTMLDivElement;
 		if(!suggestElt) { suggestElt = document.createElement("div"); }
 		suggestElt.replaceChildren("");
@@ -159,7 +158,7 @@ extends NoteworthyExtension<Autocomplete.Name> {
 
 		const options: Options = {
 			triggers: triggers,
-			reducer: (action) => this._reducer(action)
+			reducer: (action: AutocompleteAction) => this._reducer(action)
 		};
 
 		return [...autocomplete(options)];
@@ -203,8 +202,6 @@ extends NoteworthyExtension<Autocomplete.Name> {
 	}
 
 	private _reducer(action: AutocompleteAction): boolean {
-		console.log(`autocomplete :: action=${action.kind}`);
-
 		this._view = action.view;
 
 		// get autocomplete provider
@@ -213,10 +210,10 @@ extends NoteworthyExtension<Autocomplete.Name> {
 		const provider = this.getProvider(type.name);
 		if(!provider) { return false; }
 
-
-		// filter
+		// position info
 		let rect = action.view.dom.getBoundingClientRect();
 
+		// state machine
 		switch (action.kind) {
 			case ActionKind.open:
 				this._signals.setIsOpen(true);

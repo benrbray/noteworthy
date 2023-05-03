@@ -51,13 +51,6 @@ import { ITagSearchResult, IFileSearchResult } from "@main/plugins/crossref-plug
 
 ////////////////////////////////////////////////////////////
 
-// The use of `contextIsolation=true` for election requires a preload phase to
-// expose Electron APIs to the render process.  These APIs are made available
-// globally at runtime, and I haven't found clever enough typings yet to express
-// this transformation.  So, we must explicitly declare them here:
-// import { WindowAfterPreload } from "@preload/preload";
-// declare let window: Window & typeof globalThis & WindowAfterPreload;
-
 import { MouseButton } from "@common/inputEvents";
 import { visitNodeType } from "@common/markdown/unist-utils";
 // this is a "safe" version of ipcRenderer exposed by the preload script
@@ -135,8 +128,6 @@ class Renderer {
 	}
 
 	init() {
-		console.log("render :: init()");
-
 		ipcRenderer.receive(IpcEvents.RENDERER_INVOKE,
 			(responseId: string, key: RendererIpcEvents, data: any) => {
 				console.log("render.on() :: RENDERER_INVOKE ::", responseId, key, data);
@@ -182,12 +173,9 @@ class Renderer {
 			}
 
 			const getOutline = async (): Promise<IOutline|null> => {
-				console.log("getOutline");
 				let hash = activeHash();
 				if(!hash){ return null; }
-				console.log("getOutline :: hash=", hash);
 				let outline = await this._mainProxy.outline.requestOutlineForHash(hash);
-				console.log("outline found", outline);
 				return outline;
 			}
 
@@ -217,7 +205,6 @@ class Renderer {
 				let fileHash = target.getAttribute("data-filehash");
 				if(fileHash === null){ return; }
 
-				console.log("explorer :: clicked", fileHash);
 				this._mainProxy.navigation.navigateToHash({ hash: fileHash });
 			}
 
@@ -252,7 +239,6 @@ class Renderer {
 			}
 
 			const search = async (query:string): Promise<(ITagSearchResult|IFileSearchResult)[]> => {
-				console.log("searching...", query);
 				let result = await this._mainProxy.tag.fuzzyTagFileSearch(query);
 				return result;
 			}

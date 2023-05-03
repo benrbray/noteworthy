@@ -32,7 +32,6 @@ export const Suggest = (
 			result[k] = len;
 			len += groupLen;
 		}
-		console.log("foo", result);
 		return result;
 	});
 

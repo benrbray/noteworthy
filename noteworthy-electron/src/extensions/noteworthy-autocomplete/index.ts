@@ -31,8 +31,6 @@ const makeProviders = (api: NoteworthyExtensionApi): AutocompleteProviders => ({
 					items: group.items.filter(s => s.text.toLowerCase().startsWith(query.toLowerCase()))
 				};
 			}).filter(group => group.items.length > 0);
-
-			console.log(result);
 			return result;
 		},
 		accept: (id: string) => {
@@ -44,8 +42,6 @@ const makeProviders = (api: NoteworthyExtensionApi): AutocompleteProviders => ({
 		allowSpace: false,
 		search: async (query: string) => {
 			const result = await api.fuzzyTagSearch(query);
-			console.log(result);
-
 			const data: SuggestData = [{
 				label: "Tag Search",
 				items: result.map(tag => ({

@@ -1,8 +1,8 @@
 // noteworthy imports
 import { ICrossRefProvider } from "@main/plugins/crossref-plugin";
 import { IDoc, DocMeta, AstParser } from "./doctypes";
-import { IOutlineProvider, IOutlineEntry } from "@main/plugins/outline-plugin";
-import { IMetadataProvider, IMetadata } from "@main/plugins/metadata-plugin";
+import type { IOutlineProvider, IOutlineEntry } from "@main/plugins/outline-plugin";
+import type { IMetadataProvider, IMetadata } from "@main/plugins/metadata-plugin";
 import { EditorConfig } from "@common/extensions/editor-config";
 
 // markdown / mdast
@@ -16,8 +16,7 @@ import {
 	ImageExtension, HardBreakExtension, ParagraphExtension,
 	ContainerDirectiveExtension,
 	CitationExtension,
-	RootExtension,
-	//RegionExtension, EmbedExtension,
+	RootExtension
 } from "@common/extensions/node-extensions";
 
 // mark extensions
@@ -31,11 +30,11 @@ import {
 import { unistPredicate, visit, visitNodeType } from "@common/markdown/unist-utils";
 import { SyntaxExtension } from "@common/extensions/extension";
 import { mdastTextContent } from "@common/markdown/mdast-to-string";
-import { Citation, ICitationProvider } from "@main/plugins/citation-plugin";
+import type { Citation, ICitationProvider } from "@main/plugins/citation-plugin";
 import { pick } from "@common/util/pick";
 import { parseDate, formatDate } from "@common/util/date";
 
-// yaml / toml 
+// yaml / toml
 import YAML from "yaml";
 
 
@@ -63,9 +62,6 @@ export function makeDefaultMarkdownExtensions(): SyntaxExtension[] {
 		// nodes: math
 		new InlineMathExtension(),
 		new BlockMathExtension(),
-		// nodes: special
-		// new RegionExtension(),
-		// new EmbedExtension(),
 		// nodes: directives
 		// new TextDirectiveExtension(),
 		// new LeafDirectiveExtension(),
@@ -95,7 +91,7 @@ export const defaultMarkdownConfig = new EditorConfig(
 ////////////////////////////////////////////////////////////////////////////////
 
 export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, IMetadataProvider, ICitationProvider {
-	
+
 	private readonly _yaml: { [key:string] : string|string[] };
 
 	/**
@@ -110,7 +106,7 @@ export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, I
 		 * At the moment, YAML is only lifted from the doc during the mdast -> prose tree
 		 * transformation phase.  This function is called by workspace plugins, which work
 		 * with the AST directly rather than instantiating a ProseMirror document.  So,
-		 * we have to manually extract the metadata here.  
+		 * we have to manually extract the metadata here.
 		 *
 		 * We shouldn't need to parse the YAML more than once in different places.  This
 		 * will also cause trouble when we want to pass TOML/JSON metadata, or extract
@@ -118,7 +114,7 @@ export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, I
 		 *
 		 * Probably, we should do a metadata collection pass on the tree as part of parsing.
 		 */
-		
+
 		// expect YAML node at start of document, otherwise return empty metadata
 		if(this._root?.children?.length > 0 && this._root.children[0].type === "yaml") {
 			// parse YAML
@@ -131,13 +127,13 @@ export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, I
 	}
 
 	get root(): Md.Root { return this._root; }
-	
+
 	// -- IMarkdownDoc ---------------------------------- //
 
 	getMeta(): DocMeta {
 		return this._yaml;
 	}
-	
+
 	static parseAST(serialized: string) : MarkdownAst|null {
 		let ast = defaultMarkdownConfig.parseAST(serialized);
 		if(!ast){ return null; }
@@ -170,7 +166,7 @@ export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, I
 	// -- IMetadataProvider ----------------------------- //
 
 	public IS_METADATA_PROVIDER: true = true;
-	
+
 	getMetadata(): IMetadata {
 		/** @todo (10/2/20) unify this function with getMeta() above */
 		return this._yaml;
@@ -225,7 +221,7 @@ export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, I
 
 	getTagsDefined():string[] {
 		let tags:string[] = [];
-		
+
 		// tags defined by YAML metadata
 		let meta = this.getMeta();
 		if(meta.tags_defined){
@@ -269,7 +265,7 @@ export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, I
 		// find all wikilinks and citations
 		// TODO: (2021-05-30) restore #tag syntax?
 		visit(this._root, node => {
-			if(unistPredicate<Md.Wikilink>(node, "wikiLink")) { 
+			if(unistPredicate<Md.Wikilink>(node, "wikiLink")) {
 				tags.push(node.value);
 			} else if(unistPredicate<Md.Cite>(node, "cite")) {
 				node.data.citeItems.forEach(item => {

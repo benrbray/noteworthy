@@ -54,13 +54,6 @@ import { SetDocAttrStep } from "@common/prosemirror/steps";
 
 ////////////////////////////////////////////////////////////
 
-// The use of `contextIsolation=true` for election requires a preload phase to
-// expose Electron APIs to the render process.  These APIs are made available
-// globally at runtime, and I haven't found clever enough typings yet to express
-// this transformation.  So, we must explicitly declare them here:
-// import { WindowAfterPreload } from "@renderer/preload_types";
-// declare let window: Window & typeof globalThis & WindowAfterPreload;
-
 // extensions
 import { NoteworthyExtension, NoteworthyExtensionInitializer, RegisteredExtensionName } from "@common/extensions/noteworthy-extension";
 import codeMirrorPreviewExtension from "@extensions/noteworthy-codemirror-preview";
@@ -400,12 +393,6 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 			state: state,
 			nodeViews: {
 				...this._config.nodeViews
-				// TODO: restore embed view?
-				// "embed": (node, view, getPos) => {
-				// 	return new EmbedView(
-				// 		node, view, getPos as (() => number), this._mainProxy
-				// 	);
-				// },
 			},
 			dispatchTransaction: (tr: Transaction): void => {
 				// unsaved changes?
