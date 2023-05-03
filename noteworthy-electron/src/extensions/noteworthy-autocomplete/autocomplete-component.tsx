@@ -21,7 +21,8 @@ export const Suggest = (
 		selectedIdx: number,
 		pos: {top:number, left:number},
 		data: SuggestData,
-		onItemHover: (idx: number, evt: MouseEvent) => void
+		onItemHover: (idx: number, evt: MouseEvent) => void,
+		onItemClick: (idx: number, evt: MouseEvent) => void
 	}
 ) => {
 	// mapping from group -> starting index
@@ -46,6 +47,10 @@ export const Suggest = (
 
 	const handleHover = (idx: number) => (evt: MouseEvent) => {
 		props.onItemHover(idx, evt);
+	}
+
+	const handleClick = (idx: number) => (evt: MouseEvent) => {
+		props.onItemClick(idx, evt);
 	}
 
 	return (<div
@@ -76,12 +81,11 @@ export const Suggest = (
 									}
 								}
 
-
-
 								return (
 									<div
 										classList={classList()} data-idx={itemIdx()}
 										onMouseMove={handleHover(itemIdx())}
+										onClick={handleClick(itemIdx())}
 									>
 										<Switch>
 											<Match when={item.kind === "simple"}>

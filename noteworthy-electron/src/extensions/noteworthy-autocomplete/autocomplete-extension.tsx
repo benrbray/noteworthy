@@ -3,7 +3,7 @@ import * as PS from "prosemirror-state";
 import * as PV from "prosemirror-view";
 
 // prosemirror-autocomplete
-import autocomplete, { ActionKind, AutocompleteAction, Options, closeAutocomplete } from "prosemirror-autocomplete";
+import autocomplete, { ActionKind, AutocompleteAction, FromTo, Options, closeAutocomplete } from "prosemirror-autocomplete";
 
 // noteworthy
 import { NoteworthyExtension, NoteworthyExtensionSpec } from "@common/extensions/noteworthy-extension";
@@ -81,6 +81,7 @@ extends NoteworthyExtension<Autocomplete.Name> {
 	private _state: {
 		/** whether the last autocomplete query returned at least one result */
 		hasResults: boolean
+		range: FromTo|null;
 	}
 
 	private _signals: {
@@ -132,11 +133,25 @@ extends NoteworthyExtension<Autocomplete.Name> {
 				selectedIdx={selectedIdx()}
 				pos={position()}
 				onItemHover={(idx, evt) => this.setSelectedIdx(idx)}
+				onItemClick={(idx, evt) => this.acceptSuggestion(idx)}
 			/>, suggestElt);
 
 		this._suggestElt = suggestElt;
-		this._state = { hasResults: true };
+		this._state = { hasResults: true, range: null };
 		this._view = null;
+	}
+
+	acceptSuggestion(idx: number) {
+		if (!this._view) return;
+		this.triggerClose();
+
+		const range = this._state.range;
+    if (!range) return;
+    const tr = this._view.state.tr
+      .deleteRange(range.from, range.to)
+      .insertText(`Clicked on ${idx + 1}`);
+    this._view.dispatch(tr);
+    this._view.focus();
 	}
 
 	/* ==== Noteworthy Extension ========================== */
@@ -189,11 +204,16 @@ extends NoteworthyExtension<Autocomplete.Name> {
 		return this._providers[name] || null;
 	}
 
+	private triggerClose() {
+		if(this._view) { closeAutocomplete(this._view); }
+		this._signals.setIsOpen(false);
+	}
+
 	private handleQueryResults(result: Promise<SuggestData>) {
 		result.then(data => {
 			// end autocomplete if two successive queries yield no results
 			if(!this._state.hasResults && data.length === 0) {
-				if(this._view) { closeAutocomplete(this._view); }
+				if(this._view) { this.triggerClose(); }
 			}
 
 			this._state.hasResults = (data.length > 0);
@@ -202,7 +222,9 @@ extends NoteworthyExtension<Autocomplete.Name> {
 	}
 
 	private _reducer(action: AutocompleteAction): boolean {
+		// update state
 		this._view = action.view;
+		this._state.range = action.range;
 
 		// get autocomplete provider
 		const type = action.type;
