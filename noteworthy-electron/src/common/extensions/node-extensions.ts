@@ -994,7 +994,7 @@ export function inlineInputRule<S extends ProseSchema>(pattern: RegExp, nodeType
 		return state.tr.replaceRangeWith(
 			start, end,
 			nodeType.create(attrs, nodeType.schema.text(match[1]))
-		);
+		).insertText(match[2]);
 	});
 }
 

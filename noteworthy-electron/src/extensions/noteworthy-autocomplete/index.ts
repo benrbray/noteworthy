@@ -21,24 +21,8 @@ export default autocompleteExtension;
 ////////////////////////////////////////////////////////////////////////////////
 
 const makeProviders = (api: NoteworthyExtensionApi): AutocompleteProviders => ({
-	commands : {
-		trigger: "@",
-		allowSpace: false,
-		search: async (query: string) => {
-			const result = commandGroups.map(group => {
-				return {
-					label: group.label,
-					items: group.items.filter(s => s.text.toLowerCase().startsWith(query.toLowerCase()))
-				};
-			}).filter(group => group.items.length > 0);
-			return result;
-		},
-		accept: (id: string) => {
-
-		}
-	},
-	tags : {
-		trigger: "\\",
+	wikilink : {
+		trigger: "[[",
 		allowSpace: false,
 		search: async (query: string) => {
 			const result = await api.fuzzyTagSearch(query);
@@ -46,6 +30,7 @@ const makeProviders = (api: NoteworthyExtensionApi): AutocompleteProviders => ({
 				label: "Tag Search",
 				items: result.map(tag => ({
 					kind: "fancy",
+					id: tag.result,
 					text: tag.result,
 					dom: tag.resultEmphasized.map(part => ({ text: part.text, class: part.emph ? "suggest-fuzzy-match" : ""}))
 				}))
@@ -53,45 +38,37 @@ const makeProviders = (api: NoteworthyExtensionApi): AutocompleteProviders => ({
 
 			return data;
 		},
-		accept: (id: string) => {
+		accept: (id, view, range) => {
+			const tr = view.state.tr
+				.deleteRange(range.from, range.to)
+				.insertText(`[[${id}]]`);
+			view.dispatch(tr);
+			view.focus();
+		}
+	},
+	citation : {
+		trigger: "@[",
+		allowSpace: false,
+		search: async (query: string) => {
+			const result = await api.fuzzyTagSearch(query);
+			const data: SuggestData = [{
+				label: "Citation Search",
+				items: result.map(tag => ({
+					kind: "fancy",
+					id: tag.result,
+					text: tag.result,
+					dom: tag.resultEmphasized.map(part => ({ text: part.text, class: part.emph ? "suggest-fuzzy-match" : ""}))
+				}))
+			}];
 
+			return data;
+		},
+		accept: (id, view, range) => {
+			const tr = view.state.tr
+				.deleteRange(range.from, range.to)
+				.insertText(`@[${id}]`);
+			view.dispatch(tr);
+			view.focus();
 		}
 	}
-})
-
-const commandGroups: SuggestData = [
-	{
-		label: "Basic",
-		items: [
-			{ kind: "simple", text: "Heading" },
-			{ kind: "simple", text: "Quote" },
-			{ kind: "simple", text: "Code Block" },
-			{ kind: "simple", text: "Divider" },
-		]
-	},{
-		label: "Math",
-		items: [
-			{ kind: "simple", text: "Inline Math" },
-			{ kind: "simple", text: "Block Math" }
-		]
-	},{
-		label: "Diagrams",
-		items: [
-			{ kind: "fancy", text: "Tikz Diagram",
-			  dom: [
-				{ class: "suggest-label-code", text: "Tikz" },
-				{ class: "", text: " Diagram" },
-			]},
-			{ kind: "simple", text: "TikzCd Diagram" },
-			{ kind: "simple", text: "q.uiver.app Diagram" }
-		]
-	},{
-		label: "Environments",
-		items: [
-			{ kind: "simple", text: "Definition" },
-			{ kind: "simple", text: "Example" },
-			{ kind: "simple", text: "Lemma" },
-			{ kind: "simple", text: "Theorem" },
-		]
-	}
-]
+});

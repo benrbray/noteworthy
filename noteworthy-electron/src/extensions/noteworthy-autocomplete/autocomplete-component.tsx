@@ -1,7 +1,7 @@
 // solid
 import * as S from "solid-js";
 import { For, Show, Match, Switch } from 'solid-js/web';
-import { SuggestData, SuggestItemFancy, SuggestItemSimple } from "./autocomplete-extension";
+import { SuggestDataWithIdx, SuggestItemFancy, SuggestItemSimple } from "./autocomplete-extension";
 
 ////////////////////////////////////////////////////////////
 
@@ -20,7 +20,7 @@ export const Suggest = (
 		open: boolean,
 		selectedIdx: number,
 		pos: {top:number, left:number},
-		data: SuggestData,
+		data: SuggestDataWithIdx,
 		onItemHover: (idx: number, evt: MouseEvent) => void,
 		onItemClick: (idx: number, evt: MouseEvent) => void
 	}
