@@ -1,3 +1,4 @@
+import { NoteworthyExtensionApi } from "@renderer/extensions/extension-api";
 import * as PS from "prosemirror-state";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,5 +75,8 @@ export interface NoteworthyExtensionInitializer<
 	Deps extends RegisteredExtensionName[] = []
 > {
 	spec: NoteworthyExtensionSpec<Name, Deps>
-	initialize: () => NoteworthyExtension<Name, Deps>
+	initialize: (state: {
+		editorElt: HTMLElement,
+		api: NoteworthyExtensionApi
+	}) => NoteworthyExtension<Name, Deps>
 }

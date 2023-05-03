@@ -29,7 +29,6 @@ import { MainIpcHandlers } from "@main/MainIPC";
 
 import { YamlEditor } from "../ui/yamlEditor";
 import { shallowEqual } from "@common/util/equal";
-// import { makeSuggestionPlugin, SuggestionPopup } from "@renderer/ui/suggestions";
 
 // editor commands
 import { moveSelectionDown, moveSelectionUp } from "@common/prosemirror/commands/moveSelection";
@@ -66,6 +65,8 @@ import { SetDocAttrStep } from "@common/prosemirror/steps";
 import { NoteworthyExtension, NoteworthyExtensionInitializer, RegisteredExtensionName } from "@common/extensions/noteworthy-extension";
 import codeMirrorPreviewExtension from "@extensions/noteworthy-codemirror-preview";
 import tikzJaxExtension from "@extensions/noteworthy-tikzjax";
+import autocompleteExtension from "@extensions/noteworthy-autocomplete";
+import { NoteworthyExtensionApi } from "@renderer/extensions/extension-api";
 
 ////////////////////////////////////////////////////////////
 
@@ -91,9 +92,6 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 	// DOM
 	_metaElt: HTMLElement;
 
-	// popup
-	// popup: SuggestionPopup | null;
-
 	// == Constructor =================================== //
 
 	constructor(
@@ -114,8 +112,19 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 		this._metaElt.setAttribute("class", "meta-editor");
 		this._editorElt.appendChild(this._metaElt);
 
-		// create popup elt
-		// this.popup = null;
+		/* ---- create extension api -------------------- */
+
+		// TODO (Ben @ 2023/05/02) extension api was added as a quick hack
+		// while writing the autocomplete extension, and should be revisited
+
+		const noteworthyApi: NoteworthyExtensionApi = {
+			fuzzyTagSearch: async (query) => {
+				const result = await this._mainProxy.tag.fuzzyTagSearch(query);
+
+				// return only specific properties, since the result may have extra data
+				return result.map(({ result, resultEmphasized }) => ({ result, resultEmphasized }))
+			}
+		}
 
 		/* ---- noteworthy extensions ------------------- */
 
@@ -123,7 +132,8 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 		// TODO (Ben @ 2023/04/16) is it possible to assign a more specific type here?  (existential? path-dependent?)
 		let extensionInitializers: NoteworthyExtensionInitializer<RegisteredExtensionName, RegisteredExtensionName[]>[] = [
 			codeMirrorPreviewExtension,
-			tikzJaxExtension
+			tikzJaxExtension,
+			autocompleteExtension
 		];
 
 		// initialize noteworthy extensions
@@ -134,7 +144,10 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 		}
 
 		extensionInitializers.forEach((initializer) => {
-			const ext = initializer.initialize();
+			const ext = initializer.initialize({
+				editorElt: this._editorElt,
+				api: noteworthyApi
+			});
 			const name = initializer.spec.name;
 			extensions[name] = ext;
 
@@ -289,7 +302,6 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 					return `${lastName} ${parsedDate.getFullYear()}`;
 				}
 			}),
-			// makeSuggestionPlugin(this),
 			history(),
 			gapCursor()
 		];
@@ -329,7 +341,6 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 		// initialization order matters
 		this.initProseEditor();
 		this.initYamlEditor();
-		this.initPopup();
 		// initialized
 		this._initialized = true;
 	}
@@ -370,12 +381,6 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 		}
 
 		render(Editor, this._metaElt);
-	}
-
-	initPopup(){
-		// if(!this._proseEditorView) { return; }
-		// if(!this._editorElt)       { return; }
-		// this.popup = new SuggestionPopup(this._proseEditorView, this._editorElt, this._mainProxy);
 	}
 
 	initProseEditor(){
@@ -485,7 +490,6 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 		this._proseEditorView = null;
 		// destroy meta editor
 		this._metaElt.remove();
-		// this.popup?.dispose();
 		// de-initialize
 		this._initialized = false;
 	}

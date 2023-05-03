@@ -4,9 +4,9 @@
 	/** Font Families **/
 	--code-font: "Droid Sans Mono", "Ubuntu Mono", "Consolas", monospace;
 	--serif-font: "Lora", monospace;
-	--sans-font: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+	--sans-font: "Roboto", -ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 	/** Font Usage **/
-	--font-ui: var(--sans-font);
+	--font-ui: -ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 	--font-editor: var(--sans-font);
 	--font-size: 1.2rem;
 	--line-height: 1.1em;
@@ -19,7 +19,8 @@
 	--color-primary-bg-4: #d0d0d0;
 	--color-primary-bg-5: #bbbbbb;
 
-	--color-primary-text-2: #999;
+	--font-color-ui-default: rgb(55,55,55);
+	--font-color-ui-faint: #999;
 
 	/** UI Colors **/
 	--color-bg: var(--color-primary-bg-1);
@@ -70,7 +71,7 @@
 	--color-math-src: purple;
 
 	--editor-codeblock-bg: var(--color-primary-bg-2);
-	--editor-codeblock-langLabel: var(--color-primary-text-2);
+	--editor-codeblock-langLabel: var(--font-color-ui-faint);
 }
 
 .window-title {

@@ -71,7 +71,7 @@ export interface ITagSearchResult {
 	/** Tag name **/
 	result: string,
 	/** Tag name, emphasized with HTML tags (<b>, etc.) to reflect alignment with a query. */
-	resultEmphasized: string
+	resultEmphasized: ({ text: string, emph?: boolean })[]
 }
 
 export interface IHashSearchResult {
@@ -340,17 +340,25 @@ export class CrossRefPlugin implements WorkspacePlugin {
 
 		// list tags matching query
 		let tagResults:Fuzzysort.Results = fuzzysort.go(query, tags, {
-			limit: 10,
+			limit: 25,
 			threshold: -1000
 		});
 
 		// combine results
 		return tagResults.map((result) => {
-			let hl = fuzzysort.highlight(result, "<b>", "</b>");
+			let hl: (string | { text: string, emph?: boolean })[]|null = fuzzysort.highlight(result, (m,i) => ({ text: m, emph: true }));
+			if(!hl) { hl = [{ text: result.target }] }
+
+			let hlFixed = hl.map(part =>
+				typeof part === "string"
+					? { text : part }
+					: part
+			);
+
 			return {
 				type: "tag-result",
 				result: result.target,
-				resultEmphasized: hl || result.target
+				resultEmphasized: hlFixed
 			}
 		});
 	}

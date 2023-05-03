@@ -218,7 +218,7 @@ li.task-list-item input[type='checkbox'] {
   color: var(--editor-codeblock-langLabel);
   font-size: 0.8em;
   font-family: var(--code-font);
-  
+
   background: none;
   border: none;
   text-align: right;
@@ -387,7 +387,7 @@ math-display.ProseMirror-selectednode {
 .directive[data-name="proof"]::after {
   content: "";
   display: block;
-  
+
   position: absolute;
   right: 0.5em;
   bottom: 0.7em;
@@ -550,42 +550,6 @@ math-display.ProseMirror-selectednode {
 .meta-editor dt:first-of-type, .meta-editor dd:first-of-type {
 	border-width: 1px;
 }
-
-/* == SUGGESTION POPUP ================================== */
-
-.popup {
-	display: none;
-	z-index: 100;
-	position: absolute;
-	user-select: none;
-
-	max-height: 8em;
-	overflow-y: scroll;
-
-	overflow-x: none;
-	text-overflow: ellipsis;
-
-	border: 1px solid var(--color-outline-emphasis);
-	background-color: var(--color-bg-1);
-}
-
-.popup.visible { display: block; }
-
-/* -- Popup-Item ---------------------------------------- */
-.popup-item {
-	padding: 0 0.2rem;
-	cursor: pointer;
-	line-height: 1.2em;
-	font-family: var(--code-font);
-
-	overflow-x: none;
-	text-overflow: ellipsis;
-}
-
-.popup-item:hover    { background-color: var(--color-bg-hover);    }
-.popup-item.selected { background-color: var(--color-bg-selected); }
-
-.popup-item b { color: var(--color-text-fuzzy-match); }
 
 /* == BIBLIOGRAPHY ====================================== */
 

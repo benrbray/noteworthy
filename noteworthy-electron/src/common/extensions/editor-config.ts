@@ -307,7 +307,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 		}
 
 		// combine all input rules as single ProseMirror plugin
-		let resultPlugins = [makeInputRulePlugin({ rules: inputRules })];
+		let resultPlugins = [...plugins, makeInputRulePlugin({ rules: inputRules })];
 
 		// include extension keymaps
 		/** @todo (9/27/20) sort keymap entries by priority? */
@@ -318,11 +318,10 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 		resultPlugins.push(makeKeymap(keymap));
 
 		// include base keymap
-		/** @todo (9/27/20) sort keymap entries by priority? */
 		resultPlugins.push(makeKeymap(baseKeymap));
 
 		// provided plugins go last
-		return resultPlugins.concat(plugins);
+		return resultPlugins;
 	}
 
 	// -- Build NodeViews --------------------------------------------------- //
