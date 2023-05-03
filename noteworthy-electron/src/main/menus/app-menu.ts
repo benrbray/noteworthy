@@ -3,7 +3,7 @@
  *
  * Currently, Electron does not support dynamic menus, so
  * it is necessary to re-create the entire menu whenever a
- * menu item needs updating.  
+ * menu item needs updating.
  *
  * https://github.com/electron/electron/issues/2717
  */
@@ -13,7 +13,6 @@ import { MenuItemConstructorOptions } from "electron";
 import { is } from "electron-util";
 import NoteworthyApp from "@main/app";
 import { shell } from "electron";
-import { Settings } from "@common/settings";
 import { ThemeService } from "@main/theme/theme-service";
 
 ////////////////////////////////////////////////////////////
@@ -30,10 +29,6 @@ function makeFileMenu(app:NoteworthyApp): MenuItemConstructorOptions {
 			{
 				label: "Open File...",
 				click: () => { app.handle("dialog", "dialogFileOpen"); }
-			},
-			{
-				label: "Close All",
-				click: () => { }
 			},
 			{
 				type: "separator"
@@ -55,30 +50,6 @@ function makeFileMenu(app:NoteworthyApp): MenuItemConstructorOptions {
 			{
 				type: "separator"
 			},
-			{	label: "Export File...",
-				submenu: [
-					{ label: "PDF" },
-					{ label: "HTML" },
-					{ label: "HTML (without styles)" },
-					{ type: "separator" },
-					{ label: "LaTeX" },
-					{ label: "Word" },
-					{ label: "OpenOffice" },
-					{ label: "RTF" },
-					{ label: "epub" },
-					{ type: "separator" },
-					{ label: "Export Options..." },
-				]
-			},
-			{	label: "Export Workspace...",
-				submenu: [
-					{ label: "HTML" },
-					{ label: "HTML (without styles)" },
-					{ label: "LaTeX" },
-					{ type: "separator" },
-					{ label: "Export Options..." },
-				]
-			},
 			{
 				label: "Exit",
 				click: () => { }
@@ -87,46 +58,10 @@ function makeFileMenu(app:NoteworthyApp): MenuItemConstructorOptions {
 	}
 }
 
-function makeEditMenu(): MenuItemConstructorOptions {
-	return {	
-		label: "Edit",
-		submenu: [
-			{ role: "undo" },
-			{ role: "redo" },
-			{ type: "separator" },
-			{ role: "cut" },
-			{ role: "copy" },
-			{ role: "paste" },
-			{ role: "pasteAndMatchStyle" },
-			{ role: "delete" },
-			{ type: "separator" },
-			{ label: "Copy as Markdown" },
-			{ label: "Copy as Text" },
-			{ label: "Copy as HTML" },
-			{ type: "separator" },
-			{ role: "selectAll" },
-		]
-	}
-}
-
-function makeParagraphMenu(): MenuItemConstructorOptions {
-	return {
-		label: "Paragraph",
-		submenu: [
-			{ label: "TODO" },
-		]
-	};
-}
-
 function makeViewMenu(): MenuItemConstructorOptions {
-	return { 
+	return {
 		label: "View",
 		submenu: [
-			{ label: "Toggle Sidebar" },
-			{ label: "Document Outline" },
-			{ label: "File Tree View" },
-			{ label: "File List View" },
-			{ type: "separator" },
 			{ role: "reload" },
 			{ role: "forceReload" },
 			{ role: "toggleDevTools" },
@@ -135,9 +70,6 @@ function makeViewMenu(): MenuItemConstructorOptions {
 			{ role: "zoomIn" },
 			{ role: "zoomOut" },
 			{ type: "separator" },
-			{ label: "Toggle Side Panel" },
-			{ label: "Focus Mode" },
-			{ label: "Typewriter Mode" },
 			{ type: "separator" },
 			{ role: "togglefullscreen" }
 		]
@@ -175,14 +107,14 @@ async function makeThemeMenu(themeService:ThemeService): Promise<MenuItemConstru
 		customThemeSubmenu,
 	);
 
-	return { 
+	return {
 		label: "Theme",
 		submenu
 	};
 }
 
 function makeWindowMenu(app:NoteworthyApp): MenuItemConstructorOptions {
-	return { 
+	return {
 		label: "Window",
 		submenu: [
 			{ role: "minimize" },
@@ -195,38 +127,11 @@ function makeWindowMenu(app:NoteworthyApp): MenuItemConstructorOptions {
 	};
 }
 
-function makeHelpMenu(): MenuItemConstructorOptions {
-	return {
-		label: "Help",
-		submenu: [
-			{
-				label: "About Noteworthy",
-				click: () => console.log("about")
-			},{
-				label: "View Documentation",
-				click: () => console.error("unhandled menu option!")
-			},
-			{ type: "separator" },
-			{
-				/** @todo (9/14/20) eletron-util openGitHubIssue https://github.com/sindresorhus/electron-util#opennewgithubissueoptions*/
-				label: "Report a Problem...",
-				click: () => console.error("unhandled menu option!")
-			},{
-				label: "Submit Feature Request...",
-				click: () => console.error("unhandled menu option!")
-			}
-		]
-	};
-}
-
 export async function makeAppMenuTemplate(app:NoteworthyApp, themeService:ThemeService): Promise<MenuItemConstructorOptions[]> {
 	return [
 		makeFileMenu(app),
-		makeEditMenu(),
-		makeParagraphMenu(),
 		makeViewMenu(),
 		await makeThemeMenu(themeService),
 		makeWindowMenu(app),
-		makeHelpMenu()
 	];
 }

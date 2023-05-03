@@ -11,7 +11,6 @@ import { MarkSyntaxExtension, MdastMarkMap, MdastMarkMapType, Prose2Mdast_MarkMa
 
 // mdast
 import * as Uni from "unist";
-import * as Mdast from "mdast";
 import { AnyChildren, markMapBasic } from "@common/markdown/mdast2prose";
 import { unistIsStringLiteral } from "@common/markdown/unist-utils";
 import { ProseKeymap } from "@common/types";
@@ -28,9 +27,9 @@ export function boldRule(markType: MarkType):InputRule {
  * @compare to ReMirror BoldExtension, (https://github.com/remirror/remirror/blob/next/packages/%40remirror/extension-bold/src/bold-extension.ts)
  */
 export class BoldExtension extends MarkSyntaxExtension<Md.Strong> {
-	
+
 	get name() { return "strong" as const; }
-	
+
 	createMarkSpec(): MarkSpec {
 		return {
 			parseDOM: [
@@ -46,7 +45,7 @@ export class BoldExtension extends MarkSyntaxExtension<Md.Strong> {
 		return [boldRule(this.markType)];
 	}
 
-	createKeymap(): ProseKeymap { return { 
+	createKeymap(): ProseKeymap { return {
 		"Mod-b" : toggleMark(this.markType),
 		"Mod-B" : toggleMark(this.markType)
 	}}
@@ -68,9 +67,9 @@ export function italicRule(markType: MarkType): InputRule {
 }
 
 export class ItalicExtension extends MarkSyntaxExtension<Md.Emphasis> {
-	
+
 	get name() { return "em" as const; }
-	
+
 	createMarkSpec(): MarkSpec {
 		return {
 			parseDOM: [
@@ -86,7 +85,7 @@ export class ItalicExtension extends MarkSyntaxExtension<Md.Emphasis> {
 		return [italicRule(this.markType)];
 	}
 
-	createKeymap(): ProseKeymap { return { 
+	createKeymap(): ProseKeymap { return {
 		"Mod-i" : toggleMark(this.markType),
 		"Mod-I" : toggleMark(this.markType)
 	}}
@@ -102,38 +101,12 @@ export class ItalicExtension extends MarkSyntaxExtension<Md.Emphasis> {
 
 }
 
-/* -- Definition ---------------------------------------- */
-
-// TODO: (2021/05/09) restore definitions
-
-// export class DefinitionExtension extends MarkSyntaxExtension<Md.HTML> {
-	
-// 	get name() { return "definition" as const; }
-	
-// 	createMarkSpec(): MarkSpec {
-// 		return {
-// 			parseDOM: [{ tag: "dfn" }],
-// 			toDOM(): DOMOutputSpec { return ["dfn"] }
-// 		};
-// 	}
-
-// 	createKeymap(): ProseKeymap { return { 
-// 		"Mod-d" : toggleMark(this.type),
-// 		"Mod-D" : toggleMark(this.type)
-// 	}}
-
-// 	// -- Conversion from Mdast -> ProseMirror ---------- //
-
-// 	get mdastNodeType() { return "html" as const };
-// 	createMdastMap() { return MdastMarkMapType.MARK_LITERAL; }
-// }
-
 /* -- Link ---------------------------------------- */
 
 export class LinkExtension extends MarkSyntaxExtension<Md.Link> {
-	
+
 	get name() { return "link" as const; }
-	
+
 	createMarkSpec(): MarkSpec {
 		return {
 			attrs: {
@@ -187,7 +160,7 @@ export class LinkExtension extends MarkSyntaxExtension<Md.Link> {
 	// -- Conversion from Mdast -> ProseMirror ---------- //
 
 	get mdastNodeType() { return "link" as const };
-	createMdastMap(): MdastMarkMap<Md.Link> { 
+	createMdastMap(): MdastMarkMap<Md.Link> {
 		return {
 			mapType: "mark_custom",
 			mapMark: markMapBasic(this.markType, node => ({
@@ -203,7 +176,7 @@ export class LinkExtension extends MarkSyntaxExtension<Md.Link> {
 		create: (mark: ProseMark, node: Uni.Node): Md.Link => {
 			// TODO (2021-05-17) better solution for casting attrs?
 			let linkAttrs = mark.attrs as { href: string, title:string|null };
-			
+
 			// create mdast node
 			let linkNode: AnyChildren<Md.Link> = {
 				type: this.mdastNodeType,
@@ -218,37 +191,6 @@ export class LinkExtension extends MarkSyntaxExtension<Md.Link> {
 
 }
 
-/* -- Underline ---------------------------------------- */
-
-// TODO (2021/05/09) restore underline
-
-// export function underlineRule(markType: MarkType): InputRule {
-// 	return markInputRule(/(?<![^\s])_([^\s_](?:.*[^\s_])?)_(.)$/, markType);
-// }
-
-// export class UnderlineExtension extends MarkSyntaxExtension {
-	
-// 	get name() { return "underline" as const; }
-	
-// 	createMarkSpec(): MarkSpec {
-// 		return {
-// 			inclusive: false,
-// 			parseDOM: [
-// 				{ tag: "em.ul" },
-// 				{ style: "text-decoration", getAttrs: (value:string|Node) => value == "underline" && null }
-// 			],
-// 			toDOM(): DOMOutputSpec { return ["em", { class: "ul" }] }
-// 		};
-// 	}
-
-// 	createKeymap(): ProseKeymap { return {
-// 		"Mod-u" : toggleMark(this.type)
-// 	}}
-
-// 	createInputRules() { return [underlineRule(this.type)]; }
-
-// }
-
 /* -- Code ---------------------------------------------- */
 
 export function inlineCodeRule(markType: MarkType): InputRule {
@@ -256,9 +198,9 @@ export function inlineCodeRule(markType: MarkType): InputRule {
 }
 
 export class CodeExtension extends MarkSyntaxExtension<Md.InlineCode> {
-	
+
 	get name() { return "code" as const; }
-	
+
 	createMarkSpec(): MarkSpec {
 		return {
 			inclusive: false,
@@ -269,7 +211,7 @@ export class CodeExtension extends MarkSyntaxExtension<Md.InlineCode> {
 
 	createKeymap(): ProseKeymap {
 		// note: on mac, pressing Cmd+` does not register as an event
-		// https://github.com/ProseMirror/prosemirror/issues/540 
+		// https://github.com/ProseMirror/prosemirror/issues/540
 		return { "Ctrl-`" : toggleMark(this.markType) };
 	}
 
@@ -285,37 +227,6 @@ export class CodeExtension extends MarkSyntaxExtension<Md.InlineCode> {
 	prose2mdast() { return Prose2Mdast_MarkMap_Presets.MARK_LITERAL; }
 }
 
-/* -- Strikethrough ---------------------------------------- */
-
-// TODO (2021-05-09) reinstate strike rule
-
-// export function strikeRule(markType: MarkType): InputRule {
-// 	return markInputRule(/~([^\s~](?:.*[^\s~])?)~(.)$/, markType);
-// }
-
-// export class StrikethroughExtension extends MarkSyntaxExtension {
-	
-// 	get name() { return "strike" as const; }
-	
-// 	createMarkSpec(): MarkSpec {
-// 		return {
-// 			inclusive: false,
-// 			parseDOM: [
-// 				{ tag: "em.ul" },
-// 				{ style: "text-decoration", getAttrs: (value:string|Node) => value == "underline" && null }
-// 			],
-// 			toDOM(): DOMOutputSpec { return ["em", { class: "ul" }] }
-// 		};
-// 	}
-
-// 	createKeymap(): ProseKeymap { return {
-// 		"Mod-u" : toggleMark(this.type)
-// 	}}
-
-// 	createInputRules() { return [strikeRule(this.type)]; }
-
-// }
-
 /* -- Wikilink ------------------------------------------ */
 
 export function wikilinkRule(markType: MarkType): InputRule {
@@ -323,9 +234,9 @@ export function wikilinkRule(markType: MarkType): InputRule {
 }
 
 export class WikilinkExtension extends MarkSyntaxExtension<Md.Wikilink> {
-	
+
 	get name() { return "wikilink" as const; }
-	
+
 	createMarkSpec(): MarkSpec {
 		return {
 			attrs: { title: { default: null } },
@@ -336,7 +247,7 @@ export class WikilinkExtension extends MarkSyntaxExtension<Md.Wikilink> {
 	}
 
 	createKeymap(): ProseKeymap { return {
-		"Mod-[" : toggleMark(this.markType) 
+		"Mod-[" : toggleMark(this.markType)
 	}}
 
 	createInputRules() { return [wikilinkRule(this.markType)]; }
@@ -355,7 +266,7 @@ export class WikilinkExtension extends MarkSyntaxExtension<Md.Wikilink> {
 			}
 			// TODO (2021-05-17) better solution for casting attrs?
 			let wikiAttrs = mark.attrs as { title: string };
-			
+
 			// create mdast node
 			// TODO (2021-05-19) how to correctly construct permalink/alias/exists properties for wikilink?
 			return {
@@ -371,31 +282,3 @@ export class WikilinkExtension extends MarkSyntaxExtension<Md.Wikilink> {
 	}}
 
 }
-
-/* -- Tag ----------------------------------------------- */
-
-// TODO (2021-05-09) restore tag syntax
-
-// export function tagRule(markType: MarkType): InputRule {
-// 	return markInputRule(/#([a-zA-Z0-9-:_/\\]+)([^a-zA-Z0-9-:_/\\])$/, markType);
-// }
-// export function tagRuleBracketed(markType: MarkType): InputRule {
-// 	return markInputRule(/#\[([^\s](?:[^\]]*[^\s])?)\](.)$/, markType);
-// }
-
-// export class TagExtension extends MarkSyntaxExtension {
-	
-// 	get name() { return "tag" as const; }
-	
-// 	createMarkSpec(): MarkSpec {
-// 		return {
-// 			attrs: { title: { default: null }},
-// 			inclusive: false,
-// 			parseDOM: [{ tag: "span.tag" }],
-// 			toDOM(node: Mark): DOMOutputSpec { return ["span", Object.assign({ class: "tag" }, node.attrs)] }
-// 		};
-// 	}
-
-// 	createInputRules() { return [tagRule(this.type), tagRuleBracketed(this.type)]; }
-
-// }

@@ -1,6 +1,5 @@
 // import parsers
 import { MarkdownASTParser } from "./markdown-doc";
-import { BibTexParser } from "./bibtex-doc";
 import { IDoc, IDocParser } from "./doctypes";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -12,7 +11,6 @@ export function parseAST(fileExt: string, fileContents: string):IDoc|null {
 	switch(fileExt){
 		case ".md"  : { parser = MarkdownASTParser; } break;
 		case ".txt" : { parser = MarkdownASTParser; } break;
-		case ".bib" : { parser = BibTexParser;   } break;
 		default     : { parser = MarkdownASTParser; } break;
 	}
 

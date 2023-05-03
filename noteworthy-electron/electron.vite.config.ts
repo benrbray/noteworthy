@@ -18,10 +18,7 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     resolve: {
       alias: {
-        "@common"     : resolve("src/common"),
-        "@extensions" : resolve("src/extensions"),
-        '@main'       : resolve('src/main'),
-        '@renderer'   : resolve('src/renderer/src'),
+        "@common"     : resolve("src/common")
       }
     }
   },

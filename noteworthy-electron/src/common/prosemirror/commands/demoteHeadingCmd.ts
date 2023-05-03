@@ -1,35 +1,11 @@
 import { Command as ProseCommand } from "prosemirror-state";
-import { Node as ProseNode, ResolvedPos, NodeType } from "prosemirror-model";
-import { liftTarget } from "prosemirror-transform";
-
-////////////////////////////////////////////////////////////
-
-/** @todo (9/26/20) use the types defined below to make it 
- * easier to mix-and-match ProseMirror node types elsewhere */
-
-/** @todo (9/27/20) revisit typings for node attributes */
-
-// converts a ProseMirror attr spec to the correct attr types
-// type ProseAttrTypeFromSpec<T> = {
-// 	[attr in keyof T] : (T[attr] extends { default : infer P } ? P : never)
-// }
-
-// type ProseNodeWithAttrs<T> = ProseNode & { attrs: T };
-
-// // types for markdown heading node
-// type HeadingNodeAttrSpec = ReturnType<typeof markdownSpec>["nodes"]["heading"]["attrs"];
-// type HeadingNodeAttrs = ProseAttrTypeFromSpec<HeadingNodeAttrSpec>;
-// type HeadingNode = ProseNodeWithAttrs<HeadingNodeAttrs>
-
-// function isHeadingNode(node: ProseNode): node is HeadingNode {
-// 	return node.type.name == "heading";
-// }
+import { NodeType } from "prosemirror-model";
 
 ////////////////////////////////////////////////////////////
 
 export function incrHeadingLevelCmd(
 	incr:number,
-	options:{ 
+	options:{
 		requireTextblockStart:boolean,
 		requireEmptySelection:boolean,
 	},
@@ -42,11 +18,11 @@ export function incrHeadingLevelCmd(
 		// only works at start of heading block
 		let { $anchor } = state.selection;
 		if (options.requireTextblockStart) {
-			if (view ? !view.endOfTextblock("backward", state) 
-		         : $anchor.parentOffset > 0 ) 
+			if (view ? !view.endOfTextblock("backward", state)
+		         : $anchor.parentOffset > 0 )
 		         { return false; }
 		}
-		
+
 		// parent must be a heading
 		let parent = $anchor.parent;
 		/** @todo (9/27/20) revisit typings for node attributes */

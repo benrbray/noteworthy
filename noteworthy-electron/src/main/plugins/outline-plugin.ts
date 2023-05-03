@@ -1,9 +1,3 @@
-// node imports
-import path from "path";
-
-// prosemirror
-import { Node as ProseNode, Mark } from "prosemirror-model";
-
 // project imports
 import { IWorkspaceDir, IFileMeta } from "@common/files";
 import { WorkspacePlugin } from "./plugin";
@@ -80,7 +74,7 @@ export class OutlinePlugin implements WorkspacePlugin {
 	}
 
 	// == Workspace Events ============================== //
-	
+
 	async handleWorkspaceClosed(dir: IWorkspaceDir){
 		console.log("xref-plugin :: handle(workspace-closed)");
 		this.clear();
