@@ -28,7 +28,14 @@ export const TagSearch = (props:ITagSearchProps) => {
 							return (<div class="list-item search-result"
 									data-tag={entry.result}
 									onClick={props.handleTagClick}
-									innerHTML={entry.resultEmphasized} />)
+							>
+								<For each={entry.resultEmphasized}>
+								{(item) => {
+									if(item.emph) { return (<b>{item.text}</b>); }
+									else          { return item.text; }
+								}}
+								</For>
+							</div>)
 						} else if(entry.type == "file-result"){
 							return (<div class="list-item search-result"
 									data-filehash={entry.file.hash}
