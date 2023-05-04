@@ -33,12 +33,18 @@ completed editor features
 - [x] support `\providecommand` in math nodes
 - [x] code block syntax highlighting via [`codemirror`](https://codemirror.net/)
 - [x] support for `tikz` diagrams via [`@drgrice1/tikzjax`](https://github.com/drgrice1/tikzjax/tree/ww-modifications) (inspired by [`obsidian-tikzjax`](https://github.com/artisticat1/obsidian-tikzjax))
+- [x] autocompletion for tags and citations, via [`prosemirror-autocomplete`](https://github.com/curvenote/editor/tree/main/packages/prosemirror-autocomplete)
+
+in development
+
+- [ ] community plugin system
+- [ ] import `bibtex` or `csl-json` bibliography file
 
 planned
 
 - [ ] import `bibtex` or `csl-json` bibliography file
+- [ ] `flavor:` metadata for interoperability with other editors
 - [ ] populate note from bibliography entry
-- [ ] community plugin system
 - [ ] filesystem-local images
 - (...and more!)
 
@@ -95,16 +101,24 @@ The table below compares Noteworthy to other editors with similar features.  Of 
 
 ## Building Noteworthy
 
-> Noteworthy is NOT quite ready for use.  However, you can follow these instructions if you really wish to run it.
+Noteworthy is still a bit rough around the edges, and is missing some basic quality-of-life features.  However, it's stable enough that I use it for all my daily note-taking.  You can follow these instructions if you really wish to run it.
 
-```
-git clone --recurse-submodules git@github.com:benrbray/noteworthy.git
-cd noteworthy
-npm install
-npm run dist
+```bash
+git clone git@github.com:benrbray/noteworthy.git
+cd noteworthy-electron
+npm run build:linux
 ```
 
 After building, look in the `/dist` folder for an executable.
+
+## Development
+
+Noteworthy is built with [`electron-vite`](https://evite.netlify.app/).  To run in development mode with live-reload,
+
+```bash
+cd noteworthy-electron
+npm run dev
+```
 
 ## Acknowledgements
 
