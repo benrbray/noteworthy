@@ -21,12 +21,11 @@
 			img-src data: https://* 'self';
 			worker-src data: blob: 'unsafe-eval' 'wasm-unsafe-eval' 'unsafe-inline' 'self'"
 		/>
-		<!-- (default from vite-electron) content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'" -->
 	</head>
 
 	<body>
 		<div id="main"></div>
-		<!-- <script type="module" src="/src/vite-default/main.tsx"></script> -->
+		<!-- type="module" is needed by vite -->
 		<script type="module" src="/src/index.tsx"></script>
 	</body>
 </html>
