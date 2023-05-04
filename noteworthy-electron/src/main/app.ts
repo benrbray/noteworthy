@@ -7,7 +7,7 @@ import { enforceMacOSAppLocation } from 'electron-util';
 import { EventEmitter } from "events";
 
 // project imports
-import MainWindow from "./windows/main";
+import MainWindow from "./windows/MainWindow";
 import {
 	MainIpc_FileHandlers, MainIpc_TagHandlers, MainIpc_DialogHandlers,
 	MainIpc_LifecycleHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers,
