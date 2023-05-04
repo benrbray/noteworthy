@@ -1,0 +1,75 @@
+:root {
+	--suggest-padding-h: 0.6rem;
+	--suggest-padding-v: 0.6rem;
+}
+
+#suggest-wrapper {
+	position: absolute;
+	right: 0;
+	left: 0;
+}
+
+.suggest {
+	position: absolute;
+
+	font-size: 1.0em;
+	font-family: var(--font-ui);
+
+	border-radius: 4px;
+	box-shadow: inset;
+	background-color: white;
+
+	min-width: 10em;
+	max-height: 30vh;
+	overflow-y: scroll;
+	overflow-x: hidden;
+
+	user-select: none;
+	z-index: 1000;
+
+	box-sizing: border-box;
+
+	box-shadow:
+		rgba(0,  0, 0, 0.05) 0px 0px 0px 1px,
+		rgba(15, 15, 15, 0.1) 0px 4px 8px;
+}
+
+.suggest.suggest-open {
+	display: block;
+}
+
+.suggest.suggest-closed {
+	display: none;
+}
+
+.suggest-group-label {
+	margin: 0.5em 0;
+	padding: 0 var(--suggest-padding-h);
+	color: var(--font-color-ui-faint);
+	font-size: 0.8em;
+}
+
+.suggest-item {
+	padding: 0.32rem var(--suggest-padding-h);
+	font-size: 14px;
+}
+
+.suggest-item.selected {
+	background-color: var(--color-primary-bg-2);
+	color: var(--font-color-ui-default);
+}
+
+.autocomplete {
+	background-color: var(--color-bg-neutral);
+}
+
+.suggest-item .suggest-label-code {
+	font-family: var(--code-font);
+	background-color: var(--color-primary-bg-2);
+	padding: 0.1em 0.2em;
+	border: 1px solid var(--color-primary-bg-4);
+}
+
+.suggest-item .suggest-fuzzy-match {
+	font-weight: bold;
+}

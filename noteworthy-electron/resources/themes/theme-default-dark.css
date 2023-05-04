@@ -1,0 +1,71 @@
+:root {
+	/** UI Colors **/
+	--color-bg: #1a2932;
+	--color-bg-1: #0e1b22;    /* e.g. sidebar */
+	--color-bg-2: #0e1b22;    /* e.g. code_blocks */
+	--color-bg-3: #21303a;    /* e.g. folder */
+
+	--color-bg-hover: #1a2932;
+	--color-bg-selected: #616e79;
+	--color-bg-highlight: #323b43;    /* e.g. active file */
+	
+	--color-text: #d0d5e0;
+	--color-text-faint: #616e79;
+	--color-text-fainter: #2f4a57;
+
+	/** Search **/
+	--color-bg-textinput: #323b43;
+	--color-textinput: var(--color-text);
+	--color-text-fuzzy-match: #fac863;
+
+	/** Semantic Colors **/
+	--color-good: #56a756;
+	--color-bad: #e46e7c;
+	--color-warning: #f0c05f;
+	--color-neutral: steelblue;
+	--color-question: #b47bac;
+	--color-todo: #b47bac;
+
+	/** Editor Colors **/
+	--color-link: steelblue;
+	--color-wikilink: steelblue;
+	--color-citation: seagreen;
+	--color-definition: blue;
+	--color-inline-delims: #616e79;
+	--color-heading-level: #616e79;
+	--color-math-src: #ad4fbd;
+}
+
+/* == Basic Element Styles ============================== */
+
+/* headings */
+#editor h1::before { content: "# ";      color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
+#editor h2::before { content: "## ";     color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
+#editor h3::before { content: "### ";    color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
+#editor h4::before { content: "#### ";   color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
+#editor h5::before { content: "##### ";  color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
+#editor h6::before { content: "###### "; color: var(--color-heading-level); font-family: var(--code-font); margin-left: 0.5rem; }
+
+#editor p {
+	text-align: justify;
+}
+
+/* -- wikilinks, tags, citations ------------------------ */
+
+/* wikilinks */
+.wikilink { font-family: var(--code-font); font-size: 0.95em; color: var(--color-wikilink); }
+.wikilink::before { content: "[["; color: var(--color-inline-delims); letter-spacing: -0.1em}
+.wikilink::after  { content: "]]"; color: var(--color-inline-delims); letter-spacing: -0.1em}
+
+/* tags */
+.tag { font-family: var(--font-editor); color: steelblue; }
+.tag::before { content: "#"; font-family: var(--code-font);}
+
+/* citation */
+.citation { font-family: var(--code-font); font-size: 0.95em; color: seagreen; }
+.citation::before { content: "@["; color: var(--color-inline-delims); letter-spacing: -0.1em; font-family: var(--code-font);}
+.citation::after  { content: "]";  color: var(--color-inline-delims); letter-spacing: -0.1em; font-family: var(--code-font);}
+
+/* citation: pandoc style */
+.citation-pandoc::before { content: "["; color: var(--color-inline-delims); letter-spacing: -0.1em; font-family: var(--code-font);}
+.citation-pandoc::after  { content: "]"; color: var(--color-inline-delims); letter-spacing: -0.1em; font-family: var(--code-font);}

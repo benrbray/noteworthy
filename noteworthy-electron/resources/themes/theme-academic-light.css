@@ -1,0 +1,358 @@
+:root {
+	--font-editor: var(--serif-font);
+	--font-size: 1.0rem;
+	--color-bg: #ffffff;
+	--color-bg-2: #eeeeee;
+	--color-inline-delims: #c0c0c0;
+	--line-height: 1.22em;
+}
+
+#editor,
+#bibliography {
+	margin: 0 auto;
+	max-width: 42em;
+}
+
+/* == Basic Element Styles ============================== */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	margin-left: 0.5rem;
+}
+
+/* headings */
+
+h1 {
+	font-size: 2em;
+}
+
+h2 {
+	font-size: 1.6em;
+}
+
+h3 {
+	font-size: 1.4em;
+	font-style: italic;
+}
+
+h4 {
+	font-size: 1.2em;
+	color: #606060
+}
+
+h5 {
+	font-size: 1.0rem;
+}
+
+h6 {
+	font-size: 1.0rem;
+}
+
+h1:hover::after {
+	content: " h1";
+	position: absolute;
+	right: 0;
+	color: var(--color-heading-level);
+	font-family: var(--code-font);
+}
+
+h2:hover::after {
+	content: " h2";
+	position: absolute;
+	right: 0;
+	color: var(--color-heading-level);
+	font-family: var(--code-font);
+}
+
+h3:hover::after {
+	content: " h3";
+	position: absolute;
+	right: 0;
+	color: var(--color-heading-level);
+	font-family: var(--code-font);
+}
+
+h4:hover::after {
+	content: " h4";
+	position: absolute;
+	right: 0;
+	color: var(--color-heading-level);
+	font-family: var(--code-font);
+}
+
+h5:hover::after {
+	content: " h5";
+	position: absolute;
+	right: 0;
+	color: var(--color-heading-level);
+	font-family: var(--code-font);
+}
+
+h6:hover::after {
+	content: " h6";
+	position: absolute;
+	right: 0;
+	color: var(--color-heading-level);
+	font-family: var(--code-font);
+}
+
+/* #editor p {
+	text-align: justify;
+} */
+
+hr {
+	display: block;
+	height: 1px;
+	width: 55%;
+	border: 0;
+	border-top: 2px solid #ccc;
+	margin: 1em auto;
+	padding: 0;
+}
+
+/* ------------------------------------------------------ */
+
+#editor ul li:not(:last-child) {
+	margin-bottom: 0.1em;
+}
+
+#editor ul ul {
+	margin-top: 0.1em;
+}
+
+#editor ul+ul {
+	margin-top: 2em;
+}
+
+/* -- wikilinks, tags, citations ------------------------ */
+
+/* wikilinks */
+
+.wikilink {
+	font-family: var(--code-font);
+	font-size: 0.95em;
+	color: var(--color-wikilink);
+}
+
+.wikilink::before {
+	content: "[[";
+	color: var(--color-inline-delims);
+	letter-spacing: -0.1em
+}
+
+.wikilink::after {
+	content: "]]";
+	color: var(--color-inline-delims);
+	letter-spacing: -0.1em
+}
+
+/* tags */
+
+.tag {
+	font-family: var(--font-editor);
+	color: steelblue;
+}
+
+.tag::before {
+	content: "#";
+	font-family: var(--code-font);
+}
+
+/* citation */
+
+.citation {
+	font-family: var(--code-font);
+	font-size: 0.95em;
+	color: seagreen;
+}
+
+.citation::before {
+	content: "@[";
+	color: var(--color-inline-delims);
+	letter-spacing: -0.1em;
+	font-family: var(--code-font);
+}
+
+.citation::after {
+	content: "]";
+	color: var(--color-inline-delims);
+	letter-spacing: -0.1em;
+	font-family: var(--code-font);
+}
+
+/* citation: pandoc style */
+
+.citation-pandoc::before {
+	content: "[";
+	color: var(--color-inline-delims);
+	letter-spacing: -0.1em;
+	font-family: var(--code-font);
+}
+
+.citation-pandoc::after {
+	content: "]";
+	color: var(--color-inline-delims);
+	letter-spacing: -0.1em;
+	font-family: var(--code-font);
+}
+
+/* ------------------------------------------------------ */
+
+pre:first-child {
+	margin-top: 0;
+}
+
+/* ------------------------------------------------------ */
+
+.directive {
+	background-color: #f6f6f6;
+}
+
+.directive[data-name="proof"] {
+	color: #707070;
+}
+
+.directive+.directive[data-name="proof"] {
+	border-top: none;
+	margin-top: 0.5em;
+}
+
+/* ------------------------------------------------------ */
+
+.directive[data-name="figure"] {
+	background-color: unset;
+	border: unset;
+}
+
+.directive[data-name="figure"]::before {
+	content: unset;
+}
+
+.directive[data-name="figure"]:hover {
+	background-color: var(--color-bg-1);
+}
+
+.directive[data-name="figure"]>p {
+	display: block;
+	padding: 0 2em;
+}
+
+.directive[data-name="figure"]>p:nth-child(2):before {
+	content: "Figure. ";
+	font-weight: bold;
+}
+
+.directive[data-name="figure"]>p:not(:first-child) {
+	color: var(--color-text-fainter);
+	text-align: center;
+}
+
+/* ------------------------------------------------------ */
+
+.directive[data-name="abstract"] {
+	background-color: unset;
+	border: unset;
+	margin: 0 auto 2em auto;
+}
+
+/** (undo default directive style) **/
+.directive[data-name="abstract"]>p {
+	display: block;
+	padding: 0 2em;
+	margin-left: 0 !important;
+	text-align: justified;
+}
+
+.directive[data-name="abstract"]::before {
+	content: "Abstract";
+	display: block;
+	text-align: center;
+}
+
+/* ------------------------------------------------------ */
+
+.directive[data-name="grid"]:before {
+	content: unset;
+}
+
+.directive[data-name="grid"] {
+	padding: 0;
+}
+
+.directive[data-name="grid"]>p {
+	display: block;
+}
+
+.directive[data-name="grid"] {
+	display: grid;
+	grid-template-columns: 50% 50%;
+	grid-template-rows: auto;
+	grid-auto-flow: row;
+	justify-items: stretch;
+	align-items: center;
+}
+
+.directive[data-name="grid"]>* {
+	padding: 1em;
+	margin: 0 !important;
+	border: 1px solid transparent;
+}
+
+.directive[data-name="grid"]>*:hover {
+	border: 1px solid gray;
+}
+
+.directive[data-name="grid"]>img {
+	justify-self: center;
+}
+
+/* ------------------------------------------------------ */
+
+.directive[data-name="quoted"]::before {
+	content: attr(data-name);
+	position: absolute;
+	right: 0.5em;
+	bottom: -0.5em;
+	padding: 0 0.2em;
+
+	font-variant: all-small-caps;
+	background-color: var(--color-bg);
+	color: #c0c0c0;
+}
+
+.directive[data-name="quoted"]>p {
+	display: block;
+	margin-left: 0.5em !important;
+	margin-right: 0.5em !important;
+}
+
+.directive[data-name="quoted"]>p:first-child {
+	margin-top: 0;
+}
+
+.directive[data-name="quoted"]>p:last-child {
+	margin-bottom: 0;
+}
+
+.directive[data-name="quoted"] {
+	position: relative;
+	padding: 0.5em 0;
+	margin: 0;
+	background-color: unset;
+}
+
+.directive[data-name="quoted"]:hover {
+	border-color: rgb(88, 153, 250);
+	transition-property: border-color;
+	transition-duration: 0.2s;
+}
+
+.directive[data-name="quoted"]:hover::before {
+	color: blue;
+	transition-property: color;
+	transition-duration: 0.2s;
+}

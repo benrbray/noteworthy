@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>Noteworthy</title>
+		<!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
+		<meta
+			http-equiv="Content-Security-Policy"
+			content="
+			default-src
+				blob:
+				'self';
+			script-src
+				'self'
+				'unsafe-eval'
+				'wasm-unsafe-eval'
+				blob:
+				'sha256-S/Xk+qSetfpPKg7TovOfhZvv9zMfigR6WioUH5RpPLM=';
+			style-src 'self' 'unsafe-inline';
+			font-src data: 'self';
+			img-src data: https://* 'self';
+			worker-src data: blob: 'unsafe-eval' 'wasm-unsafe-eval' 'unsafe-inline' 'self'"
+		/>
+	</head>
+
+	<body>
+		<div id="main"></div>
+		<!-- type="module" is needed by vite -->
+		<script type="module" src="/src/index.tsx"></script>
+	</body>
+</html>
