@@ -7,10 +7,14 @@
 		<meta
 			http-equiv="Content-Security-Policy"
 			content="
-			default-src blob: 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval';
+			default-src
+				blob:
+				'self';
 			script-src
 				'self'
 				'unsafe-eval'
+				'wasm-unsafe-eval'
+				blob:
 				'sha256-S/Xk+qSetfpPKg7TovOfhZvv9zMfigR6WioUH5RpPLM=';
 			style-src 'self' 'unsafe-inline';
 			font-src data: 'self';
