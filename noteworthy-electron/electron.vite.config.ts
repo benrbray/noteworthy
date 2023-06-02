@@ -11,6 +11,7 @@ export default defineConfig({
         "@extensions" : resolve("src/extensions"),
         '@main'       : resolve('src/main'),
         '@renderer'   : resolve('src/renderer/src'),
+        '@resources'   : resolve('resources'),
       }
     }
   },
@@ -30,6 +31,7 @@ export default defineConfig({
         '@main'       : resolve('src/main'),
         '@preload'    : resolve('src/preload'),
         '@renderer'   : resolve('src/renderer/src'),
+        '@resources'   : resolve('resources'),
       }
     },
     plugins: [solid()]

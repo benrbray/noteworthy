@@ -1,4 +1,4 @@
-import { NoteworthyExtensionApi } from "@renderer/extensions/extension-api";
+import { NoteworthyExtensionApi } from "@common/extensions/extension-api";
 import * as PS from "prosemirror-state";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -27,19 +27,7 @@ type CommunityExtensionConfig = {
 }
 
 export interface CommunityExtensions {
-	ignore: number,
-	fooExtension: {
-		name: "fooExtension",
-		config: {
-			logger: (lang: string) => HTMLElement
-		}
-	},
-	barExtension: {
-		name: "barExtension"
-	},
-	bazExtension: {
-		name: string
-	}
+	// intentionally empty, to be extended by module declarations
 }
 
 ////////////////////////////////////////////////////////////////////////////////

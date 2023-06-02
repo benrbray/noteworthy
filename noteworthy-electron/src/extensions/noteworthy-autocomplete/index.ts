@@ -7,7 +7,7 @@ import AutocompleteExtension, { Autocomplete, AutocompleteProviders, SuggestData
  * loaded dynamically at initialization time. (and perhaps watched for changes)
  */
 import "./autocomplete.css"
-import { NoteworthyExtensionApi } from "@renderer/extensions/extension-api";
+import { NoteworthyExtensionApi } from "@common/extensions/extension-api";
 
 export const autocompleteExtension: NoteworthyExtensionInitializer<Autocomplete.Name> = {
 	spec: extensionSpec,
