@@ -11,8 +11,15 @@ import { EventEmitter } from "events";
 import { FSAL } from "@main/fsal/fsal";
 import { FsalEvents, ChokidarEvents } from "@common/events";
 
-// defined by electron-webpack
-declare const __static:string;
+// @ts-ignore (vite asset)
+import themeDefaultLight from "@resources/themes/theme-default-light.css?raw";
+// @ts-ignore (vite asset)
+import themeDefaultDark from "@resources/themes/theme-default-dark.css?raw";
+// @ts-ignore (vite asset)
+import themeAcademicLight from "@resources/themes/theme-academic-light.css?raw";
+// @ts-ignore (vite asset)
+import themeTypewriterLight from "@resources/themes/theme-typewriter-light.css?raw";
+
 
 export enum ThemeEvent {
 	THEME_CHANGED = "theme-changed"
@@ -25,7 +32,7 @@ export enum ThemeEvent {
 export type ThemeId = { type: "default", id:string } | { type: "custom", path:string };
 
 export class ThemeService extends EventEmitter {
-	constructor(private _fsal: FSAL){ 
+	constructor(private _fsal: FSAL){
 		super();
 		this.initThemeFolder();
 	}
@@ -68,18 +75,16 @@ export class ThemeService extends EventEmitter {
 		// default vs custom themes
 		if(theme.type == "default"){
 			// find default theme
-			let themeCssPath:string = "";
+			let cssString:string = "";
 			switch(theme.id){
 				/** @todo (9/14/20) these should be defined elsewhere */
-				case "default-dark"  : themeCssPath = pathlib.resolve(__static, 'themes/theme-default-dark.css');  break;
-				case "default-light" : themeCssPath = pathlib.resolve(__static, 'themes/theme-default-light.css'); break;
-				case "typewriter-light" : themeCssPath = pathlib.resolve(__static, 'themes/theme-typewriter-light.css'); break;
-				case "academic-light" : themeCssPath = pathlib.resolve(__static, 'themes/theme-academic-light.css'); break;
+				case "default-dark"  : cssString = themeDefaultDark;  break;
+				case "default-light" : cssString = themeDefaultLight; break;
+				case "typewriter-light" : cssString = themeTypewriterLight; break;
+				case "academic-light" : cssString = themeAcademicLight; break;
 				default: console.error(`theme '${theme.id}' not found`); return;
 			}
 
-			// read and apply theme
-			let cssString:string = await fs.readFile(themeCssPath, { encoding : 'utf8' });
 			this.emit(ThemeEvent.THEME_CHANGED, cssString);
 
 			// save theme to user settings
@@ -118,7 +123,7 @@ export class ThemeService extends EventEmitter {
 		let themeFolder = this.getThemeFolder();
 
 		let filePaths:string[] = [];
-		try { 
+		try {
 			filePaths = await fs.readdir(themeFolder);
 		} catch(err){
 			console.error("themes folder does not exist\n", err);
