@@ -59,7 +59,7 @@ import { NoteworthyExtension, NoteworthyExtensionInitializer, RegisteredExtensio
 import codeMirrorPreviewExtension from "@extensions/noteworthy-codemirror-preview";
 import tikzJaxExtension from "@extensions/noteworthy-tikzjax";
 import autocompleteExtension from "@extensions/noteworthy-autocomplete";
-import { NoteworthyExtensionApi } from "@renderer/extensions/extension-api";
+import { NoteworthyExtensionApi } from "@common/extensions/extension-api";
 
 ////////////////////////////////////////////////////////////
 
