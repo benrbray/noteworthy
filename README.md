@@ -105,19 +105,23 @@ Noteworthy is still a bit rough around the edges, and is missing some basic qual
 
 ```bash
 git clone git@github.com:benrbray/noteworthy.git
+cd noteworthy
+pnpm install
+pnpm build
 cd noteworthy-electron
-npm run build:linux
+pnpm run build:linux
+pnpm run build:win
+pnpm run build:mac
 ```
 
 After building, look in the `/dist` folder for an executable.
 
 ## Development
 
-Noteworthy is built with [`electron-vite`](https://evite.netlify.app/).  To run in development mode with live-reload,
+Noteworthy is built with [`electron-vite`](https://evite.netlify.app/), and structured as a monorepo using [`pnpm` workspaces](https://pnpm.io/workspaces).  To run in development mode with live-reload,
 
 ```bash
-cd noteworthy-electron
-npm run dev
+pnpm dev:electron
 ```
 
 ## Acknowledgements
