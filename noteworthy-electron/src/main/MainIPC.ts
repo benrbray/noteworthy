@@ -629,7 +629,6 @@ export class MainIpc_NavigationHandlers implements MainIpcChannel {
 import { Cite } from "@citation-js/core";
 import "@citation-js/plugin-bibtex";
 import "@citation-js/plugin-csl";
-import { Citation } from "./plugins/citation-plugin";
 
 export class MainIpc_CitationHandlers implements MainIpcChannel {
 	get name() { return "citations" as const; }

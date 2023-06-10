@@ -2,7 +2,7 @@
  * A Remark plugin to serialize nodes that represent Markdown
  * parse errors or other unrecognized document fragments that
  * arise during the mdast -> prosemirror parsing process.
- * 
+ *
  * During parsing, the raw Markdown source of these regions
  * is preserved as part of the document in a special error block.
  * When serializing, this plugin copies the contents of these
@@ -39,6 +39,12 @@ export interface MdError extends Uni.Node {
 	value: string
 }
 
+declare module 'mdast-util-to-markdown' {
+  interface ConstructNameMap {
+    error: 'error'
+  }
+}
+
 export function errorToMarkdown(): ToMarkdownOptions {
 
 	function handler (node: MdError, _:unknown, context: Context) {
@@ -56,8 +62,9 @@ export function errorToMarkdown(): ToMarkdownOptions {
 	return {
 		unsafe: [],
 		handlers: {
-			// as of (2021-05-07), the typings for Handle do not reflect
+			// TODO as of (2021-05-07), the typings for Handle do not reflect
 			// that the handler will be passed nodes of a specific type
+			// @ts-ignore added 2023/06/10, since the remark typings seem to have changed
 			error: handler as unknown as Handle
 		}
 	}

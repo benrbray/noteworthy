@@ -11,9 +11,17 @@ import "./codicon/codicon.css";
 import "./assets/main.css";
 import "./assets/editor.css";
 
+import { foo } from "@noteworthy/editor";
+const x = foo;
+
 ////////////////////////////////////////////////////////////
 
+import { render } from "solid-js/web";
+
 window.onload = function() {
-  let renderer: Renderer = new Renderer();
-  renderer.init();
+  // let renderer: Renderer = new Renderer();
+  // renderer.init();
+	foo();
+	let elt = document.getElementById("main") as HTMLElement;
+	render(() => <div>foo</div>, elt);
 }

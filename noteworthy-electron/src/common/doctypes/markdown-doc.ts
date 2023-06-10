@@ -36,7 +36,7 @@ import {
 
 import { unistPredicate, visit, visitNodeType } from "@common/markdown/unist-utils";
 import { SyntaxExtension } from "@common/extensions/extension";
-import { mdastTextContent } from "@common/markdown/mdast-to-string";
+import { toString as mdastTextContent } from "mdast-util-to-string";
 import { pick } from "@common/util/pick";
 import { parseDate, formatDate } from "@common/util/date";
 

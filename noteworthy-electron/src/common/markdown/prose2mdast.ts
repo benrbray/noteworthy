@@ -8,7 +8,7 @@ import { Processor } from "unified";
 
 // project imports
 import { ProseMapper, ProseMarkMap, ProseMarkTest, ProseNodeMap } from "@common/extensions/editor-config";
-import { unistIsParent, unistIsStringLiteral } from "./unist-utils";
+import { StringLiteral, unistIsParent, unistIsStringLiteral } from "./unist-utils";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -50,7 +50,7 @@ export const nodeMapLiftLiteral: (type:string) => ProseNodeMap
 = (type: string) => (
 	node: ProseNode,
 	children: Uni.Node[]
-): Uni.Literal<string>[] => {
+): StringLiteral[] => {
 	// expect unique child literal
 	if(children.length !== 1)      { throw new Error(`[prose2mdast] expected exactly one child, found ${children.length}`); }
 
@@ -91,7 +91,7 @@ export const markMapLiteral: <V=unknown>(type:string) => ProseMarkMap
 = <V=unknown>(type: string) => (
 	mark: ProseMark,
 	node: Uni.Node
-): Uni.Literal<string> => {
+): StringLiteral => {
 	// expect node to be a text node
 	// TODO (2021-05-19) what if value is not a string?
 	if(!unistIsStringLiteral(node)) { throw new Error(`[prose2mdast] expected Unist.Literal node when wrapping with mark '${mark.type.name}'`); }
@@ -133,7 +133,7 @@ export const makeSerializer = (
 		console.log("\n-----------\n");
 
 		// Step 2: Use Remark to convert Mdast -> Markdown
-		return mdProcessor.stringify(ast);
+		return mdProcessor.stringify(ast) as string;
 	};
 }
 

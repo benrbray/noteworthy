@@ -2,9 +2,16 @@ import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import solid from 'vite-plugin-solid'
 
+// list ESM-only package names here
+const esmOnlyPackages = [
+  "unified",
+	"mdast-util-to-markdown",
+	"mdast-util-to-string"
+];
+
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
+    plugins: [externalizeDepsPlugin({ exclude: esmOnlyPackages })],
     resolve: {
       alias: {
         "@common"     : resolve("src/common"),
@@ -34,6 +41,13 @@ export default defineConfig({
         '@resources'   : resolve('resources'),
       }
     },
-    plugins: [solid()]
+    plugins: [solid()],
+		build: { rollupOptions: { output: {
+      manualChunks(id: string) {
+        for(const pkgName of esmOnlyPackages) {
+          if(id.includes(pkgName)) { return pkgName; }
+        }
+				return;
+    }}}}
   }
 })

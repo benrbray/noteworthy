@@ -271,10 +271,10 @@ export class WikilinkExtension extends MarkSyntaxExtension<Md.Wikilink> {
 			// TODO (2021-05-19) how to correctly construct permalink/alias/exists properties for wikilink?
 			return {
 				type: this.mdastNodeType,
-				value: node.value,
+				value: node.value as string,
 				data: {
-					alias: node.value,
-					permalink: node.value,
+					alias: node.value as string,
+					permalink: node.value as string,
 					exists: true
 				}
 			};

@@ -1,8 +1,8 @@
 // unist / micromark / mdast
 import * as Uni from "unist";
 import * as Md from "@common/markdown/markdown-ast";
-import { Token } from "micromark/dist/shared-types";
-import { Context } from "mdast-util-to-markdown";
+import type { Token } from "micromark-util-types";
+import { Context, Info, State } from "mdast-util-to-markdown";
 
 ////////////////////////////////////////////////////////////
 
@@ -15,10 +15,10 @@ export interface ThematicBreak extends Uni.Node {
 
 export interface ListItem extends Md.Parent {
 	// from mdast
-    type: 'listItem';
-    checked?: boolean;
-    spread?: boolean;
-    children: Md.BlockContent[];
+	type: 'listItem';
+	checked?: boolean;
+	spread?: boolean;
+	children: Md.BlockContent[];
 	// concrete syntax
 	marker?: string | undefined;
 }
@@ -75,7 +75,7 @@ export function concreteFromMarkdown() {
 		let listItem = top(this.stack) as Md.ListItem;
 		let listNode = this.stack[this.stack.length - 2] as Md.List;
 
-		if(!listNode.ordered) { 
+		if(!listNode.ordered) {
 			listItem.marker = marker;
 		}
 	}
@@ -95,14 +95,19 @@ export function concreteFromMarkdown() {
 
 ////////////////////////////////////////////////////////////
 
-import repeat from "repeat-string";
-import checkRepeat from "mdast-util-to-markdown/lib/util/check-rule-repeat";
-import checkRule from "mdast-util-to-markdown/lib/util/check-rule";
+function repeat(str: string, num: number) {
+  return str.repeat(num);
+}
 
-import checkBullet from "mdast-util-to-markdown/lib/util/check-bullet"
-import checkListItemIndent from "mdast-util-to-markdown/lib/util/check-list-item-indent"
-import flow from "mdast-util-to-markdown/lib/util/container-flow"
-import indentLines from "mdast-util-to-markdown/lib/util/indent-lines"
+////////////////////////////////////////////////////////////
+
+import { checkRuleRepetition } from "mdast-util-to-markdown/lib/util/check-rule-repetition";
+import { checkRule } from "mdast-util-to-markdown/lib/util/check-rule";
+
+import { checkBullet } from "mdast-util-to-markdown/lib/util/check-bullet"
+import { checkListItemIndent } from "mdast-util-to-markdown/lib/util/check-list-item-indent"
+import { containerFlow } from "mdast-util-to-markdown/lib/util/container-flow"
+import type { FlowContent } from "mdast-util-to-markdown/lib";
 
 export function concreteToMarkdown() {
 	// -- Thematic Break -------------------------------- //
@@ -117,7 +122,7 @@ export function concreteToMarkdown() {
 			// default behavior from mdast
 			rule = repeat(
 				checkRule(context) + (context.options.ruleSpaces ? ' ' : ''),
-				checkRepeat(context)
+				checkRuleRepetition(context)
 			);
 			rule = context.options.ruleSpaces ? rule.slice(0, -1) : rule;
 		}
@@ -133,22 +138,22 @@ export function concreteToMarkdown() {
 	 *
 	 * https://github.com/syntax-tree/mdast-util-to-markdown/blob/main/lib/handle/list-item.js#L9
 	 */
-	function handleListItem(node: ListItem, parent: Md.List, context: Context) {
+	function handleListItem(node: ListItem, parent: Md.List, state: State, info: Info) {
 		// determine which bullet to use
-		var bullet: string = node.marker || checkBullet(context)
+		var bullet: string = node.marker || checkBullet(state)
 
 		// handle ordered list numbering
 		if (parent && parent.ordered) {
 			bullet =
 				((parent.start !== undefined && parent.start > -1) ? parent.start : 1) +
-				(context.options.incrementListMarker === false
+				(state.options.incrementListMarker === false
 					? 0
 					: parent.children.indexOf(node)) +
 				'.'
 		}
 
 		// determine indentation
-		var listItemIndent = checkListItemIndent(context)
+		var listItemIndent = checkListItemIndent(state)
 		let size: number = bullet.length + 1
 
 		if (
@@ -158,8 +163,12 @@ export function concreteToMarkdown() {
 			size = Math.ceil(size / 4) * 4
 		}
 
-		let exit = context.enter('listItem')
-		let value = indentLines(flow(node, context), map)
+		const tracker = state.createTracker(info)
+		tracker.move(bullet + ' '.repeat(size - bullet.length))
+		tracker.shift(size)
+		let exit = state.enter('listItem')
+		// TODO (Ben @ 2023/06/10) required "as any" cast here because I'm extending the remark AST -- better way?
+		let value = state.indentLines(containerFlow(node as any, state, tracker.current()), map)
 		exit()
 
 		return value

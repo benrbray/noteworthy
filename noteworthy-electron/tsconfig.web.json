@@ -32,7 +32,6 @@
       "@lib/*": ["lib/*"],
     },
     "typeRoots": ["./src/types"],
-
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "forceConsistentCasingInFileNames": true,

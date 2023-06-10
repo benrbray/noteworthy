@@ -14,7 +14,7 @@ import { markMapBasic, markMapStringLiteral, MdParser, nodeMapBasic, nodeMapLeaf
 // unist / unified
 import * as Uni from "unist";
 import * as Md from "@common/markdown/markdown-ast";
-import unified, { Processor } from "unified";
+import { unified, Processor } from "unified";
 import { MdSerializer } from "@common/markdown/prose2mdast";
 import { MdError } from "@common/markdown/remark-plugins/error/remark-error";
 import { unistIsStringLiteral } from "@common/markdown/unist-utils";
@@ -452,7 +452,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 
 				return {
 					type: "error",
-					value: node.value
+					value: node.value as string
 				};
 			}
 		});
