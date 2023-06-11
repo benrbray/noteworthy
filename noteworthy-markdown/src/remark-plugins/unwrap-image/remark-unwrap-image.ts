@@ -15,8 +15,8 @@ import * as Uni from "unist";
 import unified from "unified";
 
 // noteworthy
-import { visitTransformNodeType, whitespace, VisitorAction } from "@common/markdown/unist-utils";
-import * as Md from "@common/markdown/markdown-ast";
+import { visitTransformNodeType, whitespace, VisitorAction } from "../../unist-utils";
+import * as Md from "../../markdown-ast";
 
 ////////////////////////////////////////////////////////////
 

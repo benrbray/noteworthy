@@ -11,8 +11,8 @@ import { undoInputRule } from "prosemirror-inputrules";
 import { IPossiblyUntitledFile } from "@common/files";
 import { Editor } from "./editor";
 
-// markdown
-import * as Md from "@common/markdown/markdown-ast";
+// noteworthy
+import { Md } from "@noteworthy/markdown";
 
 // solidjs
 import { render } from "solid-js/web";

@@ -3,13 +3,16 @@ import { Schema as ProseSchema, Node as ProseNode, NodeSpec, MarkSpec } from "pr
 import { InputRule } from "prosemirror-inputrules"
 import { NodeViewConstructor } from "prosemirror-view";
 
-// project imports
-import { ProseNodeType, ProseMarkType, ProseKeymap } from "@common/types";
-
 // unist
 import * as Uni from "unist";
-import * as Md from "@common/markdown/markdown-ast";
+
+// noteworthy
+import { Md } from "@noteworthy/markdown";
+
+// project imports
+import { ProseNodeType, ProseMarkType, ProseKeymap } from "@common/types";
 import { ProseMarkMap, ProseNodeMap } from "./editor-config";
+
 
 ////////////////////////////////////////////////////////////
 
@@ -22,7 +25,7 @@ export interface ExtensionStore<S extends ProseSchema> {
 
 export abstract class SyntaxExtension<S extends ProseSchema = ProseSchema, N extends string = string> {
 	abstract get name(): N;
-	
+
 	/**
 	 * Throw an error if the extension's `_store` field hasn't yet been populated.
 	 * (useful as a type guard to avoid null-checking boilerplate in syntax extensions.)
@@ -33,37 +36,37 @@ export abstract class SyntaxExtension<S extends ProseSchema = ProseSchema, N ext
 		}
 		return true;
 	}
-	
+
 	// properties that will be added later
 	_store:ExtensionStore<S>|null = null;
 	get store():ExtensionStore<S> {
 		if(!this.ensureInitialized()) { throw new Error("not iniialized"); }
 		return this._store;
 	}
-	
+
 	createInputRules(): InputRule[] { return []; }
 	createKeymap(): ProseKeymap     { return {}; }
 }
 
 export abstract class NodeExtension<N extends string = string> extends SyntaxExtension<ProseSchema<N,string>, N> {
-	/** 
+	/**
 	 * Returns the ProseMirror NodeType defined by this extension.
-	 * (not available until the extension has been used to create a schema) 
+	 * (not available until the extension has been used to create a schema)
 	 */
 	get nodeType(): ProseNodeType {
 		let type = this.store.schema.nodes[this.name];
 		if(type === undefined) { throw new Error(`error retrieving node type for extension ${this.name}`); }
 		return type;
 	}
-	
+
 	abstract createNodeSpec(): NodeSpec;
 	createNodeView(): NodeViewConstructor|null { return null; }
 }
 
 export abstract class MarkExtension<M extends string = string> extends SyntaxExtension<ProseSchema<string,M>, M> {
-	/** 
+	/**
 	 * Returns the ProseMirror MarkType defined by this extension.
-	 * (not available until the extension has been used to create a schema) 
+	 * (not available until the extension has been used to create a schema)
 	 */
 	get markType(): ProseMarkType {
 		let type = this.store.schema.marks[this.name];
@@ -81,7 +84,7 @@ export abstract class NodeSyntaxExtension<T extends Md.Node, N extends string = 
 	 * Mapping from Mdast node node to ProseMirror node.
 	 */
 	abstract createMdastMap() : MdastNodeMap<T>;
-	
+
 	/**
 	 * Extensions provide this method to impose additional
 	 * conditions on the incoming Mdast node type, beyond
@@ -97,7 +100,7 @@ export abstract class NodeSyntaxExtension<T extends Md.Node, N extends string = 
 
 export abstract class MarkSyntaxExtension<T extends Md.Node, M extends string = string> extends MarkExtension<M> {
 	abstract get mdastNodeType(): T["type"];
-	
+
 	/**
 	 * Mapping from Mdast node node to ProseMirror node.
 	 */

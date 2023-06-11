@@ -1,5 +1,7 @@
 // https://github.com/landakram/remark-wiki-link
 
+// TODO (Ben @ 2023/06/11) missing types for micromark-extension-wiki-link
+// @ts-ignore 
 import { syntax } from 'micromark-extension-wiki-link';
 import { fromMarkdown, toMarkdown } from './mdast-util-wikilink';
 

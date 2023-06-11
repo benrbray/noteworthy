@@ -1,8 +1,6 @@
 // unist / mdast / remark
 import { Processor } from "unified";
 import * as Uni from "unist";
-import * as Md from "@common/markdown/markdown-ast";
-import { unistIsParent, unistSource } from "./unist-utils";
 
 // prosemirror imports
 import { Schema as ProseSchema, Node as ProseNode } from "prosemirror-model";
@@ -13,6 +11,9 @@ import { UnistMapper } from "@common/extensions/editor-config";
 
 // yaml / toml
 import YAML from "yaml";
+
+// noteworthy
+import { Md, UnistUtils } from "@noteworthy/markdown";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -207,7 +208,7 @@ export function treeMap<S extends ProseSchema, Ctx, St>(
 	let nodeContents: ProseNode[] = [];
 	let newParseState = parseState;
 
-	if(unistIsParent(node)) {
+	if(UnistUtils.unistIsParent(node)) {
 		// flatmap the results of traversing this node's children
 		for(let idx = 0; idx < node.children.length; idx++) {
 			let [child, state] = treeMap(
@@ -377,7 +378,7 @@ export const makeParser = <S extends ProseSchema<"error_block","error_inline">>(
 		let errorMap = makeNodeErrorHandler<S>(
 			proseSchema.marks.error_inline,
 			proseSchema.nodes.error_block,
-			node => unistSource(node, markdown)
+			node => UnistUtils.unistSource(node, markdown)
 		);
 
 		// map over root's children

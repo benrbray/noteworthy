@@ -108,7 +108,6 @@ export interface List extends Parent {
 
 import { ListItem } from "./remark-plugins/concrete/mdast-util-concrete";
 export type { ListItem } from "./remark-plugins/concrete/mdast-util-concrete";
-
 export type ListContent = ListItem;
 
 // -- Directives -------------------------------------------
@@ -167,7 +166,6 @@ export interface TableCell extends Parent {
 
 // -- Code / Markup ----------------------------------------
 
-import { HTML, Code } from "mdast";
 export type { HTML, Code } from "mdast";
 
 // -- Definitions ------------------------------------------
@@ -178,7 +176,7 @@ export interface Definition extends Uni.Node, Mdast.Association, Mdast.Resource 
 
 // -- Text -------------------------------------------------
 
-import { Text, InlineCode, Break } from "mdast";
+import { Text } from "mdast";
 export type { Text, InlineCode, Break } from "mdast";
 
 export interface Emphasis extends Parent {

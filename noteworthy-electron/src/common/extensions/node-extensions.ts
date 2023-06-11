@@ -11,8 +11,10 @@ import {
 // unist imports
 import * as Uni from "unist";
 
+// noteworthy
+import { Md } from "@noteworthy/markdown";
+
 // project imports
-import * as Md from "@common/markdown/markdown-ast";
 import { incrHeadingLevelCmd } from "@common/prosemirror/commands/demoteHeadingCmd";
 import { ExtensionNodeAttrs, MdastNodeMap, MdastNodeMapType, NodeSyntaxExtension, Prose2Mdast_NodeMap, Prose2Mdast_NodeMap_Presets } from "@common/extensions/extension";
 import {

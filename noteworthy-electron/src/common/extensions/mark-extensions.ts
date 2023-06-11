@@ -4,7 +4,6 @@ import { InputRule } from "prosemirror-inputrules"
 import { toggleMark } from "prosemirror-commands"
 
 // project imports
-import * as Md from "@common/markdown/markdown-ast";
 import { markActive, markInputRule } from "@common/prosemirror/util/mark-utils";
 import { openPrompt, TextField } from "@common/prompt/prompt";
 import { MarkSyntaxExtension, MdastMarkMap, MdastMarkMapType, Prose2Mdast_MarkMap_Presets } from "@common/extensions/extension";
@@ -12,8 +11,10 @@ import { MarkSyntaxExtension, MdastMarkMap, MdastMarkMapType, Prose2Mdast_MarkMa
 // mdast
 import * as Uni from "unist";
 import { AnyChildren, markMapBasic } from "@common/markdown/mdast2prose";
-import { unistIsStringLiteral } from "@common/markdown/unist-utils";
 import { ProseKeymap } from "@common/types";
+
+// noteworthy
+import { Md, UnistUtils } from "@noteworthy/markdown";
 
 //// MARK EXTENSIONS ///////////////////////////////////////
 
@@ -260,7 +261,7 @@ export class WikilinkExtension extends MarkSyntaxExtension<Md.Wikilink> {
 	prose2mdast() { return {
 		create: <N extends Uni.Node>(mark: ProseMark, node: N): Md.Wikilink|N => {
 			// expect string literal node
-			if(!unistIsStringLiteral(node)) {
+			if(!UnistUtils.unistIsStringLiteral(node)) {
 				console.error(`mark type ${this.name} can only wrap Literal node ; skipping`);
 				return node;
 			}
