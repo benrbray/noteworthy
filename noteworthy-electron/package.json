@@ -1,5 +1,5 @@
 {
-  "name": "@noteworthy/electron",
+  "name": "noteworthy-electron",
   "version": "0.0.1",
   "description": "Markdown editor with excellent math support!",
   "repository": {
