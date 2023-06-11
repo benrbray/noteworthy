@@ -13,7 +13,7 @@ import type { IMetadataProvider, IMetadata } from "@main/plugins/metadata-plugin
 import type { Citation, ICitationProvider } from "@main/plugins/citation-plugin";
 
 // markdown / mdast
-import * as Md from "@common/markdown/markdown-ast";
+import { Md, mdastTextContent, UnistUtils } from "@noteworthy/markdown";
 
 // node extensions
 import {
@@ -34,9 +34,7 @@ import {
 	//TagExtension
 } from "@common/extensions/mark-extensions";
 
-import { unistPredicate, visit, visitNodeType } from "@common/markdown/unist-utils";
 import { SyntaxExtension } from "@common/extensions/extension";
-import { mdastTextContent } from "@common/markdown/mdast-to-string";
 import { pick } from "@common/util/pick";
 import { parseDate, formatDate } from "@common/util/date";
 
@@ -154,7 +152,7 @@ export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, I
 		let entries:IOutlineEntry[] = [];
 
 		// find all headings
-		visitNodeType<Md.Heading>(this._root, "heading", node => {
+		UnistUtils.visitNodeType<Md.Heading>(this._root, "heading", node => {
 			// heading text content
 			let headingText: string = mdastTextContent(node);
 
@@ -270,10 +268,10 @@ export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, I
 
 		// find all wikilinks and citations
 		// TODO: (2021-05-30) restore #tag syntax?
-		visit(this._root, node => {
-			if(unistPredicate<Md.Wikilink>(node, "wikiLink")) {
+		UnistUtils.visit(this._root, node => {
+			if(UnistUtils.unistPredicate<Md.Wikilink>(node, "wikiLink")) {
 				tags.push(node.value);
-			} else if(unistPredicate<Md.Cite>(node, "cite")) {
+			} else if(UnistUtils.unistPredicate<Md.Cite>(node, "cite")) {
 				node.data.citeItems.forEach(item => {
 					tags.push(item.key);
 				});

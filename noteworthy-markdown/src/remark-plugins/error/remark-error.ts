@@ -39,6 +39,12 @@ export interface MdError extends Uni.Node {
 	value: string
 }
 
+declare module 'mdast-util-to-markdown' {
+  interface ConstructNameMap {
+    error: 'error'
+  }
+}
+
 export function errorToMarkdown(): ToMarkdownOptions {
 
 	function handler (node: MdError, _:unknown, context: Context) {
@@ -58,6 +64,7 @@ export function errorToMarkdown(): ToMarkdownOptions {
 		handlers: {
 			// as of (2021-05-07), the typings for Handle do not reflect
 			// that the handler will be passed nodes of a specific type
+			// @ts-ignore added 2023/06/10, since the remark typings seem to have changed
 			error: handler as unknown as Handle
 		}
 	}

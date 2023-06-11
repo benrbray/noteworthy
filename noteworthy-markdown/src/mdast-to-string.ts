@@ -4,8 +4,8 @@
  */
 
 import * as Mdast from "mdast";
-import * as Md from "@common/markdown/markdown-ast";
-import { unistIsParent, unistIsStringLiteral } from "@common/markdown/unist-utils";
+import * as Md from "./markdown-ast";
+import { unistIsParent, unistIsStringLiteral } from "./unist-utils";
 
 ////////////////////////////////////////////////////////////
 

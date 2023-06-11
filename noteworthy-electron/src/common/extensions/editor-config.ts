@@ -13,11 +13,8 @@ import { markMapBasic, markMapStringLiteral, MdParser, nodeMapBasic, nodeMapLeaf
 
 // unist / unified
 import * as Uni from "unist";
-import * as Md from "@common/markdown/markdown-ast";
 import unified, { Processor } from "unified";
 import { MdSerializer } from "@common/markdown/prose2mdast";
-import { MdError } from "@common/markdown/remark-plugins/error/remark-error";
-import { unistIsStringLiteral } from "@common/markdown/unist-utils";
 
 // remark and remark plugins
 import remark from "remark-parse";
@@ -30,10 +27,16 @@ import remarkDirective from "remark-directive";      // commonmark directives
 
 // custom remark plugins
 import { citePlugin as remarkCitePlugin } from "@benrbray/remark-cite";
-import { wikiLinkPlugin as remarkWikilinkPlugin } from '@common/markdown/remark-plugins/wikilink/remark-wikilink';
-import { remarkErrorPlugin } from "@common/markdown/remark-plugins/error/remark-error";
-import { remarkConcretePlugin } from "@common/markdown/remark-plugins/concrete/remark-concrete";
-import { remarkUnwrapImagePlugin } from "@common/markdown/remark-plugins/unwrap-image/remark-unwrap-image";
+
+// noteworthy
+import {
+	Md, type MdError,
+	wikiLinkPlugin as remarkWikilinkPlugin,
+	remarkErrorPlugin,
+	remarkConcretePlugin,
+	remarkUnwrapImagePlugin,
+	UnistUtils
+} from "@noteworthy/markdown";
 
 // project imports
 import { DefaultMap } from "@common/util/DefaultMap";
@@ -448,7 +451,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 		result.marks.get("error_inline").push({
 			map: (mark: ProseMark, node: Uni.Node): MdError => {
 				// expect literal node
-				if(!unistIsStringLiteral(node)) { throw new Error("expected error_inline to be a text node"); }
+				if(!UnistUtils.unistIsStringLiteral(node)) { throw new Error("expected error_inline to be a text node"); }
 
 				return {
 					type: "error",

@@ -3,12 +3,13 @@ import { Node as ProseNode, Mark as ProseMark } from "prosemirror-model";
 
 // unist
 import * as Uni from "unist";
-import * as Md from "@common/markdown/markdown-ast";
 import { Processor } from "unified";
+
+// noteworthy
+import { Md, UnistUtils } from "@noteworthy/markdown";
 
 // project imports
 import { ProseMapper, ProseMarkMap, ProseMarkTest, ProseNodeMap } from "@common/extensions/editor-config";
-import { StringLiteral, unistIsParent, unistIsStringLiteral } from "./unist-utils";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -50,13 +51,13 @@ export const nodeMapLiftLiteral: (type:string) => ProseNodeMap
 = (type: string) => (
 	node: ProseNode,
 	children: Uni.Node[]
-): StringLiteral[] => {
+): UnistUtils.StringLiteral[] => {
 	// expect unique child literal
 	if(children.length !== 1)      { throw new Error(`[prose2mdast] expected exactly one child, found ${children.length}`); }
 
   const child = children[0];
-	if(unistIsParent(child))         { throw new Error("[prose2mdast] expected leaf literal node"); }
-  if(!unistIsStringLiteral(child)) { throw new Error("[prose2mdast] expected leaf literal node") }
+	if(UnistUtils.unistIsParent(child))         { throw new Error("[prose2mdast] expected leaf literal node"); }
+  if(!UnistUtils.unistIsStringLiteral(child)) { throw new Error("[prose2mdast] expected leaf literal node") }
 	if(!child.value)                 { throw new Error("[prose2mdast] expected non-empty literal node"); }
 
 	// create literal node
@@ -91,10 +92,10 @@ export const markMapLiteral: <V=unknown>(type:string) => ProseMarkMap
 = <V=unknown>(type: string) => (
 	mark: ProseMark,
 	node: Uni.Node
-): StringLiteral => {
+): UnistUtils.StringLiteral => {
 	// expect node to be a text node
 	// TODO (2021-05-19) what if value is not a string?
-	if(!unistIsStringLiteral(node)) { throw new Error(`[prose2mdast] expected Unist.Literal node when wrapping with mark '${mark.type.name}'`); }
+	if(!UnistUtils.unistIsStringLiteral(node)) { throw new Error(`[prose2mdast] expected Unist.Literal node when wrapping with mark '${mark.type.name}'`); }
 
 	// create literal node
 	return {

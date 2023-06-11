@@ -1,5 +1,5 @@
 appId: com.electron.app
-productName: noteworthy-vite
+productName: noteworthy
 directories:
   buildResources: build
 files:
@@ -13,9 +13,9 @@ asarUnpack:
   - resources/**
 afterSign: build/notarize.js
 win:
-  executableName: noteworthy-vite
+  executableName: noteworthy
 nsis:
-  artifactName: ${name}-${version}-setup.${ext}
+  artifactName: ${produceName}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
@@ -27,7 +27,7 @@ mac:
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
 dmg:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: ${productName}-${version}.${ext}
 linux:
   target:
     - AppImage
@@ -35,8 +35,12 @@ linux:
     - deb
   maintainer: electronjs.org
   category: Utility
+snap:
+  artifactName: ${productName}-${version}.${ext}
+deb:
+  artifactName: ${productName}-${version}.${ext}
 appImage:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: ${productName}-${version}.${ext}
 npmRebuild: false
 publish:
   provider: generic

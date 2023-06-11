@@ -37,7 +37,9 @@ import { Loading } from "./ui/loading";
 
 // unist / unified
 import * as Uni from "unist";
-import * as Md from "@common/markdown/markdown-ast";
+
+// noteworthy
+import { Md, UnistUtils } from "@noteworthy/markdown";
 
 // solid js imports
 import { render } from "solid-js/web";
@@ -52,7 +54,6 @@ import { ITagSearchResult, IFileSearchResult } from "@main/plugins/crossref-plug
 ////////////////////////////////////////////////////////////
 
 import { MouseButton } from "@common/inputEvents";
-import { visitNodeType } from "@common/markdown/unist-utils";
 // this is a "safe" version of ipcRenderer exposed by the preload script
 const ipcRenderer = window.restrictedIpcRenderer;
 
@@ -339,7 +340,7 @@ class Renderer {
 			const extractCitations = (): string[] => {
 				if(!state.markdownAst) { return []; }
 				const result: Set<string> = new Set();
-				visitNodeType<Md.Cite>(state.markdownAst, "cite", (node: Md.Cite) => {
+				UnistUtils.visitNodeType<Md.Cite>(state.markdownAst, "cite", (node: Md.Cite) => {
 					node.data.citeItems.map(c => c.key).forEach(k => result.add(k));
 				});
 

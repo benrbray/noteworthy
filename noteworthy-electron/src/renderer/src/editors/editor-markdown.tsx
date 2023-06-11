@@ -1,6 +1,6 @@
 // prosemirror imports
 import { EditorView as ProseEditorView, EditorView } from "prosemirror-view";
-import { Mark, Slice, Node as ProseNode } from "prosemirror-model";
+import { Mark, Node as ProseNode } from "prosemirror-model";
 import { chainCommands, joinUp, joinDown, lift, selectParentNode } from "prosemirror-commands";
 import { EditorState as ProseEditorState, Transaction, Plugin as ProsePlugin } from "prosemirror-state";
 import { history, undo, redo } from "prosemirror-history";
@@ -11,9 +11,8 @@ import { undoInputRule } from "prosemirror-inputrules";
 import { IPossiblyUntitledFile } from "@common/files";
 import { Editor } from "./editor";
 
-// markdown
-import * as Uni from "unist";
-import * as Md from "@common/markdown/markdown-ast";
+// noteworthy
+import { Md } from "@noteworthy/markdown";
 
 // solidjs
 import { render } from "solid-js/web";

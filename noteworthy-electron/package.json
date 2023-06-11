@@ -1,5 +1,5 @@
 {
-  "name": "@noteworthy/electron",
+  "name": "noteworthy-electron",
   "version": "0.0.1",
   "description": "Markdown editor with excellent math support!",
   "repository": {
@@ -55,6 +55,7 @@
     "@electron-toolkit/preload": "^1.0.3",
     "@electron-toolkit/utils": "^1.0.2",
     "@noteworthy/editor": "workspace:*",
+    "@noteworthy/markdown": "workspace:*",
     "buffer": "^6.0.3",
     "chokidar": "^3.5.3",
     "citation-js": "^0.5.6",

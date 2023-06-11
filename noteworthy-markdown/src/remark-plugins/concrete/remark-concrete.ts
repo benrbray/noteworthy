@@ -14,12 +14,6 @@
  * the concrete syntax information as part of the syntax tree.
  */
 
-// unist / remark / mdast / micromark
-import * as Uni from "unist";
-import * as Mdast from "mdast";
-import { Context } from "mdast-util-to-markdown";
-import { Handle, Options as ToMarkdownOptions } from 'mdast-util-to-markdown';
-
 // project imports
 import { concreteFromMarkdown, concreteToMarkdown } from "./mdast-util-concrete";
 

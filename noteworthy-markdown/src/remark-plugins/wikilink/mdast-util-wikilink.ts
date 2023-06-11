@@ -1,10 +1,8 @@
 // https://github.com/landakram/mdast-util-wiki-link
 
-import * as Uni from "unist";
 import * as Mdast from "mdast";
-import { Token } from "micromark/dist/shared-types";
-import { MdastExtension } from "mdast-util-from-markdown/types";
-import { Context } from "mdast-util-to-markdown";
+import type { Token } from "micromark-util-types";
+import type { Context } from "mdast-util-to-markdown";
 
 ////////////////////////////////////////////////////////////
 
@@ -58,7 +56,7 @@ export type MdastWikilinkOptions
 ////////////////////////////////////////////////////////////
 
 export interface MdWikilink extends Mdast.Literal {
-	value: string,
+	value: "wikiLink",
 	data: {
 		alias: string,
 		permalink: string,
@@ -73,6 +71,12 @@ export interface MdWikilink extends Mdast.Literal {
 			value: string
 		}]
 	}
+}
+
+declare module 'mdast-util-to-markdown' {
+  interface ConstructNameMap {
+    wikiLink: 'wikiLink'
+  }
 }
 
 //// FROM MARKDOWN /////////////////////////////////////////
@@ -167,7 +171,7 @@ export function fromMarkdown (opts: Partial<MdastWikilinkOptions_FromMarkdown> =
 
 //// TO MARKDOWN ///////////////////////////////////////////
 
-import safe from 'mdast-util-to-markdown/lib/util/safe.js'
+import { safe } from 'mdast-util-to-markdown/lib/util/safe.js'
 
 export function toMarkdown (opts: Partial<MdastWikilinkOptions_ToMarkdown> = {}) {
   const aliasDivider = opts.aliasDivider || ':'
