@@ -3,12 +3,6 @@ import * as Uni from "unist";
 
 ////////////////////////////////////////////////////////////////////////////////
 
-export type StringLiteral = Uni.Node & {
-	value: string
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
 export function unistPredicate<N extends Uni.Node = never>(node: Uni.Node, type: N["type"]): node is N {
   return (node.type === type);
 }
@@ -17,7 +11,7 @@ export function unistIsParent(node: Uni.Node): node is Uni.Parent {
 	return Boolean((node as Uni.Parent).children);
 }
 
-export function unistIsStringLiteral(node: Uni.Node): node is StringLiteral {
+export function unistIsStringLiteral(node: Uni.Node): node is Uni.Literal<string> {
 	return (typeof (node as Uni.Literal).value === "string");
 }
 
