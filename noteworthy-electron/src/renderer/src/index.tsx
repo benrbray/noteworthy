@@ -11,9 +11,12 @@ import "./codicon/codicon.css";
 import "./assets/main.css";
 import "./assets/editor.css";
 
+import { foo } from "@noteworthy/editor";
+
 ////////////////////////////////////////////////////////////
 
 window.onload = function() {
   let renderer: Renderer = new Renderer();
   renderer.init();
+	foo();
 }
