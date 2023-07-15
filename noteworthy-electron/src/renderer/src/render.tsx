@@ -189,7 +189,7 @@ class Renderer {
 
 			const lowerTabLabels = [
 				{ title: "Backlinks" },
-				{ title: "Citations" }
+				{ title: "Bibliography" },
 			]
 
 			const handleFileClick = (evt:MouseEvent) => {
@@ -290,7 +290,7 @@ class Renderer {
 
 			const AppLowerPanel = () => {
 				return (<div id="lower-panel">
-					{/* Sidebar Tabs*/}
+					{/* Tabs*/}
 					<nav class="tabs">
 						<For each={lowerTabLabels}>
 						{ (tab,idx) => {
@@ -313,7 +313,7 @@ class Renderer {
 						}
 						</For>
 					</nav>
-					{/* Sidebar Content */}
+					{/* Content */}
 					<Show when={state.showLowerPanel}>
 					<div class="content">
 						<Suspense fallback={<Loading/>}>
@@ -327,7 +327,7 @@ class Renderer {
 									/>
 								</Match>
 								<Match when={state.activeLowerTab == 1}>
-									<OutlineTab getOutline={getOutline} />
+									<BibliographyComponent proxy={this._mainProxy} citationKeys={extractCitations()} />
 								</Match>
 							</Switch>
 						</Suspense>
@@ -349,7 +349,6 @@ class Renderer {
 			const AppContent = () => {
 				return (<div id="content" class="document">
 					<div id="editor" spellcheck={false}></div>
-					<BibliographyComponent proxy={this._mainProxy} citationKeys={extractCitations()} />
 				</div>);
 			}
 
