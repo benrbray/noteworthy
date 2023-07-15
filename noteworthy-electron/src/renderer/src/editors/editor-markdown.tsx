@@ -68,6 +68,71 @@ const mac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform) : f
 
 ////////////////////////////////////////////////////////////
 
+const makeExtensions = (
+	mainProxy: MainIpcHandlers,
+	editorElt: HTMLElement
+): { [N in RegisteredExtensionName] ?: NoteworthyExtension<N, RegisteredExtensionName[]> } => {
+	// TODO (Ben @ 2023/05/02) extension api was added as a quick hack
+	// while writing the autocomplete extension, and should be revisited
+
+	const noteworthyApi: NoteworthyExtensionApi = {
+		fuzzyTagSearch: async (query) => {
+			const result = await mainProxy.tag.fuzzyTagSearch(query);
+
+			// return only specific properties, since the result may have extra data
+			return result.map(({ result, resultEmphasized }) => ({ result, resultEmphasized }))
+		},
+
+		registerCommand: (name: string, handler: () => void) => {
+			// TODO
+		}
+	}
+
+	// TODO (Ben @ 2023/04/16) topologically sort extensions, rather than doing it by hand
+	// TODO (Ben @ 2023/04/16) is it possible to assign a more specific type here?  (existential? path-dependent?)
+	let extensionInitializers: NoteworthyExtensionInitializer<RegisteredExtensionName, RegisteredExtensionName[]>[] = [
+		codeMirrorPreviewExtension,
+		tikzJaxExtension,
+		autocompleteExtension
+	];
+
+	// initialize noteworthy extensions
+	let extensions: { [N in RegisteredExtensionName] ?: NoteworthyExtension<N, RegisteredExtensionName[]> } = {};
+
+	function isNameOfRegisteredExtension(s: string): s is RegisteredExtensionName {
+		return s in extensions;
+	}
+
+	extensionInitializers.forEach((initializer) => {
+		const ext = initializer.initialize({
+			editorElt: editorElt,
+			api: noteworthyApi
+		});
+		const extName = initializer.spec.name;
+		extensions[extName] = ext;
+
+		// pass config from this extension to its dependencies
+		const sharedConfig = initializer.spec.config;
+		if(sharedConfig !== undefined) {
+			Object.keys(sharedConfig).forEach(depName => {
+				if(!isNameOfRegisteredExtension(depName)) {
+					console.error(`dependency ${depName} of extension ${extName} not yet registered`);
+					return;
+				}
+
+				// TODO (Ben @ 2023/04/16) remove this ts-ignore
+				// after updating typescript, perhaps this is solved by correlated record types?
+				// @ts-ignore
+				extensions[depName]?.updateConfig(sharedConfig[depName]);
+			});
+		}
+	});
+
+	return extensions;
+}
+
+////////////////////////////////////////////////////////////
+
 // editor class
 export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<ProseEditorState> {
 
@@ -105,58 +170,18 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 		this._metaElt.setAttribute("class", "meta-editor");
 		this._editorElt.appendChild(this._metaElt);
 
-		/* ---- create extension api -------------------- */
-
-		// TODO (Ben @ 2023/05/02) extension api was added as a quick hack
-		// while writing the autocomplete extension, and should be revisited
-
-		const noteworthyApi: NoteworthyExtensionApi = {
-			fuzzyTagSearch: async (query) => {
-				const result = await this._mainProxy.tag.fuzzyTagSearch(query);
-
-				// return only specific properties, since the result may have extra data
-				return result.map(({ result, resultEmphasized }) => ({ result, resultEmphasized }))
-			}
-		}
-
-		/* ---- noteworthy extensions ------------------- */
-
-		// TODO (Ben @ 2023/04/16) topologically sort extensions, rather than doing it by hand
-		// TODO (Ben @ 2023/04/16) is it possible to assign a more specific type here?  (existential? path-dependent?)
-		let extensionInitializers: NoteworthyExtensionInitializer<RegisteredExtensionName, RegisteredExtensionName[]>[] = [
-			codeMirrorPreviewExtension,
-			tikzJaxExtension,
-			autocompleteExtension
-		];
+		/* ---- noteworthy extensions ----------------------- */
 
 		// initialize noteworthy extensions
-		let extensions: { [N in RegisteredExtensionName] ?: NoteworthyExtension<N, RegisteredExtensionName[]> } = {};
+		let extensions: { [N in RegisteredExtensionName] ?: NoteworthyExtension<N, RegisteredExtensionName[]> }
+			= makeExtensions(
+				this._mainProxy,
+				this._editorElt
+			);
 
 		function isNameOfRegisteredExtension(s: string): s is RegisteredExtensionName {
 			return s in extensions;
 		}
-
-		extensionInitializers.forEach((initializer) => {
-			const ext = initializer.initialize({
-				editorElt: this._editorElt,
-				api: noteworthyApi
-			});
-			const name = initializer.spec.name;
-			extensions[name] = ext;
-
-			// share config from this extension with its dependencies
-			const sharedConfig = initializer.spec.config;
-			if(sharedConfig !== undefined) {
-				Object.keys(sharedConfig).forEach(name => {
-					if(!isNameOfRegisteredExtension(name)) { return; }
-
-					// TODO (Ben @ 2023/04/16) remove this ts-ignore
-					// after updating typescript, perhaps this is solved by correlated record types?
-					// @ts-ignore
-					extensions[name]?.updateConfig(sharedConfig[name]);
-				});
-			}
-		});
 
 		/* ---- syntax extensions ----------------------- */
 
@@ -278,7 +303,7 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 					if(Array.isArray(date)){ date = date[0]; }
 					if(Array.isArray(author)){ author = author[0]; }
 
-					let parsedDate:Date = new Date(date);
+					let parsedDate:Date = new Date(date as string);
 					if(isNaN(parsedDate.valueOf())){
 						console.warn(`renderCitation :: invalid date ${date}`);
 						return null;
