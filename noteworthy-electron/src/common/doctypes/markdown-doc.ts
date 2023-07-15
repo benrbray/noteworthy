@@ -136,10 +136,6 @@ export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, I
 
 	// -- IMarkdownDoc ---------------------------------- //
 
-	getMeta(): DocMeta {
-		return this._yaml;
-	}
-
 	static parseAST(serialized: string) : MarkdownAst|null {
 		let ast = defaultMarkdownConfig.parseAST(serialized);
 		if(!ast){ return null; }
@@ -174,7 +170,6 @@ export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, I
 	public IS_METADATA_PROVIDER: true = true;
 
 	getMetadata(): IMetadata {
-		/** @todo (10/2/20) unify this function with getMeta() above */
 		return this._yaml;
 	}
 
@@ -186,7 +181,7 @@ export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, I
 		// first, look for "bibtex" yaml field
 		// @todo (2022/03/04) validate bibtex? allow csl-json? detect?
 		// @todo (2022/03/05) avoid cast here
-		let meta = this.getMeta() as { [k:string]: string};
+		let meta = this.getMetadata() as { [k:string]: string};
 		let bibtexField = meta.bibtex;
 		if(bibtexField) { return { type: "bibtex", data: bibtexField }; }
 
@@ -229,7 +224,7 @@ export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, I
 		let tags:string[] = [];
 
 		// tags defined by YAML metadata
-		let meta = this.getMeta();
+		let meta = this.getMetadata();
 		if(meta.tags_defined){
 			/** @todo (7/28/20) handle different tag list formats
 			 * tags_defined: justonetag
@@ -252,7 +247,7 @@ export class MarkdownAst implements IDoc, ICrossRefProvider, IOutlineProvider, I
 		let tags:string[] = [];
 
 		// tags mentioned by YAML metadata
-		let meta = this.getMeta();
+		let meta = this.getMetadata();
 		if(meta.tags){
 			/** @todo (7/28/20) handle different tag list formats
 			 * tags_defined: justonetag
