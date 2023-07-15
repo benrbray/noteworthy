@@ -53,6 +53,16 @@ import { ITagSearchResult, IFileSearchResult } from "@main/plugins/crossref-plug
 
 import { MouseButton } from "@common/inputEvents";
 import { visitNodeType } from "@common/markdown/unist-utils";
+
+////////////////////////////////////////////////////////////
+
+// extensions
+import { NoteworthyExtension, NoteworthyExtensionInitializer, RegisteredExtensionName } from "@common/extensions/noteworthy-extension";
+import codeMirrorPreviewExtension from "@extensions/noteworthy-codemirror-preview";
+import tikzJaxExtension from "@extensions/noteworthy-tikzjax";
+import autocompleteExtension from "@extensions/noteworthy-autocomplete";
+import { NoteworthyExtensionApi } from "@common/extensions/extension-api";
+
 // this is a "safe" version of ipcRenderer exposed by the preload script
 const ipcRenderer = window.restrictedIpcRenderer;
 
@@ -83,6 +93,9 @@ class Renderer {
 	}
 
 	_react:null | { state: SolidStore<IRendererState>, setState: SetStoreFunction<IRendererState> };
+
+	// extensions
+	_extensions: { [N in RegisteredExtensionName] ?: NoteworthyExtension<N, RegisteredExtensionName[]> }
 
 	// prosemirror
 	_editor: Editor | null;
@@ -125,6 +138,7 @@ class Renderer {
 		this._editor = null;
 		this._ui = null;
 		this._react = null;
+		this._extensions = {};
 	}
 
 	init() {
@@ -138,8 +152,11 @@ class Renderer {
 		);
 
 		// initialize interface
-		this.initUI();
+		this._ui = this.initUI();
 		this.initKeyboardEvents();
+
+		// initialize extensions
+		this.initExtensions(this._mainProxy, this._ui.editorElt);
 
 		// set current file
 		if (this._currentFile) {
@@ -402,7 +419,7 @@ class Renderer {
 		this._mainProxy.theme.requestThemeRefresh();
 
 		// dom elements
-		this._ui = {
+		return {
 			titleElt : document.getElementById("title") as HTMLDivElement,
 			editorElt : document.getElementById("editor") as HTMLDivElement
 		}
@@ -429,6 +446,71 @@ class Renderer {
 		}
 
 		document.addEventListener("keypress", keyboardHandler);
+	}
+
+	//////////////////////////////////////////////////////////
+
+	initExtensions(
+		mainProxy: MainIpcHandlers,
+		editorElt: HTMLElement
+	) {
+		// TODO (Ben @ 2023/05/02) extension api was added as a quick hack
+		// while writing the autocomplete extension, and should be revisited
+
+		const noteworthyApi: NoteworthyExtensionApi = {
+			fuzzyTagSearch: async (query) => {
+				const result = await mainProxy.tag.fuzzyTagSearch(query);
+
+				// return only specific properties, since the result may have extra data
+				return result.map(({ result, resultEmphasized }) => ({ result, resultEmphasized }))
+			},
+
+			registerCommand: (name: string, handler: () => void) => {
+				// TODO
+			}
+		}
+
+		// TODO (Ben @ 2023/04/16) topologically sort extensions, rather than doing it by hand
+		// TODO (Ben @ 2023/04/16) is it possible to assign a more specific type here?  (existential? path-dependent?)
+		let extensionInitializers: NoteworthyExtensionInitializer<RegisteredExtensionName, RegisteredExtensionName[]>[] = [
+			codeMirrorPreviewExtension,
+			tikzJaxExtension,
+			autocompleteExtension
+		];
+
+		// initialize noteworthy extensions
+		let extensions: { [N in RegisteredExtensionName] ?: NoteworthyExtension<N, RegisteredExtensionName[]> } = {};
+
+		function isNameOfRegisteredExtension(s: string): s is RegisteredExtensionName {
+			return s in extensions;
+		}
+
+		extensionInitializers.forEach((initializer) => {
+			const ext = initializer.initialize({
+				editorElt: editorElt,
+				api: noteworthyApi
+			});
+			const extName = initializer.spec.name;
+			extensions[extName] = ext;
+
+			// pass config from this extension to its dependencies
+			const sharedConfig = initializer.spec.config;
+			if(sharedConfig !== undefined) {
+				Object.keys(sharedConfig).forEach(depName => {
+					if(!isNameOfRegisteredExtension(depName)) {
+						console.error(`dependency ${depName} of extension ${extName} not yet registered`);
+						return;
+					}
+
+					// TODO (Ben @ 2023/04/16) remove this ts-ignore
+					// after updating typescript, perhaps this is solved by correlated record types?
+					// @ts-ignore
+					extensions[depName]?.updateConfig(sharedConfig[depName]);
+				});
+			}
+		});
+
+		this._extensions = extensions;
 	}
 
 	////////////////////////////////////////////////////////
@@ -475,7 +557,14 @@ class Renderer {
 		// (no way to describe type of abstract constructor)
 		// (https://github.com/Microsoft/TypeScript/issues/5843)
 		let editor:Editor;
-		const args = [this._currentFile, this._ui.editorElt, this._mainProxy, setSelectionInfo] as const;
+		const args = [
+			this._currentFile,
+			this._ui.editorElt,
+			this._mainProxy,
+			this._extensions,
+			setSelectionInfo
+		] as const;
+
 		switch (ext) {
 			case ".md":      editor = new MarkdownEditor(...args);    break;
 			default:         editor = new MarkdownEditor(...args); break;

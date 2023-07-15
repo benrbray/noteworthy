@@ -1,5 +1,5 @@
 // noteworthy imports
-import { IDoc, DocMeta, AstParser } from "./doctypes";
+import { IDoc, AstParser } from "./doctypes";
 import { EditorConfig } from "@common/extensions/editor-config";
 
 // TODO (Ben @ 2023/05/03) refactor so plugin types are available here
