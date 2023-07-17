@@ -1,10 +1,8 @@
-import { RegisteredCommandArg, RegisteredCommandName } from "@common/extensions/noteworthy-extension";
+import { RegisteredCommandArg, RegisteredCommandName } from "@common/commands/commands";
 
 export interface CommandEvents {
 	commandsChanged: { }
 }
-
-
 
 export class CommandManager {
 

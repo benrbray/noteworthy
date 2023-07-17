@@ -1,5 +1,4 @@
-import { RegisteredCommandArg, RegisteredCommandName } from "@common/extensions/noteworthy-extension";
-import { MainIpcHandlers } from "@main/MainIPC";
+import { RegisteredCommandArg, RegisteredCommandName } from "@common/commands/commands";
 
 export type TagSearchResult = {
 	/** tag name **/
@@ -22,7 +21,3 @@ export interface NoteworthyExtensionApi {
 		arg: RegisteredCommandArg<C>
 	): Promise<void>;
 }
-
-export const noteworthyExtensionApi = (mainProxy: MainIpcHandlers): void => {
-	return;
-};

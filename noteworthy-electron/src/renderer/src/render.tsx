@@ -57,13 +57,15 @@ import { visitNodeType } from "@common/markdown/unist-utils";
 ////////////////////////////////////////////////////////////
 
 // extensions
-import { NoteworthyExtension, NoteworthyExtensionInitializer, RegisteredCommandArg, RegisteredCommandName, RegisteredExtensionName } from "@common/extensions/noteworthy-extension";
+import { NoteworthyExtension, NoteworthyExtensionInitializer, RegisteredExtensionName } from "@common/extensions/noteworthy-extension";
+import { RegisteredCommandArg, RegisteredCommandName } from "@common/commands/commands";
 import codeMirrorPreviewExtension from "@extensions/noteworthy-codemirror-preview";
 import tikzJaxExtension from "@extensions/noteworthy-tikzjax";
 import autocompleteExtension from "@extensions/noteworthy-autocomplete";
 import { NoteworthyExtensionApi } from "@common/extensions/extension-api";
 import { CommandManager } from "./commandManager";
 import seedExtension from "@extensions/noteworthy-seed";
+import { Modal, ModalController, ModalState, initModalCommands, initialModalState } from "./ui/Modal/modal";
 
 // this is a "safe" version of ipcRenderer exposed by the preload script
 const ipcRenderer = window.restrictedIpcRenderer;
@@ -81,6 +83,7 @@ export interface IRendererState {
 	themeCss: string;
 	selection: { to:number, from:number };
 	markdownAst: null|Uni.Node;
+	modalState: ModalState;
 }
 
 class Renderer {
@@ -95,7 +98,11 @@ class Renderer {
 		editorElt: HTMLDivElement;
 	}
 
-	_react:null | { state: SolidStore<IRendererState>, setState: SetStoreFunction<IRendererState> };
+	_react:null | {
+		state: SolidStore<IRendererState>,
+		setState: SetStoreFunction<IRendererState>
+		setModalState: (setter: (state: ModalState) => ModalState) => void;
+	};
 
 	// extensions
 	private _extensions: { [N in RegisteredExtensionName] ?: NoteworthyExtension<N, RegisteredExtensionName[]> }
@@ -107,6 +114,8 @@ class Renderer {
 
 	// sidebar
 	_fileTree: [IFolderMarker, IDirEntryMeta[]][];
+
+	_noteworthyApi: NoteworthyExtensionApi;
 
 	constructor() {
 		// initialize objects
@@ -144,6 +153,7 @@ class Renderer {
 		this._react = null;
 		this._extensions = {};
 		this._commands = new CommandManager();
+		this._noteworthyApi = this.initNoteworthyApi(this._mainProxy, this._commands);
 	}
 
 	init() {
@@ -159,13 +169,45 @@ class Renderer {
 		// initialize interface
 		this._ui = this.initUI();
 		this.initKeyboardEvents();
+		this.initModal();
 
 		// initialize extensions
-		this.initExtensions(this._mainProxy, this._ui.editorElt);
+		this.initExtensions(this._noteworthyApi, this._ui.editorElt);
 
 		// set current file
 		if (this._currentFile) {
 			this.setCurrentFile(this._currentFile);
+		}
+	}
+
+	initModal() {
+		initModalCommands(this._react!.setModalState, this._noteworthyApi);
+	}
+
+	initNoteworthyApi(
+		mainProxy: MainIpcHandlers,
+		commandManager: CommandManager
+	): NoteworthyExtensionApi {
+		return {
+			fuzzyTagSearch: async (query) => {
+				const result = await mainProxy.tag.fuzzyTagSearch(query);
+
+				// return only specific properties, since the result may have extra data
+				return result.map(({ result, resultEmphasized }) => ({ result, resultEmphasized }))
+			},
+
+			registerCommand: <C extends RegisteredCommandName>(
+				name: C,
+				command: (arg: RegisteredCommandArg<C>) => Promise<void>
+			) => {
+				console.log(`[API] registerCommand ${name}`);
+				commandManager.registerCommand(name, command);
+			},
+
+			executeCommand: async <C extends RegisteredCommandName>(name: C, arg: RegisteredCommandArg<C>) => {
+				console.log(`[API] executeCommand ${name}`);
+				await commandManager.executeCommand(name, arg);
+			}
 		}
 	}
 
@@ -182,9 +224,20 @@ class Renderer {
 				commandNames: this._commands.getCommandNames(),
 				themeCss: "",
 				selection: {to:0, from:0},
-				markdownAst: null
+				markdownAst: null,
+				modalState: initialModalState,
 			});
-			this._react = { state, setState }
+
+			this._react = {
+				state,
+				setState,
+				setModalState: setter =>
+					setState(
+						({ modalState }) => ({
+							modalState: setter(modalState)
+						})
+					)
+			}
 
 			this._commands.on("commandsChanged", () => {
 				setState({
@@ -299,7 +352,10 @@ class Renderer {
 							<Match when={state.activeTab == 4}>
 								<For each={state.commandNames}>
 								{(name, idx) => {
-									return <div>{name}</div>
+									return (
+										<div
+											onClick={() => { this._noteworthyApi.executeCommand(name, {}) }}
+										>{name}</div>);
 								}}
 								</For>
 							</Match>
@@ -415,6 +471,11 @@ class Renderer {
 				clearInterval(timer);
 			});
 
+			const modalProps = () => {
+				console.log("compute modal props");
+				return ModalController.computeProps(this._react!.state.modalState);
+			}
+
 			return (<>
 				<style>{state.themeCss}</style>
 				<div id="app" class={state.showLowerPanel ? "" : "collapsePanel"} onMouseUp={handleAppClicked}>
@@ -422,6 +483,10 @@ class Renderer {
 					<AppContent />
 					<AppLowerPanel />
 					<AppFooter />
+					<Modal
+						{ ...modalProps() }
+						setModalState={this._react!.setModalState}
+					/>
 				</div>
 			</>)
 		}
@@ -467,32 +532,9 @@ class Renderer {
 	//////////////////////////////////////////////////////////
 
 	initExtensions(
-		mainProxy: MainIpcHandlers,
+		noteworthyApi: NoteworthyExtensionApi,
 		editorElt: HTMLElement
 	) {
-		// TODO (Ben @ 2023/05/02) extension api was added as a quick hack
-		// while writing the autocomplete extension, and should be revisited
-
-		const noteworthyApi: NoteworthyExtensionApi = {
-			fuzzyTagSearch: async (query) => {
-				const result = await mainProxy.tag.fuzzyTagSearch(query);
-
-				// return only specific properties, since the result may have extra data
-				return result.map(({ result, resultEmphasized }) => ({ result, resultEmphasized }))
-			},
-
-			registerCommand: <C extends RegisteredCommandName>(
-				name: C,
-				command: (arg: RegisteredCommandArg<C>) => Promise<void>
-			) => {
-				console.log(`[API] registerCommand ${name}`);
-				this._commands.registerCommand(name, command);
-			},
-
-			executeCommand: async <C extends RegisteredCommandName>(name: C, arg: RegisteredCommandArg<C>) => {
-				await this._commands.executeCommand(name, arg);
-			}
-		}
 
 		// TODO (Ben @ 2023/04/16) topologically sort extensions, rather than doing it by hand
 		// TODO (Ben @ 2023/04/16) is it possible to assign a more specific type here?  (existential? path-dependent?)
