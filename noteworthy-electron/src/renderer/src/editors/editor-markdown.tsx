@@ -55,81 +55,12 @@ import { SetDocAttrStep } from "@common/prosemirror/steps";
 ////////////////////////////////////////////////////////////
 
 // extensions
-import { NoteworthyExtension, NoteworthyExtensionInitializer, RegisteredExtensionName } from "@common/extensions/noteworthy-extension";
-import codeMirrorPreviewExtension from "@extensions/noteworthy-codemirror-preview";
-import tikzJaxExtension from "@extensions/noteworthy-tikzjax";
-import autocompleteExtension from "@extensions/noteworthy-autocomplete";
-import { NoteworthyExtensionApi } from "@common/extensions/extension-api";
+import { NoteworthyExtension, RegisteredExtensionName } from "@common/extensions/noteworthy-extension";
 
 ////////////////////////////////////////////////////////////
 
 /** @todo (9/27/20) where to put check for macos? */
 const mac = typeof navigator != "undefined" ? /Mac/.test(navigator.platform) : false
-
-////////////////////////////////////////////////////////////
-
-const makeExtensions = (
-	mainProxy: MainIpcHandlers,
-	editorElt: HTMLElement
-): { [N in RegisteredExtensionName] ?: NoteworthyExtension<N, RegisteredExtensionName[]> } => {
-	// TODO (Ben @ 2023/05/02) extension api was added as a quick hack
-	// while writing the autocomplete extension, and should be revisited
-
-	const noteworthyApi: NoteworthyExtensionApi = {
-		fuzzyTagSearch: async (query) => {
-			const result = await mainProxy.tag.fuzzyTagSearch(query);
-
-			// return only specific properties, since the result may have extra data
-			return result.map(({ result, resultEmphasized }) => ({ result, resultEmphasized }))
-		},
-
-		registerCommand: (name: string, handler: () => void) => {
-			// TODO
-		}
-	}
-
-	// TODO (Ben @ 2023/04/16) topologically sort extensions, rather than doing it by hand
-	// TODO (Ben @ 2023/04/16) is it possible to assign a more specific type here?  (existential? path-dependent?)
-	let extensionInitializers: NoteworthyExtensionInitializer<RegisteredExtensionName, RegisteredExtensionName[]>[] = [
-		codeMirrorPreviewExtension,
-		tikzJaxExtension,
-		autocompleteExtension
-	];
-
-	// initialize noteworthy extensions
-	let extensions: { [N in RegisteredExtensionName] ?: NoteworthyExtension<N, RegisteredExtensionName[]> } = {};
-
-	function isNameOfRegisteredExtension(s: string): s is RegisteredExtensionName {
-		return s in extensions;
-	}
-
-	extensionInitializers.forEach((initializer) => {
-		const ext = initializer.initialize({
-			editorElt: editorElt,
-			api: noteworthyApi
-		});
-		const extName = initializer.spec.name;
-		extensions[extName] = ext;
-
-		// pass config from this extension to its dependencies
-		const sharedConfig = initializer.spec.config;
-		if(sharedConfig !== undefined) {
-			Object.keys(sharedConfig).forEach(depName => {
-				if(!isNameOfRegisteredExtension(depName)) {
-					console.error(`dependency ${depName} of extension ${extName} not yet registered`);
-					return;
-				}
-
-				// TODO (Ben @ 2023/04/16) remove this ts-ignore
-				// after updating typescript, perhaps this is solved by correlated record types?
-				// @ts-ignore
-				extensions[depName]?.updateConfig(sharedConfig[depName]);
-			});
-		}
-	});
-
-	return extensions;
-}
 
 ////////////////////////////////////////////////////////////
 
@@ -156,6 +87,7 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 		file: IPossiblyUntitledFile | null,
 		editorElt: HTMLElement,
 		mainProxy: MainIpcHandlers,
+		extensions: { [N in RegisteredExtensionName] ?: NoteworthyExtension<N, RegisteredExtensionName[]> },
 		private _setSelectionInfo: (s: {to:number, from:number}) => void
 	) {
 		super(file, editorElt, mainProxy);
@@ -171,13 +103,6 @@ export class MarkdownEditor<S extends ProseSchema = ProseSchema> extends Editor<
 		this._editorElt.appendChild(this._metaElt);
 
 		/* ---- noteworthy extensions ----------------------- */
-
-		// initialize noteworthy extensions
-		let extensions: { [N in RegisteredExtensionName] ?: NoteworthyExtension<N, RegisteredExtensionName[]> }
-			= makeExtensions(
-				this._mainProxy,
-				this._editorElt
-			);
 
 		function isNameOfRegisteredExtension(s: string): s is RegisteredExtensionName {
 			return s in extensions;

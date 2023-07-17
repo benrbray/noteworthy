@@ -57,11 +57,13 @@ import { visitNodeType } from "@common/markdown/unist-utils";
 ////////////////////////////////////////////////////////////
 
 // extensions
-import { NoteworthyExtension, NoteworthyExtensionInitializer, RegisteredExtensionName } from "@common/extensions/noteworthy-extension";
+import { NoteworthyExtension, NoteworthyExtensionInitializer, RegisteredCommandArg, RegisteredCommandName, RegisteredExtensionName } from "@common/extensions/noteworthy-extension";
 import codeMirrorPreviewExtension from "@extensions/noteworthy-codemirror-preview";
 import tikzJaxExtension from "@extensions/noteworthy-tikzjax";
 import autocompleteExtension from "@extensions/noteworthy-autocomplete";
 import { NoteworthyExtensionApi } from "@common/extensions/extension-api";
+import { CommandManager } from "./commandManager";
+import seedExtension from "@extensions/noteworthy-seed";
 
 // this is a "safe" version of ipcRenderer exposed by the preload script
 const ipcRenderer = window.restrictedIpcRenderer;
@@ -75,6 +77,7 @@ export interface IRendererState {
 	activeFile: null|IPossiblyUntitledFile;
 	fileTree: [IFolderMarker, IDirEntryMeta[]][];
 	navigationHistory: { history: IFileMeta[], currentIdx: number };
+	commandNames: RegisteredCommandName[],
 	themeCss: string;
 	selection: { to:number, from:number };
 	markdownAst: null|Uni.Node;
@@ -95,7 +98,8 @@ class Renderer {
 	_react:null | { state: SolidStore<IRendererState>, setState: SetStoreFunction<IRendererState> };
 
 	// extensions
-	_extensions: { [N in RegisteredExtensionName] ?: NoteworthyExtension<N, RegisteredExtensionName[]> }
+	private _extensions: { [N in RegisteredExtensionName] ?: NoteworthyExtension<N, RegisteredExtensionName[]> }
+	private _commands: CommandManager;
 
 	// prosemirror
 	_editor: Editor | null;
@@ -139,6 +143,7 @@ class Renderer {
 		this._ui = null;
 		this._react = null;
 		this._extensions = {};
+		this._commands = new CommandManager();
 	}
 
 	init() {
@@ -174,11 +179,18 @@ class Renderer {
 				activeFile: null,
 				fileTree:[],
 				navigationHistory: { history: [], currentIdx: 0 },
+				commandNames: this._commands.getCommandNames(),
 				themeCss: "",
 				selection: {to:0, from:0},
 				markdownAst: null
 			});
 			this._react = { state, setState }
+
+			this._commands.on("commandsChanged", () => {
+				setState({
+					commandNames : this._commands.getCommandNames()
+				});
+			});
 
 			// state computations
 			const activeHash = () => {
@@ -285,7 +297,11 @@ class Renderer {
 								/>
 							</Match>
 							<Match when={state.activeTab == 4}>
-								<CalendarTab />
+								<For each={state.commandNames}>
+								{(name, idx) => {
+									return <div>{name}</div>
+								}}
+								</For>
 							</Match>
 						</Switch>
 					</Suspense></div>
@@ -465,8 +481,16 @@ class Renderer {
 				return result.map(({ result, resultEmphasized }) => ({ result, resultEmphasized }))
 			},
 
-			registerCommand: (name: string, handler: () => void) => {
-				// TODO
+			registerCommand: <C extends RegisteredCommandName>(
+				name: C,
+				command: (arg: RegisteredCommandArg<C>) => Promise<void>
+			) => {
+				console.log(`[API] registerCommand ${name}`);
+				this._commands.registerCommand(name, command);
+			},
+
+			executeCommand: async <C extends RegisteredCommandName>(name: C, arg: RegisteredCommandArg<C>) => {
+				await this._commands.executeCommand(name, arg);
 			}
 		}
 
@@ -475,7 +499,8 @@ class Renderer {
 		let extensionInitializers: NoteworthyExtensionInitializer<RegisteredExtensionName, RegisteredExtensionName[]>[] = [
 			codeMirrorPreviewExtension,
 			tikzJaxExtension,
-			autocompleteExtension
+			autocompleteExtension,
+			seedExtension
 		];
 
 		// initialize noteworthy extensions

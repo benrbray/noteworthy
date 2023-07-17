@@ -30,6 +30,14 @@ export interface CommunityExtensions {
 	// intentionally empty, to be extended by module declarations
 }
 
+export type RegisteredCommands    = CommunityExtensionCommands;
+export type RegisteredCommandName = keyof RegisteredCommands;
+export type RegisteredCommandArg<T extends RegisteredCommandName> = RegisteredCommands[T];
+
+export interface CommunityExtensionCommands {
+	// intentionally empty, to be extended by module declarations
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 export abstract class NoteworthyExtension<
