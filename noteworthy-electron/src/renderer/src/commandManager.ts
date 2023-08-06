@@ -6,8 +6,11 @@ export interface CommandEvents {
 
 export class CommandManager {
 
-	private _registeredCommands: Map<RegisteredCommandName, (arg: any) => Promise<unknown>>
-		= new Map<RegisteredCommandName, (arg: any) => Promise<void>>();
+	private _registeredCommands
+		= new Map<
+				RegisteredCommandName,
+				(arg: any, resolveCommand: (result: any) => void, rejectCommand: () => void) => Promise<unknown>
+			>();
 
 	// internal services can subscribe to events which report changes to the list of commands
 	private _eventHandlers: { [E in keyof CommandEvents] : ((arg: CommandEvents[E]) => void)[] }
@@ -47,7 +50,9 @@ export class CommandManager {
 			return Promise.reject();
 		}
 
-		return command(arg) as CommandResult<C>;
+		return new Promise((resolveCommand, rejectCommand) => {
+			return command(arg, resolveCommand, rejectCommand);
+		});
 	}
 
 	/* ---- event emitter --------------------------------- */

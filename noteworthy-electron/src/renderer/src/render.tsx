@@ -58,7 +58,7 @@ import { visitNodeType } from "@common/markdown/unist-utils";
 
 // extensions
 import { NoteworthyExtension, NoteworthyExtensionInitializer, RegisteredExtensionName } from "@common/extensions/noteworthy-extension";
-import { CommandArg, RegisteredCommandName, CommandResult } from "@common/commands/commands";
+import { CommandArg, RegisteredCommandName, CommandResult, CommandHandler } from "@common/commands/commands";
 import codeMirrorPreviewExtension from "@extensions/noteworthy-codemirror-preview";
 import tikzJaxExtension from "@extensions/noteworthy-tikzjax";
 import autocompleteExtension from "@extensions/noteworthy-autocomplete";
@@ -68,6 +68,7 @@ import seedExtension from "@extensions/noteworthy-seed";
 import { Modal, ModalController, ModalState, initModalCommands, initialModalState } from "./ui/Modal/modal";
 import { ModalNewFile, ModalNewFileProps } from "./ui/ModalNewFile/ModalNewFile";
 import { MainIPC_WorkspaceHandlers } from "@main/ipc/workspace";
+import { initNewFileCommand } from "./commands/newFileCommand";
 
 // this is a "safe" version of ipcRenderer exposed by the preload script
 const ipcRenderer = window.restrictedIpcRenderer;
@@ -172,7 +173,7 @@ class Renderer {
 		// initialize interface
 		this._ui = this.initUI();
 		this.initKeyboardEvents();
-		this.initModal();
+		this.initCommands();
 
 		// initialize extensions
 		this.initExtensions(this._noteworthyApi, this._ui.editorElt);
@@ -183,8 +184,9 @@ class Renderer {
 		}
 	}
 
-	initModal() {
+	initCommands() {
 		initModalCommands(this._react!.setModalState, this._noteworthyApi);
+		initNewFileCommand(this._noteworthyApi, this._mainProxy);
 	}
 
 	initNoteworthyApi(
@@ -201,7 +203,7 @@ class Renderer {
 
 			registerCommand: <C extends RegisteredCommandName>(
 				name: C,
-				command: (arg: CommandArg<C>) => Promise<CommandResult<C>>
+				command: CommandHandler<C>
 			) => {
 				console.log(`[API] registerCommand ${name}`);
 				commandManager.registerCommand(name, command);
@@ -213,45 +215,14 @@ class Renderer {
 			},
 
 			createFileViaModal: async () => {
-				const workspaceDir = await mainProxy.workspace.currentWorkspaceDir();
-
-				if(!workspaceDir) {
-					console.error("cannot create new file when no workspace open");
-					return null;
-				}
-
-				// TODO (Ben @ 2023/07/18) this is pretty gnarly...
-				const filePath = await new Promise<string>((resolve, reject) => {
-
-					commandManager.executeCommand("showModal", {
-						title: "New File",
-						renderModal: (dom, modalActions) => {
-							render(() => {
-								const props: ModalNewFileProps = {
-									promptFilePath : () => {
-										return mainProxy.dialog.dialogFileNewPath();
-									},
-									handleSubmit(name: string) {
-										modalActions.close();
-										resolve(name);
-									},
-									handleCancel() {
-										modalActions.close();
-									},
-									workspaceRoot : workspaceDir
-								}
-
-								return (<ModalNewFile {...props} />);
-							}, dom);
-						}
-					})
-				});
+				const filePath = await commandManager.executeCommand("newFile", {});
+				if(!filePath) { return null; }
 
 				console.log("newfile:", filePath);
 
 				// TODO (Ben @ 2023/07/18) validate filePath (make sure it's scoped to workspace)
 				const fileMeta = await this._mainProxy.file.requestFileCreate(filePath, "");
-				if(!fileMeta) { return null;          }
+				if(!fileMeta) { return null; }
 
 				await this._mainProxy.navigation.navigateToHash(fileMeta);
 				return fileMeta.path;
@@ -562,8 +533,6 @@ class Renderer {
 		// keyboard shortcuts
 		const keyboardHandler = async (evt: KeyboardEvent) => {
 			if(evt.ctrlKey && evt.key === "n") {
-				// let newFile = await this._mainProxy.dialog.dialogFileNew();
-				// console.log("creating new file", newFile);
 				let newFileName = await this._noteworthyApi.createFileViaModal();
 				console.log("newFile:", newFileName);
 			}

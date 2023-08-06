@@ -11,8 +11,11 @@ export type CommandArg<T extends RegisteredCommandName> =
 export type CommandResult<T extends RegisteredCommandName> =
 	RegisteredCommands[T] extends CommandSpec<infer A, infer R> ? R : never;
 
-export type CommandHandler<C extends RegisteredCommandName> =
-	(arg: CommandArg<C>) => Promise<CommandResult<C>>
+export type CommandHandler<C extends RegisteredCommandName> = (
+		arg: CommandArg<C>,
+		resolveCommand: (result: CommandResult<C>) => void,
+		rejectCommand: () => void
+	) => Promise<CommandResult<C>>;
 
 export interface InternalCommands {
 	// intentionally empty, to be extended by module declarations
