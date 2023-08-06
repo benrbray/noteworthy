@@ -201,7 +201,7 @@ export class MainIpc_DialogHandlers implements MainIpcChannel {
 
 	// -- Dialog File Create ---------------------------- //
 
-	async dialogFileNew(): Promise<void> {
+	async dialogFileNewPath(): Promise<string> {
 		if (!this._app.window) { return Promise.reject("no active window"); }
 
 		// default "new file" path
@@ -217,6 +217,11 @@ export class MainIpc_DialogHandlers implements MainIpcChannel {
 			}
 		);
 		if (!newFilePath) { return Promise.reject("no file path specified"); }
+		else              { return newFilePath;                              }
+	}
+
+	async dialogFileNew(): Promise<void> {
+		const newFilePath = await this.dialogFileNewPath();
 
 		// create and open new file
 		let newFile = await this._workspaceService.createFile(newFilePath, "");

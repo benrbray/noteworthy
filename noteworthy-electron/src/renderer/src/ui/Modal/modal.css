@@ -17,18 +17,16 @@
   transform: translate(-50%, -50%);
 
 	width: min(80%, 40rem);
-	height: 40%;
 
 	/* layout */
 	display: flex;
 	flex-direction: column;
 
-
 	/* style */
 	box-sizing: border-box;
 	padding: 1rem;
 
-	border-radius: 1rem;
+	border-radius: 0.5rem;
 	background-color: white;
 
 	box-shadow: inset;
@@ -45,8 +43,6 @@
 
 .modal-content {
 	flex: 1;
-
-	border: 1px solid gray;
 	margin-bottom: 1rem;
 }
 

@@ -66,6 +66,7 @@ import { NoteworthyExtensionApi } from "@common/extensions/extension-api";
 import { CommandManager } from "./commandManager";
 import seedExtension from "@extensions/noteworthy-seed";
 import { Modal, ModalController, ModalState, initModalCommands, initialModalState } from "./ui/Modal/modal";
+import { ModalNewFile, ModalNewFileProps } from "./ui/ModalNewFile/ModalNewFile";
 
 // this is a "safe" version of ipcRenderer exposed by the preload script
 const ipcRenderer = window.restrictedIpcRenderer;
@@ -207,7 +208,46 @@ class Renderer {
 			executeCommand: async <C extends RegisteredCommandName>(name: C, arg: RegisteredCommandArg<C>) => {
 				console.log(`[API] executeCommand ${name}`);
 				await commandManager.executeCommand(name, arg);
+			},
+
+			createFileViaModal: async () => {
+				// TODO (Ben @ 2023/07/18) this is pretty gnarly...
+				const filePath = await new Promise<string>((resolve, reject) => {
+					commandManager.executeCommand("showModal", {
+						title: "New File",
+						renderModal: (dom, modalActions) => {
+							render(() => {
+								const props: ModalNewFileProps = {
+									promptFilePath : () => {
+										return mainProxy.dialog.dialogFileNewPath();
+									},
+									handleSubmit(name: string) {
+										modalActions.close();
+										resolve(name);
+									},
+									handleCancel() {
+										modalActions.close();
+									},
+									workspaceRoot : "foo",
+									currentFolder : "bar"
+								}
+
+								return (<ModalNewFile {...props} />);
+							}, dom);
+						}
+					})
+				});
+
+				console.log("newfile:", filePath);
+
+				// TODO (Ben @ 2023/07/18) validate filePath (make sure it's scoped to workspace)
+				const fileMeta = await this._mainProxy.file.requestFileCreate(filePath, "");
+				if(!fileMeta) { return null;          }
+
+				await this._mainProxy.navigation.navigateToHash(fileMeta);
+				return fileMeta.path;
 			}
+
 		}
 	}
 
@@ -472,7 +512,6 @@ class Renderer {
 			});
 
 			const modalProps = () => {
-				console.log("compute modal props");
 				return ModalController.computeProps(this._react!.state.modalState);
 			}
 
@@ -521,8 +560,10 @@ class Renderer {
 		// keyboard shortcuts
 		const keyboardHandler = async (evt: KeyboardEvent) => {
 			if(evt.ctrlKey && evt.key === "n") {
-				let newFile = await this._mainProxy.dialog.dialogFileNew();
-				console.log("creating new file", newFile);
+				// let newFile = await this._mainProxy.dialog.dialogFileNew();
+				// console.log("creating new file", newFile);
+				let newFileName = await this._noteworthyApi.createFileViaModal();
+				console.log("newFile:", newFileName);
 			}
 		}
 
