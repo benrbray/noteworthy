@@ -1,13 +1,11 @@
 import { createSignal } from "solid-js";
-import { ModalActions } from "../Modal/modal";
 import "./ModalNewFile.css"
 
 export interface ModalNewFileProps {
 	promptFilePath: () => Promise<string>,
 	handleSubmit: (name: string) => void;
 	handleCancel: () => void;
-	workspaceRoot: string,
-	currentFolder: string
+	workspaceRoot: string
 }
 
 export const ModalNewFile = (props: ModalNewFileProps) => {
@@ -15,11 +13,7 @@ export const ModalNewFile = (props: ModalNewFileProps) => {
 	const [selectedFilename, setSelectedFilename] = createSignal<string|null>(null);
 
 	const setFolderRoot = () => {
-		console.log("[setFolderRoot]");
-	}
-
-	const setFolderCurrent = () => {
-		console.log("[setFolderCurrent]");
+		setSelectedFolder(props.workspaceRoot);
 	}
 
 	const setFolderPrompt = () => {
@@ -49,7 +43,6 @@ export const ModalNewFile = (props: ModalNewFileProps) => {
 
 		<div class="section">
 		<button onClick={setFolderRoot}>Set Root</button>
-		<button onClick={setFolderCurrent}>Set Current</button>
 		<button onClick={setFolderPrompt}>Choose Folder...</button>
 		</div>
 

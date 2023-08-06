@@ -3,6 +3,7 @@ import NoteworthyApp from "@main/app";
 import { WorkspaceService } from "@main/workspace/workspace-service";
 import { dialog } from "electron";
 import { MainIpc_DialogHandlers } from "./dialog";
+import { IDirectory } from "@common/files";
 
 export class MainIPC_WorkspaceHandlers implements MainIpcChannel {
 
@@ -38,6 +39,12 @@ export class MainIPC_WorkspaceHandlers implements MainIpcChannel {
 		if(!newFile) { return Promise.reject("failed to create new file"); }
 
 		return this._app._eventHandlers.navigation.navigateToHash({ hash: newFile.hash });
+	}
+
+	async currentWorkspaceDir(): Promise<string | null> {
+		let dir = this._workspaceService.getWorkspaceDir();
+		if(dir) { return dir.path; }
+		else    { return null;     }
 	}
 
 }

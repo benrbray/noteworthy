@@ -67,6 +67,7 @@ import { CommandManager } from "./commandManager";
 import seedExtension from "@extensions/noteworthy-seed";
 import { Modal, ModalController, ModalState, initModalCommands, initialModalState } from "./ui/Modal/modal";
 import { ModalNewFile, ModalNewFileProps } from "./ui/ModalNewFile/ModalNewFile";
+import { MainIPC_WorkspaceHandlers } from "@main/ipc/workspace";
 
 // this is a "safe" version of ipcRenderer exposed by the preload script
 const ipcRenderer = window.restrictedIpcRenderer;
@@ -132,7 +133,8 @@ class Renderer {
 			outline:    invokerFor<MainIpc_OutlineHandlers>    (ipcRenderer, channel, logPrefix, "outline"),
 			metadata:   invokerFor<MainIpc_MetadataHandlers>   (ipcRenderer, channel, logPrefix, "metadata"),
 			navigation: invokerFor<MainIpc_NavigationHandlers> (ipcRenderer, channel, logPrefix, "navigation"),
-			citations:  invokerFor<MainIpc_CitationHandlers>   (ipcRenderer, channel, logPrefix, "citations")
+			citations:  invokerFor<MainIpc_CitationHandlers>   (ipcRenderer, channel, logPrefix, "citations"),
+			workspace:  invokerFor<MainIPC_WorkspaceHandlers>  (ipcRenderer, channel, logPrefix, "workspace")
 		}
 
 		this._eventHandlers = new RendererIpcHandlers(this);
@@ -211,8 +213,16 @@ class Renderer {
 			},
 
 			createFileViaModal: async () => {
+				const workspaceDir = await mainProxy.workspace.currentWorkspaceDir();
+
+				if(!workspaceDir) {
+					console.error("cannot create new file when no workspace open");
+					return null;
+				}
+
 				// TODO (Ben @ 2023/07/18) this is pretty gnarly...
 				const filePath = await new Promise<string>((resolve, reject) => {
+
 					commandManager.executeCommand("showModal", {
 						title: "New File",
 						renderModal: (dom, modalActions) => {
@@ -228,8 +238,7 @@ class Renderer {
 									handleCancel() {
 										modalActions.close();
 									},
-									workspaceRoot : "foo",
-									currentFolder : "bar"
+									workspaceRoot : workspaceDir
 								}
 
 								return (<ModalNewFile {...props} />);
