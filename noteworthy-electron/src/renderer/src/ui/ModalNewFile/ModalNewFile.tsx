@@ -28,9 +28,9 @@ export const ModalNewFile = (props: ModalNewFileProps) => {
 
 	return (<div class="modal-newfile">
 		<div class="section newfile-folder input-box">
-			<span class="newfile-folder-workspace" title={props.workspaceRoot}>
+			{/* <span class="newfile-folder-workspace" title={props.workspaceRoot}>
 				WORKSPACE/
-			</span>
+			</span> */}
 			<input
 				spellcheck={false}
 				class="newfile-folder-input"
@@ -42,13 +42,12 @@ export const ModalNewFile = (props: ModalNewFileProps) => {
 		<div>{selectedFolder()}</div>
 
 		<div class="section">
-		<button onClick={setFolderRoot}>Set Root</button>
-		<button onClick={setFolderPrompt}>Choose Folder...</button>
+		<button onClick={setFolderPrompt}>Choose Path...</button>
 		</div>
 
-		<div class="section">
+		{/* <div class="section">
 		<input class="newfile-name input-box" />
-		</div>
+		</div> */}
 
 		<div class="modal-button-row">
 			<button

@@ -30,8 +30,13 @@ export const Modal = (props: ModalProps) => {
 		}
 	}
 
+	const handleClickBackground = (evt: MouseEvent) => {
+		if(evt.target !== evt.currentTarget) return;
+		actions.close();
+	}
+
 	return (<Show when={props.data !== null}>
-		<div class="modal">
+		<div class="modal" onClick={handleClickBackground}>
 			<div class="modal-box">
 				<div class="modal-title">{props.data!.title}</div>
 				<div ref={dom => props.data!.renderModal(dom, actions)} class="modal-content" />
