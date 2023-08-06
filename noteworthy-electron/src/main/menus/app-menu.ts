@@ -24,7 +24,7 @@ function makeFileMenu(app:NoteworthyApp): MenuItemConstructorOptions {
 		submenu: [
 			{
 				label: "Open Folder...",
-				click: () => { app.handle("dialog", "dialogFolderOpen"); }
+				click: () => { app.handle("dialog", "dialogFolderOpen"); } // TODO call workspace instead
 			},
 			{
 				label: "Open File...",

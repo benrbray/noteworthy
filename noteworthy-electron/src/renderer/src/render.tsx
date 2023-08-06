@@ -4,19 +4,19 @@ import * as pathlib from "path-browserify";
 // project imports
 import type {
 	MainIpcHandlers,
-	MainIpc_LifecycleHandlers,
-	MainIpc_FileHandlers,
-	MainIpc_ThemeHandlers,
-	MainIpc_ShellHandlers,
-	MainIpc_DialogHandlers,
-	MainIpc_TagHandlers,
-	MainIpc_OutlineHandlers,
-	MainIpc_MetadataHandlers,
-	MainIpc_NavigationHandlers,
-	MainIpc_CitationHandlers
 // TODO (Ben @ 2023/04/30) refactor IPC to avoid errors with split project
 // @ts-ignore
 } from "@main/MainIPC";
+import { MainIpc_CitationHandlers } from "@main/ipc/citation";
+import { MainIpc_DialogHandlers } from "@main/ipc/dialog";
+import { MainIpc_FileHandlers } from "@main/ipc/file";
+import { MainIpc_LifecycleHandlers } from "@main/ipc/lifecycle";
+import { MainIpc_MetadataHandlers } from "@main/ipc/metadata";
+import { MainIpc_NavigationHandlers } from "@main/ipc/navigation";
+import { MainIpc_OutlineHandlers } from "@main/ipc/outline";
+import { MainIpc_ShellHandlers } from "@main/ipc/shell";
+import { MainIpc_TagHandlers } from "@main/ipc/tag";
+import { MainIpc_ThemeHandlers } from "@main/ipc/theme";
 
 import { RendererIpcEvents, RendererIpcHandlers } from "./RendererIPC";
 import { IPossiblyUntitledFile, IDirEntryMeta, IFileMeta } from "@common/files";
