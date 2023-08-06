@@ -27,24 +27,6 @@ export class MainIpc_DialogHandlers implements MainIpcChannel {
 		/** @todo (6/26/20) implement error notifications */
 	}
 
-	// -- Request Folder Open --------------------------- //
-
-	dialogFolderOpen() {
-		if (!this._app.window) { return; }
-
-		// open file dialog
-		const dirPaths: string[] | undefined = dialog.showOpenDialogSync(
-			this._app.window.window,
-			{
-				properties: ['openDirectory', 'createDirectory'],
-				//filters: FILE_FILTERS
-			}
-		);
-		if (!dirPaths || !dirPaths.length) return;
-
-		this._workspaceService.setWorkspaceDir(dirPaths[0]);
-	}
-
 	// -- Request File Open ----------------------------- //
 
 	dialogFileOpen() {

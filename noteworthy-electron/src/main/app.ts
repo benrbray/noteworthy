@@ -26,6 +26,7 @@ import { MainIpc_OutlineHandlers } from "./ipc/outline";
 import { MainIpc_ShellHandlers } from "./ipc/shell";
 import { MainIpc_TagHandlers } from "./ipc/tag";
 import { MainIpc_ThemeHandlers } from "./ipc/theme";
+import { MainIPC_WorkspaceHandlers } from "./ipc/workspace";
 
 ////////////////////////////////////////////////////////////
 
@@ -123,6 +124,7 @@ export default class NoteworthyApp extends EventEmitter {
 		let themeHandlers      = new MainIpc_ThemeHandlers(this._themeService);
 		let metadataHandlers   = new MainIpc_MetadataHandlers(this._pluginService);
 		let citationHandlers   = new MainIpc_CitationHandlers(this, this._pluginService);
+		let workspaceHandlers  = new MainIPC_WorkspaceHandlers(this, this._workspaceService, dialogHandlers);
 
 		return {
 			lifecycle:  lifecycleHandlers,
@@ -134,7 +136,8 @@ export default class NoteworthyApp extends EventEmitter {
 			outline:    outlineHandlers,
 			metadata:   metadataHandlers,
 			navigation: navigationHandlers,
-			citations:  citationHandlers
+			citations:  citationHandlers,
+			workspace:  workspaceHandlers
 		}
 	}
 

@@ -8,6 +8,7 @@ import { MainIpc_OutlineHandlers } from "./ipc/outline";
 import { MainIpc_ShellHandlers } from "./ipc/shell";
 import { MainIpc_TagHandlers } from "./ipc/tag";
 import { MainIpc_ThemeHandlers } from "./ipc/theme";
+import { MainIPC_WorkspaceHandlers } from "./ipc/workspace";
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -30,6 +31,7 @@ export interface DefaultMainIpcHandlers {
 	outline:    MainIpc_OutlineHandlers;
 	metadata:   MainIpc_MetadataHandlers;
 	navigation: MainIpc_NavigationHandlers;
+	workspace:  MainIPC_WorkspaceHandlers;
 };
 
 export type MainIpcHandlers = Noteworthy.MainIpcHandlers & DefaultMainIpcHandlers
