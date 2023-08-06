@@ -4,19 +4,19 @@ import * as pathlib from "path-browserify";
 // project imports
 import type {
 	MainIpcHandlers,
-	MainIpc_LifecycleHandlers,
-	MainIpc_FileHandlers,
-	MainIpc_ThemeHandlers,
-	MainIpc_ShellHandlers,
-	MainIpc_DialogHandlers,
-	MainIpc_TagHandlers,
-	MainIpc_OutlineHandlers,
-	MainIpc_MetadataHandlers,
-	MainIpc_NavigationHandlers,
-	MainIpc_CitationHandlers
 // TODO (Ben @ 2023/04/30) refactor IPC to avoid errors with split project
 // @ts-ignore
 } from "@main/MainIPC";
+import { MainIpc_CitationHandlers } from "@main/ipc/citation";
+import { MainIpc_DialogHandlers } from "@main/ipc/dialog";
+import { MainIpc_FileHandlers } from "@main/ipc/file";
+import { MainIpc_LifecycleHandlers } from "@main/ipc/lifecycle";
+import { MainIpc_MetadataHandlers } from "@main/ipc/metadata";
+import { MainIpc_NavigationHandlers } from "@main/ipc/navigation";
+import { MainIpc_OutlineHandlers } from "@main/ipc/outline";
+import { MainIpc_ShellHandlers } from "@main/ipc/shell";
+import { MainIpc_TagHandlers } from "@main/ipc/tag";
+import { MainIpc_ThemeHandlers } from "@main/ipc/theme";
 
 import { RendererIpcEvents, RendererIpcHandlers } from "./RendererIPC";
 import { IPossiblyUntitledFile, IDirEntryMeta, IFileMeta } from "@common/files";
@@ -53,6 +53,23 @@ import { ITagSearchResult, IFileSearchResult } from "@main/plugins/crossref-plug
 
 import { MouseButton } from "@common/inputEvents";
 import { visitNodeType } from "@common/markdown/unist-utils";
+
+////////////////////////////////////////////////////////////
+
+// extensions
+import { NoteworthyExtension, NoteworthyExtensionInitializer, RegisteredExtensionName } from "@common/extensions/noteworthy-extension";
+import { CommandArg, RegisteredCommandName, CommandResult, CommandHandler } from "@common/commands/commands";
+import codeMirrorPreviewExtension from "@extensions/noteworthy-codemirror-preview";
+import tikzJaxExtension from "@extensions/noteworthy-tikzjax";
+import autocompleteExtension from "@extensions/noteworthy-autocomplete";
+import { NoteworthyExtensionApi } from "@common/extensions/extension-api";
+import { CommandManager } from "./commandManager";
+import seedExtension from "@extensions/noteworthy-seed";
+import { Modal, ModalController, ModalState, initModalCommands, initialModalState } from "./ui/Modal/modal";
+import { ModalNewFile, ModalNewFileProps } from "./ui/ModalNewFile/ModalNewFile";
+import { MainIPC_WorkspaceHandlers } from "@main/ipc/workspace";
+import { initNewFileCommand } from "./commands/newFileCommand";
+
 // this is a "safe" version of ipcRenderer exposed by the preload script
 const ipcRenderer = window.restrictedIpcRenderer;
 
@@ -65,9 +82,11 @@ export interface IRendererState {
 	activeFile: null|IPossiblyUntitledFile;
 	fileTree: [IFolderMarker, IDirEntryMeta[]][];
 	navigationHistory: { history: IFileMeta[], currentIdx: number };
+	commandNames: RegisteredCommandName[],
 	themeCss: string;
 	selection: { to:number, from:number };
 	markdownAst: null|Uni.Node;
+	modalState: ModalState;
 }
 
 class Renderer {
@@ -82,7 +101,15 @@ class Renderer {
 		editorElt: HTMLDivElement;
 	}
 
-	_react:null | { state: SolidStore<IRendererState>, setState: SetStoreFunction<IRendererState> };
+	_react:null | {
+		state: SolidStore<IRendererState>,
+		setState: SetStoreFunction<IRendererState>
+		setModalState: (setter: (state: ModalState) => ModalState) => void;
+	};
+
+	// extensions
+	private _extensions: { [N in RegisteredExtensionName] ?: NoteworthyExtension<N, RegisteredExtensionName[]> }
+	private _commands: CommandManager;
 
 	// prosemirror
 	_editor: Editor | null;
@@ -90,6 +117,8 @@ class Renderer {
 
 	// sidebar
 	_fileTree: [IFolderMarker, IDirEntryMeta[]][];
+
+	_noteworthyApi: NoteworthyExtensionApi;
 
 	constructor() {
 		// initialize objects
@@ -105,7 +134,8 @@ class Renderer {
 			outline:    invokerFor<MainIpc_OutlineHandlers>    (ipcRenderer, channel, logPrefix, "outline"),
 			metadata:   invokerFor<MainIpc_MetadataHandlers>   (ipcRenderer, channel, logPrefix, "metadata"),
 			navigation: invokerFor<MainIpc_NavigationHandlers> (ipcRenderer, channel, logPrefix, "navigation"),
-			citations:  invokerFor<MainIpc_CitationHandlers>   (ipcRenderer, channel, logPrefix, "citations")
+			citations:  invokerFor<MainIpc_CitationHandlers>   (ipcRenderer, channel, logPrefix, "citations"),
+			workspace:  invokerFor<MainIPC_WorkspaceHandlers>  (ipcRenderer, channel, logPrefix, "workspace")
 		}
 
 		this._eventHandlers = new RendererIpcHandlers(this);
@@ -125,6 +155,9 @@ class Renderer {
 		this._editor = null;
 		this._ui = null;
 		this._react = null;
+		this._extensions = {};
+		this._commands = new CommandManager();
+		this._noteworthyApi = this.initNoteworthyApi(this._mainProxy, this._commands);
 	}
 
 	init() {
@@ -138,12 +171,63 @@ class Renderer {
 		);
 
 		// initialize interface
-		this.initUI();
+		this._ui = this.initUI();
 		this.initKeyboardEvents();
+		this.initCommands();
+
+		// initialize extensions
+		this.initExtensions(this._noteworthyApi, this._ui.editorElt);
 
 		// set current file
 		if (this._currentFile) {
 			this.setCurrentFile(this._currentFile);
+		}
+	}
+
+	initCommands() {
+		initModalCommands(this._react!.setModalState, this._noteworthyApi);
+		initNewFileCommand(this._noteworthyApi, this._mainProxy);
+	}
+
+	initNoteworthyApi(
+		mainProxy: MainIpcHandlers,
+		commandManager: CommandManager
+	): NoteworthyExtensionApi {
+		return {
+			fuzzyTagSearch: async (query) => {
+				const result = await mainProxy.tag.fuzzyTagSearch(query);
+
+				// return only specific properties, since the result may have extra data
+				return result.map(({ result, resultEmphasized }) => ({ result, resultEmphasized }))
+			},
+
+			registerCommand: <C extends RegisteredCommandName>(
+				name: C,
+				command: CommandHandler<C>
+			) => {
+				console.log(`[API] registerCommand ${name}`);
+				commandManager.registerCommand(name, command);
+			},
+
+			executeCommand: async <C extends RegisteredCommandName>(name: C, arg: CommandArg<C>) => {
+				console.log(`[API] executeCommand ${name}`);
+				return commandManager.executeCommand(name, arg);
+			},
+
+			createFileViaModal: async () => {
+				const filePath = await commandManager.executeCommand("newFile", {});
+				if(!filePath) { return null; }
+
+				console.log("newfile:", filePath);
+
+				// TODO (Ben @ 2023/07/18) validate filePath (make sure it's scoped to workspace)
+				const fileMeta = await this._mainProxy.file.requestFileCreate(filePath, "");
+				if(!fileMeta) { return null; }
+
+				await this._mainProxy.navigation.navigateToHash(fileMeta);
+				return fileMeta.path;
+			}
+
 		}
 	}
 
@@ -157,11 +241,29 @@ class Renderer {
 				activeFile: null,
 				fileTree:[],
 				navigationHistory: { history: [], currentIdx: 0 },
+				commandNames: this._commands.getCommandNames(),
 				themeCss: "",
 				selection: {to:0, from:0},
-				markdownAst: null
+				markdownAst: null,
+				modalState: initialModalState,
 			});
-			this._react = { state, setState }
+
+			this._react = {
+				state,
+				setState,
+				setModalState: setter =>
+					setState(
+						({ modalState }) => ({
+							modalState: setter(modalState)
+						})
+					)
+			}
+
+			this._commands.on("commandsChanged", () => {
+				setState({
+					commandNames : this._commands.getCommandNames()
+				});
+			});
 
 			// state computations
 			const activeHash = () => {
@@ -268,7 +370,7 @@ class Renderer {
 								/>
 							</Match>
 							<Match when={state.activeTab == 4}>
-								<CalendarTab />
+								empty
 							</Match>
 						</Switch>
 					</Suspense></div>
@@ -382,6 +484,10 @@ class Renderer {
 				clearInterval(timer);
 			});
 
+			const modalProps = () => {
+				return ModalController.computeProps(this._react!.state.modalState);
+			}
+
 			return (<>
 				<style>{state.themeCss}</style>
 				<div id="app" class={state.showLowerPanel ? "" : "collapsePanel"} onMouseUp={handleAppClicked}>
@@ -389,6 +495,10 @@ class Renderer {
 					<AppContent />
 					<AppLowerPanel />
 					<AppFooter />
+					<Modal
+						{ ...modalProps() }
+						setModalState={this._react!.setModalState}
+					/>
 				</div>
 			</>)
 		}
@@ -402,7 +512,7 @@ class Renderer {
 		this._mainProxy.theme.requestThemeRefresh();
 
 		// dom elements
-		this._ui = {
+		return {
 			titleElt : document.getElementById("title") as HTMLDivElement,
 			editorElt : document.getElementById("editor") as HTMLDivElement
 		}
@@ -423,12 +533,63 @@ class Renderer {
 		// keyboard shortcuts
 		const keyboardHandler = async (evt: KeyboardEvent) => {
 			if(evt.ctrlKey && evt.key === "n") {
-				let newFile = await this._mainProxy.dialog.dialogFileNew();
-				console.log("creating new file", newFile);
+				let newFileName = await this._noteworthyApi.createFileViaModal();
+				console.log("newFile:", newFileName);
 			}
 		}
 
 		document.addEventListener("keypress", keyboardHandler);
+	}
+
+	//////////////////////////////////////////////////////////
+
+	initExtensions(
+		noteworthyApi: NoteworthyExtensionApi,
+		editorElt: HTMLElement
+	) {
+
+		// TODO (Ben @ 2023/04/16) topologically sort extensions, rather than doing it by hand
+		// TODO (Ben @ 2023/04/16) is it possible to assign a more specific type here?  (existential? path-dependent?)
+		let extensionInitializers: NoteworthyExtensionInitializer<RegisteredExtensionName, RegisteredExtensionName[]>[] = [
+			codeMirrorPreviewExtension,
+			tikzJaxExtension,
+			autocompleteExtension,
+			seedExtension
+		];
+
+		// initialize noteworthy extensions
+		let extensions: { [N in RegisteredExtensionName] ?: NoteworthyExtension<N, RegisteredExtensionName[]> } = {};
+
+		function isNameOfRegisteredExtension(s: string): s is RegisteredExtensionName {
+			return s in extensions;
+		}
+
+		extensionInitializers.forEach((initializer) => {
+			const ext = initializer.initialize({
+				editorElt: editorElt,
+				api: noteworthyApi
+			});
+			const extName = initializer.spec.name;
+			extensions[extName] = ext;
+
+			// pass config from this extension to its dependencies
+			const sharedConfig = initializer.spec.config;
+			if(sharedConfig !== undefined) {
+				Object.keys(sharedConfig).forEach(depName => {
+					if(!isNameOfRegisteredExtension(depName)) {
+						console.error(`dependency ${depName} of extension ${extName} not yet registered`);
+						return;
+					}
+
+					// TODO (Ben @ 2023/04/16) remove this ts-ignore
+					// after updating typescript, perhaps this is solved by correlated record types?
+					// @ts-ignore
+					extensions[depName]?.updateConfig(sharedConfig[depName]);
+				});
+			}
+		});
+
+		this._extensions = extensions;
 	}
 
 	////////////////////////////////////////////////////////
@@ -475,7 +636,14 @@ class Renderer {
 		// (no way to describe type of abstract constructor)
 		// (https://github.com/Microsoft/TypeScript/issues/5843)
 		let editor:Editor;
-		const args = [this._currentFile, this._ui.editorElt, this._mainProxy, setSelectionInfo] as const;
+		const args = [
+			this._currentFile,
+			this._ui.editorElt,
+			this._mainProxy,
+			this._extensions,
+			setSelectionInfo
+		] as const;
+
 		switch (ext) {
 			case ".md":      editor = new MarkdownEditor(...args);    break;
 			default:         editor = new MarkdownEditor(...args); break;

@@ -1,0 +1,36 @@
+.modal-newfile .input-box {
+	background-color: #e0e0e0;
+	padding: 0.5rem;
+	font-family: var(--font-ui-monospace);
+}
+
+.modal-newfile .newfile-folder {
+	display: flex;
+}
+
+.modal-newfile .newfile-folder-workspace {
+	color: #666;
+	user-select: none;
+}
+
+.modal-newfile input.newfile-folder-input {
+	flex-grow: 1;
+	background-color: unset;
+	border: none;
+	font-family: unset;
+	width: unset;
+}
+
+.modal-newfile input.newfile-folder-input:focus {
+	outline: none;
+}
+
+.modal-newfile input.newfile-name {
+	display: block;
+	outline: none;
+	border: none;
+}
+
+.modal-newfile > div.section {
+	margin: 0.5em;
+}

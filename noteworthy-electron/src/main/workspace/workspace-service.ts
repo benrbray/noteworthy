@@ -20,7 +20,7 @@ export enum WorkspaceEvent {
 }
 
 export class WorkspaceService extends EventEmitter {
-	
+
 	private _workspace:Workspace|null;
 
 	constructor(private _fsal: FSAL) {
@@ -44,7 +44,7 @@ export class WorkspaceService extends EventEmitter {
 		console.log("app :: setWorkspaceDir() ::", dirPath);
 		// close active workspace
 		this.closeWorkspace();
-		
+
 		// define plugins
 		let plugins: WorkspacePlugin[] = [
 			new CrossRefPlugin(),
@@ -117,7 +117,7 @@ export class WorkspaceService extends EventEmitter {
 	 *
 	 * @param dir The directory to open.
 	 * @param plugins A list of workspace plugins, which will be
-	 *   notified of any changes to files in the workspace. 
+	 *   notified of any changes to files in the workspace.
 	 * @param create If TRUE and no data folder found, a
 	 *   new workspace will be created for this directory.
 	 */
@@ -171,7 +171,7 @@ export class WorkspaceService extends EventEmitter {
 
 	async updatePath(filePath: string): Promise<IFileMeta | null> {
 		if(!this._workspace) { return null; }
-		
+
 		/** @todo (6/19/20) check if path is a directory? */
 		let file: IFileDesc | null = await this._fsal.parseFile(filePath);
 		if (file === null) { return null; }
@@ -207,7 +207,7 @@ export class WorkspaceService extends EventEmitter {
 
 		if(success) { console.log("fsal :: workspace metadata saved to", dataPath); }
 		else        { console.error("fsal :: problem writing workspace metadata", dataPath); }
-		
+
 		return success;
 	}
 

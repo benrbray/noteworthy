@@ -306,7 +306,7 @@ extends NoteworthyExtension<Autocomplete.Name> {
 		if(!rect) { return };
 
 		this._signals.setPosition({
-			top: rect.top + rect.height - viewRect.top,
+			top: rect.top + rect.height,
 			left: rect.left - viewRect.left
 		});
 
