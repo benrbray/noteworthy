@@ -1,4 +1,4 @@
-import { RegisteredCommandArg, RegisteredCommandName } from "@common/commands/commands";
+import { CommandHandler, CommandArg, RegisteredCommandName, CommandResult } from "@common/commands/commands";
 
 export interface CommandEvents {
 	commandsChanged: { }
@@ -6,7 +6,7 @@ export interface CommandEvents {
 
 export class CommandManager {
 
-	private _registeredCommands: Map<RegisteredCommandName, (arg: any) => Promise<void>>
+	private _registeredCommands: Map<RegisteredCommandName, (arg: any) => Promise<unknown>>
 		= new Map<RegisteredCommandName, (arg: any) => Promise<void>>();
 
 	// internal services can subscribe to events which report changes to the list of commands
@@ -24,7 +24,7 @@ export class CommandManager {
 
 	registerCommand<C extends RegisteredCommandName>(
 		name: C,
-		command: (arg: RegisteredCommandArg<C>) => Promise<void>
+		command: CommandHandler<C>
 	): void {
 		if(this._registeredCommands.has(name)) {
 			console.error(`command ${name} already registered`);
@@ -36,15 +36,18 @@ export class CommandManager {
 		this._emitEvent("commandsChanged", {});
 	}
 
-	async executeCommand<C extends RegisteredCommandName>(name: C, arg: RegisteredCommandArg<C>): Promise<void> {
+	async executeCommand<C extends RegisteredCommandName>(
+		name: C,
+		arg: CommandArg<C>
+	): Promise<CommandResult<C>> {
 		const command = this._registeredCommands.get(name);
 
 		if(!command) {
 			console.error(`unknown command ${name}`);
-			return;
+			return Promise.reject();
 		}
 
-		await command(arg);
+		return command(arg) as CommandResult<C>;
 	}
 
 	/* ---- event emitter --------------------------------- */

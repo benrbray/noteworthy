@@ -1,4 +1,4 @@
-import { RegisteredCommandArg, RegisteredCommandName } from "@common/commands/commands";
+import { CommandHandler, CommandArg, RegisteredCommandName, CommandResult } from "@common/commands/commands";
 import { FileHash } from "@common/files";
 
 export type TagSearchResult = {
@@ -20,11 +20,11 @@ export interface NoteworthyExtensionApi {
 	// use at initialization time only
 	registerCommand<C extends RegisteredCommandName>(
 		commandName: C,
-		handler: (arg: RegisteredCommandArg<C>) => Promise<void>
+		handler: CommandHandler<C>
 	): void;
 
 	executeCommand<C extends RegisteredCommandName>(
 		commandName: C,
-		arg: RegisteredCommandArg<C>
-	): Promise<void>;
+		arg: CommandArg<C>
+	): Promise<CommandResult<C>>;
 }

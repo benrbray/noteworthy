@@ -2,6 +2,7 @@ import { NoteworthyExtensionApi } from "@common/extensions/extension-api";
 import { Ref, Show, createEffect } from "solid-js";
 
 import "./modal.css"
+import { CommandSpec } from "@common/commands/commands";
 
 export interface ModalActions {
 	close: () => Promise<void>;
@@ -93,11 +94,14 @@ export namespace ModalController {
 
 declare module "@common/extensions/noteworthy-extension" {
   export interface CommunityExtensionCommands {
-    showModal: {
-			title: string,
-			renderModal: RenderModalFn,
-		},
-		hideModal: {}
+    showModal: CommandSpec<
+			{
+				title: string,
+				renderModal: RenderModalFn,
+			},
+			void
+		>,
+		hideModal: CommandSpec<{}, void>
   }
 }
 

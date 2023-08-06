@@ -58,7 +58,7 @@ import { visitNodeType } from "@common/markdown/unist-utils";
 
 // extensions
 import { NoteworthyExtension, NoteworthyExtensionInitializer, RegisteredExtensionName } from "@common/extensions/noteworthy-extension";
-import { RegisteredCommandArg, RegisteredCommandName } from "@common/commands/commands";
+import { CommandArg, RegisteredCommandName, CommandResult } from "@common/commands/commands";
 import codeMirrorPreviewExtension from "@extensions/noteworthy-codemirror-preview";
 import tikzJaxExtension from "@extensions/noteworthy-tikzjax";
 import autocompleteExtension from "@extensions/noteworthy-autocomplete";
@@ -201,15 +201,15 @@ class Renderer {
 
 			registerCommand: <C extends RegisteredCommandName>(
 				name: C,
-				command: (arg: RegisteredCommandArg<C>) => Promise<void>
+				command: (arg: CommandArg<C>) => Promise<CommandResult<C>>
 			) => {
 				console.log(`[API] registerCommand ${name}`);
 				commandManager.registerCommand(name, command);
 			},
 
-			executeCommand: async <C extends RegisteredCommandName>(name: C, arg: RegisteredCommandArg<C>) => {
+			executeCommand: async <C extends RegisteredCommandName>(name: C, arg: CommandArg<C>) => {
 				console.log(`[API] executeCommand ${name}`);
-				await commandManager.executeCommand(name, arg);
+				return commandManager.executeCommand(name, arg);
 			},
 
 			createFileViaModal: async () => {
@@ -399,14 +399,7 @@ class Renderer {
 								/>
 							</Match>
 							<Match when={state.activeTab == 4}>
-								<For each={state.commandNames}>
-								{(name, idx) => {
-									return (
-										<div
-											onClick={() => { this._noteworthyApi.executeCommand(name, {}) }}
-										>{name}</div>);
-								}}
-								</For>
+								empty
 							</Match>
 						</Switch>
 					</Suspense></div>
