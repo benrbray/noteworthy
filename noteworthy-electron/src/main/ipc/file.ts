@@ -39,7 +39,8 @@ export class MainIpc_FileHandlers implements MainIpcChannel {
 		let { hash } = fileInfo;
 		// validate input
 		if (hash === undefined) {
-			throw new Error("MainIPC :: requestFileContents() :: no file path or hash provided");
+			console.error("MainIPC :: requestFileContents() :: no hash provided");
+			return null;
 		}
 
 		// load from hash
@@ -47,7 +48,8 @@ export class MainIpc_FileHandlers implements MainIpcChannel {
 		if (hash === undefined || !(fileMeta = this._workspaceService.getFileByHash(hash))) {
 			/** @todo (6/20/20) load from arbitrary path */
 			console.log(hash, hash && this._workspaceService.getFileByHash(hash));
-			throw new Error("file loading from arbitrary path not implemented");
+			console.error("file loading from arbitrary path not implemented");
+			return null;
 		}
 
 		// read file contents
