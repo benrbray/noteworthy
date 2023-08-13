@@ -211,27 +211,30 @@ extends NoteworthyExtension<Autocomplete.Name> {
 
 		// position info
 		let rect = action.view.dom.getBoundingClientRect();
+		let vOffset = action.view.dom.offsetTop;
+
+		console.log(`%c ${action.view.dom.offsetTop}`, "color: blue");
 
 		// state machine
 		switch (action.kind) {
 			case ActionKind.open:
 				this._signals.setIsOpen(true);
-				this.placeSuggestion(rect, true);
+				this.placeSuggestion(rect, true, vOffset);
 
 				this._state.hasResults = true;
 				this.getSuggestionsFromProvider(provider, action.filter || "");
 				return false;
 			case ActionKind.close:
 				this._signals.setIsOpen(false);
-				this.placeSuggestion(rect, false);
+				this.placeSuggestion(rect, false, vOffset);
 				return false;
 			case ActionKind.up:
 				this.setSelectedIdx(this._state.selectedIdx - 1);
-				this.placeSuggestion(rect, true);
+				this.placeSuggestion(rect, true, vOffset);
 				return true;
 			case ActionKind.down:
 				this.setSelectedIdx(this._state.selectedIdx + 1);
-				this.placeSuggestion(rect, true);
+				this.placeSuggestion(rect, true, vOffset);
 				return true;
 			case ActionKind.enter:
 				this.acceptSuggestion(this._state.selectedIdx);
@@ -244,7 +247,7 @@ extends NoteworthyExtension<Autocomplete.Name> {
 					return false;
 				}
 
-				this.placeSuggestion(rect, true);
+				this.placeSuggestion(rect, true, vOffset);
 				this.getSuggestionsFromProvider(provider, filter);
 				return false;
 			default:
@@ -300,13 +303,14 @@ extends NoteworthyExtension<Autocomplete.Name> {
 	 * @param scroll When `true`, scrolls the popup box to ensure
 	 *   ensure that the currently-selected item is in view.
 	 */
-	private placeSuggestion(viewRect: DOMRect, scroll: boolean): void {
+	private placeSuggestion(viewRect: DOMRect, scroll: boolean, vOffset: number): void {
+		console.log(`%c [placeSuggestion] viewRect.top=${viewRect.top}`, "color: red");
 		// the `autocomplete` element is managed by `prosemirror-autocomplete`,
 		const rect = document.getElementsByClassName('autocomplete')[0]?.getBoundingClientRect();
 		if(!rect) { return };
 
 		this._signals.setPosition({
-			top: rect.top + rect.height,
+			top: rect.top + rect.height - viewRect.top + vOffset,
 			left: rect.left - viewRect.left
 		});
 

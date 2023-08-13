@@ -18,9 +18,9 @@ export const seedExtension: NoteworthyExtensionInitializer<
 	spec: seedExtensionSpec,
 
 	initialize({ api }) {
-		api.registerCommand("seedNew", async ({ seedName }) => {
-			console.log(`create seed (name: ${seedName})`);
-		});
+		// api.registerCommand("seedNew", async ({ seedName }) => {
+		// 	console.log(`create seed (name: ${seedName})`);
+		// });
 
 		return new SeedExtension();
 	}
