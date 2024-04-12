@@ -125,7 +125,7 @@ extends NoteworthyExtension<Autocomplete.Name> {
 		suggestElt.id = "suggest-wrapper";
 		editorElt.appendChild(suggestElt);
 
-		const [data, setData] = S.createSignal([]);
+		const [data, setData] = S.createSignal<SuggestDataWithIdx>([]);
 		const [selectedIdx, setSelectedIdx] = S.createSignal(0);
 		const [position, setPosition] = S.createSignal({ top: 0, left: 0 });
 		const [isOpen, setIsOpen] = S.createSignal(false);

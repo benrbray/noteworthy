@@ -33,6 +33,7 @@ build/Release
 
 # Dependency directories
 node_modules/
+.pnpm-store/**
 jspm_packages/
 
 # TypeScript v1 declaration files
