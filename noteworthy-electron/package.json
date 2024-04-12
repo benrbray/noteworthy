@@ -71,6 +71,7 @@
     "mdast-util-to-markdown": "^0.6.0",
     "micromark": "^2.11.3",
     "micromark-extension-wiki-link": "^0.0.4",
+    "orderedmap": "^2.1.1",
     "path-browserify": "^1.0.1",
     "process": "^0.11.10",
     "prosemirror-autocomplete": "https://gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%20run%20build%3Acjs%20%26%26%20npm%20run%20build%3Aesm%20%26%26%20npm%20run%20declarations",
@@ -98,6 +99,7 @@
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^1.0.1",
+    "@electron/asar": "^3.2.9",
     "@electron/notarize": "^1.2.3",
     "@types/electron-store": "^3.2.0",
     "@types/katex": "^0.16.0",
@@ -109,7 +111,6 @@
     "@types/unist": "^2.0.3",
     "@typescript-eslint/eslint-plugin": "^5.57.0",
     "@typescript-eslint/parser": "^5.57.0",
-    "asar": "^3.0.3",
     "dedent-js": "^1.0.1",
     "del": "^7.0.0",
     "del-cli": "^5.0.0",

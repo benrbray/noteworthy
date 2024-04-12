@@ -107,6 +107,9 @@ importers:
       micromark-extension-wiki-link:
         specifier: ^0.0.4
         version: 0.0.4
+      orderedmap:
+        specifier: ^2.1.1
+        version: 2.1.1
       path-browserify:
         specifier: ^1.0.1
         version: 1.0.1
@@ -115,7 +118,7 @@ importers:
         version: 0.11.10
       prosemirror-autocomplete:
         specifier: https://gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%20run%20build%3Acjs%20%26%26%20npm%20run%20build%3Aesm%20%26%26%20npm%20run%20declarations
-        version: '@gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%25252525252525252520run%25252525252525252520build%2525252525252525253Acjs%25252525252525252520%25252525252525252526%25252525252525252526%25252525252525252520npm%25252525252525252520run%25252525252525252520build%2525252525252525253Aesm%25252525252525252520%25252525252525252526%25252525252525252526%25252525252525252520npm%25252525252525252520run%25252525252525252520declarations'
+        version: '@gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%25252525252525252525252520run%25252525252525252525252520build%2525252525252525252525253Acjs%25252525252525252525252520%25252525252525252525252526%25252525252525252525252526%25252525252525252525252520npm%25252525252525252525252520run%25252525252525252525252520build%2525252525252525252525253Aesm%25252525252525252525252520%25252525252525252525252526%25252525252525252525252526%25252525252525252525252520npm%25252525252525252525252520run%25252525252525252525252520declarations'
       prosemirror-commands:
         specifier: ^1.5.1
         version: 1.5.1
@@ -183,6 +186,9 @@ importers:
       '@electron-toolkit/tsconfig':
         specifier: ^1.0.1
         version: 1.0.1(@types/node@18.16.3)
+      '@electron/asar':
+        specifier: ^3.2.9
+        version: 3.2.9
       '@electron/notarize':
         specifier: ^1.2.3
         version: 1.2.3
@@ -216,9 +222,6 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^5.57.0
         version: 5.59.1(eslint@8.39.0)(typescript@5.0.4)
-      asar:
-        specifier: ^3.0.3
-        version: 3.2.0
       dedent-js:
         specifier: ^1.0.1
         version: 1.0.1
@@ -1931,15 +1934,6 @@ packages:
       '@types/node': 18.16.3
     dev: true
 
-  /@types/glob@7.2.0:
-    resolution: {integrity: sha512-ZUxbzKl0IfJILTS6t7ip5fQQM/J3TJYubDm3nMbgubNNYS62eXeUpoLUC8/7fJNiFYHTrGPQn7hspDUzIHX3UA==}
-    requiresBuild: true
-    dependencies:
-      '@types/minimatch': 5.1.2
-      '@types/node': 18.16.3
-    dev: true
-    optional: true
-
   /@types/http-cache-semantics@4.0.1:
     resolution: {integrity: sha512-SZs7ekbP8CN0txVG2xVRH6EgKmEm31BOxA07vkFaETzZz1xh+cbt8BcI0slpymvwhx5dlFnQG2rTlPVQn+iRPQ==}
 
@@ -1964,12 +1958,6 @@ packages:
     resolution: {integrity: sha512-Y/uImid8aAwrEA24/1tcRZwpxX3pIFTSilcNDKSPn+Y2iDywSEachzRuvgAYYLR3wpGXAsMbv5lvKLDZLeYPAw==}
     dependencies:
       '@types/unist': 2.0.6
-
-  /@types/minimatch@5.1.2:
-    resolution: {integrity: sha512-K0VQKziLUWkVKiRVrx4a40iPaxTUefQmjtkQofBkYRcoaaL/8rhwDWww9qWbrgicNOgnpIsMxyNIUM4+n6dUIA==}
-    requiresBuild: true
-    dev: true
-    optional: true
 
   /@types/minimist@1.2.2:
     resolution: {integrity: sha512-jhuKLIRrhvCPLqwPcx6INqmKeiA5EWrsCOPhrlFSrbrmU4ZMPjj5Ul/oLCMDO98XRUIwVm78xICz4EPCektzeQ==}
@@ -2509,20 +2497,6 @@ packages:
   /arrify@1.0.1:
     resolution: {integrity: sha512-3CYzex9M9FGQjCGMGyi6/31c8GJbgb0qGyrx5HWxPd0aCwh4cB2YjMb2Xf9UuoogrMrlO9cTqnB5rI5GHZTcUA==}
     engines: {node: '>=0.10.0'}
-    dev: true
-
-  /asar@3.2.0:
-    resolution: {integrity: sha512-COdw2ZQvKdFGFxXwX3oYh2/sOsJWJegrdJCGxnN4MZ7IULgRBp9P6665aqj9z1v9VwP4oP1hRBojRDQ//IGgAg==}
-    engines: {node: '>=10.12.0'}
-    deprecated: Please use @electron/asar moving forward.  There is no API change, just a package name change
-    hasBin: true
-    dependencies:
-      chromium-pickle-js: 0.2.0
-      commander: 5.1.0
-      glob: 7.2.3
-      minimatch: 3.1.2
-    optionalDependencies:
-      '@types/glob': 7.2.0
     dev: true
 
   /assert-plus@1.0.0:
@@ -5284,8 +5258,8 @@ packages:
       word-wrap: 1.2.3
     dev: true
 
-  /orderedmap@2.1.0:
-    resolution: {integrity: sha512-/pIFexOm6S70EPdznemIz3BQZoJ4VTFrhqzu0ACBqBgeLsLxq8e6Jim63ImIfwW/zAD1AlXpRMlOv3aghmo4dA==}
+  /orderedmap@2.1.1:
+    resolution: {integrity: sha512-TvAWxi0nDe1j/rtMcWcIj94+Ffe6n7zhow33h40SKxmsmozs6dz/e+EajymfoFcHd7sxNn8yHM8839uixMOV6g==}
     dev: false
 
   /p-cancelable@2.1.1:
@@ -5511,7 +5485,7 @@ packages:
   /prosemirror-model@1.19.0:
     resolution: {integrity: sha512-/CvFGJnwc41EJSfDkQLly1cAJJJmBpZwwUJtwZPTjY2RqZJfM8HVbCreOY/jti8wTRbVyjagcylyGoeJH/g/3w==}
     dependencies:
-      orderedmap: 2.1.0
+      orderedmap: 2.1.1
     dev: false
 
   /prosemirror-schema-basic@1.2.1:
@@ -6775,7 +6749,7 @@ packages:
   /zwitch@1.0.5:
     resolution: {integrity: sha512-V50KMwwzqJV0NpZIZFwfOD5/lyny3WlSzRiXgA0G7VUnRlqttta1L6UQIHzd6EuBY/cHGfwTIck7w1yH6Q5zUw==}
 
-  '@gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%25252525252525252520run%25252525252525252520build%2525252525252525253Acjs%25252525252525252520%25252525252525252526%25252525252525252526%25252525252525252520npm%25252525252525252520run%25252525252525252520build%2525252525252525253Aesm%25252525252525252520%25252525252525252526%25252525252525252526%25252525252525252520npm%25252525252525252520run%25252525252525252520declarations':
+  '@gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%25252525252525252525252520run%25252525252525252525252520build%2525252525252525252525253Acjs%25252525252525252525252520%25252525252525252525252526%25252525252525252525252526%25252525252525252525252520npm%25252525252525252525252520run%25252525252525252525252520build%2525252525252525252525253Aesm%25252525252525252525252520%25252525252525252525252526%25252525252525252525252526%25252525252525252525252520npm%25252525252525252525252520run%25252525252525252525252520declarations':
     resolution: {tarball: https://gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%20run%20build%3Acjs%20%26%26%20npm%20run%20build%3Aesm%20%26%26%20npm%20run%20declarations}
     name: prosemirror-autocomplete
     version: 0.4.3
