@@ -75,7 +75,7 @@ export function concreteFromMarkdown() {
 		let listItem = top(this.stack) as Md.ListItem;
 		let listNode = this.stack[this.stack.length - 2] as Md.List;
 
-		if(!listNode.ordered) { 
+		if(!listNode.ordered) {
 			listItem.marker = marker;
 		}
 	}
@@ -95,7 +95,6 @@ export function concreteFromMarkdown() {
 
 ////////////////////////////////////////////////////////////
 
-import repeat from "repeat-string";
 import checkRepeat from "mdast-util-to-markdown/lib/util/check-rule-repeat";
 import checkRule from "mdast-util-to-markdown/lib/util/check-rule";
 
@@ -103,6 +102,10 @@ import checkBullet from "mdast-util-to-markdown/lib/util/check-bullet"
 import checkListItemIndent from "mdast-util-to-markdown/lib/util/check-list-item-indent"
 import flow from "mdast-util-to-markdown/lib/util/container-flow"
 import indentLines from "mdast-util-to-markdown/lib/util/indent-lines"
+
+const repeat = (s: string, n: number) => {
+	return s.repeat(n);
+}
 
 export function concreteToMarkdown() {
 	// -- Thematic Break -------------------------------- //
