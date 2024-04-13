@@ -95,13 +95,13 @@ export function concreteFromMarkdown() {
 
 ////////////////////////////////////////////////////////////
 
-import checkRepeat from "mdast-util-to-markdown/lib/util/check-rule-repeat";
-import checkRule from "mdast-util-to-markdown/lib/util/check-rule";
+import checkRepeat from "mdast-util-to-markdown/lib/util/check-rule-repeat.js";
+import checkRule from "mdast-util-to-markdown/lib/util/check-rule.js";
 
-import checkBullet from "mdast-util-to-markdown/lib/util/check-bullet"
-import checkListItemIndent from "mdast-util-to-markdown/lib/util/check-list-item-indent"
-import flow from "mdast-util-to-markdown/lib/util/container-flow"
-import indentLines from "mdast-util-to-markdown/lib/util/indent-lines"
+import checkBullet from "mdast-util-to-markdown/lib/util/check-bullet.js"
+import checkListItemIndent from "mdast-util-to-markdown/lib/util/check-list-item-indent.js"
+import flow from "mdast-util-to-markdown/lib/util/container-flow.js"
+import indentLines from "mdast-util-to-markdown/lib/util/indent-lines.js"
 
 const repeat = (s: string, n: number) => {
 	return s.repeat(n);

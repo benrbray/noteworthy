@@ -6,8 +6,8 @@
     "src/common/**/*",
   ],
   "compilerOptions": {
-    "target": "esnext",
-    "module": "esnext",
+    "target": "es2022",
+    "module": "es2022",
     "sourceMap": false,
     "strict": true,
     "jsx": "preserve",
