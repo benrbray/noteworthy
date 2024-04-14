@@ -23,6 +23,7 @@
   "homepage": "https://github.com/benrbray/noteworthy#readme",
   "main": "./out/main/index.mjs",
   "scripts": {
+    "clean": "rm -rf dist; rm -rf out",
     "format": "prettier --write .",
     "lint": "eslint . --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
@@ -39,7 +40,7 @@
   },
   "dependencies": {
     "@benrbray/mdast-util-cite": "^1.1.0",
-    "@benrbray/prosemirror-math": "file:../../prosemirror-math/benrbray-prosemirror-math-0.2.2.tgz",
+    "@benrbray/prosemirror-math": "^1.0.0",
     "@benrbray/remark-cite": "^1.1.0",
     "@citation-js/core": "^0.5.7",
     "@citation-js/date": "^0.5.1",
