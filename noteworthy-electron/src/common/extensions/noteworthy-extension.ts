@@ -30,6 +30,10 @@ export interface CommunityExtensions {
 	// intentionally empty, to be extended by module declarations
 }
 
+export interface CommunityExtensionCommands {
+	// intentionally empty, to be extended by module declarations
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 export abstract class NoteworthyExtension<

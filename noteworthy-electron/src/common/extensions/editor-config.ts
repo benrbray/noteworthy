@@ -315,7 +315,7 @@ export class EditorConfig<S extends ProseSchema = ProseSchema> {
 		keymaps.forEach((cmds, key) => {
 			keymap[key] = chainCommands(...cmds);
 		});
-		resultPlugins.push(makeKeymap(keymap));
+		resultPlugins.unshift(makeKeymap(keymap));
 
 		// include base keymap
 		resultPlugins.push(makeKeymap(baseKeymap));

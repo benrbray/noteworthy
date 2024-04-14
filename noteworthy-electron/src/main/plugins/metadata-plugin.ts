@@ -6,9 +6,24 @@ import { IDoc } from "@common/doctypes/doctypes";
 ////////////////////////////////////////////////////////////
 
 /**
+ * @todo (7/28/20) properly validate YAML metadata
+ */
+export interface MetadataFields {
+	title?:string;
+	author?:string;
+	authors?:string; // TODO (2022/03/06) author vs authors?
+	url?:string;
+	date?:string;
+	year?:string;
+	tags_defined?:string;  // TODO (2022/03/06) yaml might give us a string[] instead
+	tags?:string; // TODO (2022/03/06) yaml might give us a string[] instead
+	bibtex?:string;
+}
+
+/**
  * Type representing file metadata.
  */
-export type IMetadata = { [key:string] : string|string[] };
+export type IMetadata = MetadataFields & { [key:string] : string|string[] };
 
 /**
  * Document types should implement this interface in order
@@ -58,7 +73,7 @@ export class MetadataPlugin implements WorkspacePlugin {
 	}
 
 	// == Workspace Events ============================== //
-	
+
 	async handleWorkspaceClosed(dir: IWorkspaceDir){
 		console.log(`${this.plugin_name} :: handle(workspace-closed)`);
 		this.clear();

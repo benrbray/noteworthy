@@ -8,15 +8,7 @@ import { EventEmitter } from "events";
 
 // project imports
 import MainWindow from "./windows/MainWindow";
-import {
-	MainIpc_FileHandlers, MainIpc_TagHandlers, MainIpc_DialogHandlers,
-	MainIpc_LifecycleHandlers, MainIpc_ThemeHandlers, MainIpc_ShellHandlers,
-	MainIpcHandlers, MainIpc_OutlineHandlers,
-	MainIpc_MetadataHandlers,
-	MainIpc_NavigationHandlers,
-	MainIpc_CitationHandlers,
-	MainIpcChannelName
-} from "./MainIPC";
+import { MainIpcHandlers, MainIpcChannelName } from "./MainIPC";
 import { FSAL } from "./fsal/fsal";
 import { invokerFor, FunctionPropertyNames } from "@common/ipc";
 import { IDirEntryMeta, IFileMeta, IPossiblyUntitledFile } from "@common/files";
@@ -24,6 +16,17 @@ import { IpcEvents } from "@common/events";
 import { WorkspaceService, WorkspaceEvent } from "./workspace/workspace-service";
 import { ThemeService, ThemeEvent } from "./theme/theme-service";
 import { PluginService } from "./plugins/plugin-service";
+import { MainIpc_LifecycleHandlers } from "./ipc/lifecycle";
+import { MainIpc_FileHandlers } from "./ipc/file";
+import { MainIpc_DialogHandlers } from "./ipc/dialog";
+import { MainIpc_CitationHandlers } from "./ipc/citation";
+import { MainIpc_MetadataHandlers } from "./ipc/metadata";
+import { MainIpc_NavigationHandlers } from "./ipc/navigation";
+import { MainIpc_OutlineHandlers } from "./ipc/outline";
+import { MainIpc_ShellHandlers } from "./ipc/shell";
+import { MainIpc_TagHandlers } from "./ipc/tag";
+import { MainIpc_ThemeHandlers } from "./ipc/theme";
+import { MainIPC_WorkspaceHandlers } from "./ipc/workspace";
 
 ////////////////////////////////////////////////////////////
 
@@ -121,6 +124,7 @@ export default class NoteworthyApp extends EventEmitter {
 		let themeHandlers      = new MainIpc_ThemeHandlers(this._themeService);
 		let metadataHandlers   = new MainIpc_MetadataHandlers(this._pluginService);
 		let citationHandlers   = new MainIpc_CitationHandlers(this, this._pluginService);
+		let workspaceHandlers  = new MainIPC_WorkspaceHandlers(this, this._workspaceService, dialogHandlers);
 
 		return {
 			lifecycle:  lifecycleHandlers,
@@ -132,7 +136,8 @@ export default class NoteworthyApp extends EventEmitter {
 			outline:    outlineHandlers,
 			metadata:   metadataHandlers,
 			navigation: navigationHandlers,
-			citations:  citationHandlers
+			citations:  citationHandlers,
+			workspace:  workspaceHandlers
 		}
 	}
 

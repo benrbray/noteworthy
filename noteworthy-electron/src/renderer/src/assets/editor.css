@@ -72,13 +72,15 @@
 }
 
 /* blockquote */
-#editor blockquote {
-	border-left: 0.6em solid var(--color-text-fainter);
-	color: var(--color-text-fainter);
-}
 
-#editor blockquote b, #editor blockquote strong {
-	color: var(--color-text-faint);
+#editor blockquote {
+  border-left: 2px solid hsl(210, 50%, 80%);
+  color: #224;
+  background-color: hsl(210, 80%, 97%);
+  margin: 0;
+  padding: 0.2em 0.2em;
+  padding-left: 0.6em;
+  padding-right: 0.6em;
 }
 
 /* definition */
