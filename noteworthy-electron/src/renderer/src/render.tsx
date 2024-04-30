@@ -1,6 +1,9 @@
 // node imports
 import * as pathlib from "path-browserify";
 
+// monorepo imports
+import { data } from "noteworthy-editor";
+
 // project imports
 import type {
 	MainIpcHandlers,
@@ -490,6 +493,9 @@ class Renderer {
 
 			return (<>
 				<style>{state.themeCss}</style>
+				<div>
+					{data}
+				</div>
 				<div id="app" class={state.showLowerPanel ? "" : "collapsePanel"} onMouseUp={handleAppClicked}>
 					<AppSidebar />
 					<AppContent />

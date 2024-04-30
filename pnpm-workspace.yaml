@@ -1,2 +1,3 @@
 packages:
   - "noteworthy-electron"
+  - "noteworthy-editor"

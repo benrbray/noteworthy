@@ -20,6 +20,7 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+		"preserveSymlinks": false, //new
 
     "composite": true,
     "baseUrl": ".",

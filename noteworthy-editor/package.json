@@ -1,0 +1,43 @@
+{
+  "name": "noteworthy-editor",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "." : "./dist/noteworthy-editor.js"
+  },
+  "types": "dist/noteworthy-editor.d.ts",
+  "files": [
+    "dist",
+    "lib"
+  ],
+  "scripts": {
+    "preinstall": "npx only-allow pnpm",
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "solid-js": "^1.8.15",
+    "vite": "^5.2.0",
+    "vite-plugin-dts": "^3.9.0",
+    "vite-plugin-solid": "^2.10.2",
+    "vite-tsconfig-paths": "^4.3.2"
+  },
+  "peerDependencies": {
+    "prosemirror-autocomplete": "https://gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%20run%20build%3Acjs%20%26%26%20npm%20run%20build%3Aesm%20%26%26%20npm%20run%20declarations",
+    "prosemirror-commands": "^1.5.2",
+    "prosemirror-gapcursor": "^1.3.2",
+    "prosemirror-history": "^1.4.0",
+    "prosemirror-inputrules": "^1.4.0",
+    "prosemirror-keymap": "^1.2.2",
+    "prosemirror-model": "^1.20.0",
+    "prosemirror-schema-basic": "^1.2.2",
+    "prosemirror-schema-list": "^1.3.0",
+    "prosemirror-state": "^1.4.3",
+    "prosemirror-tables": "^1.3.7",
+    "prosemirror-transform": "^1.8.0",
+    "prosemirror-view": "^1.33.4"
+  }
+}
