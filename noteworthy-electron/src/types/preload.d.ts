@@ -1,4 +1,4 @@
-import { ClipboardApi } from "./preload";
+import { ClipboardApi, RestrictedIpcRenderer } from "../preload/preload";
 
 declare global {
   interface Window {
