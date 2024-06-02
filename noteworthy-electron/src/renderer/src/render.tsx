@@ -3,6 +3,7 @@ import * as pathlib from "path-browserify";
 
 // monorepo imports
 import { data } from "noteworthy-editor";
+console.log("noteworthy-editor:", data);
 
 // project imports
 import type {
@@ -493,9 +494,6 @@ class Renderer {
 
 			return (<>
 				<style>{state.themeCss}</style>
-				<div>
-					{data}
-				</div>
 				<div id="app" class={state.showLowerPanel ? "" : "collapsePanel"} onMouseUp={handleAppClicked}>
 					<AppSidebar />
 					<AppContent />
