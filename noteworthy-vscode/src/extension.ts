@@ -1,12 +1,16 @@
-import { commands, ExtensionContext } from "vscode";
+import * as vscode from "vscode";
 import { HelloWorldPanel } from "./panels/HelloWorldPanel";
+import { MarkdownEditorProvider } from "./editors/MarkdownEditor";
 
-export function activate(context: ExtensionContext) {
+export function activate(context: vscode.ExtensionContext) {
   // Create the show hello world command
-  const showHelloWorldCommand = commands.registerCommand("noteworthy.showHelloWorld", () => {
+  const showHelloWorldCommand = vscode.commands.registerCommand("noteworthy.showHelloWorld", () => {
     HelloWorldPanel.render(context.extensionUri);
   });
 
   // Add command to the extension context
   context.subscriptions.push(showHelloWorldCommand);
+
+  // register custom editor provider
+  context.subscriptions.push(MarkdownEditorProvider.register(context));
 }

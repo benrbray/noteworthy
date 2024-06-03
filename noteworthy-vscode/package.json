@@ -13,6 +13,18 @@
         "command": "noteworthy.showHelloWorld",
         "title": "Noteworthy: Show"
       }
+    ],
+    "customEditors": [
+      {
+        "viewType": "noteworthy.markdownEditor",
+        "displayName": "Noteworthy: Markdown",
+        "selector": [
+          {
+            "filenamePattern": "*.cscratch"
+          }
+        ],
+        "priority": "default"
+      }
     ]
   },
   "scripts": {
