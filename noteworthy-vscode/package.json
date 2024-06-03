@@ -20,6 +20,16 @@
         "displayName": "Noteworthy: Markdown",
         "selector": [
           {
+            "filenamePattern": "*.md"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "noteworthy.CatScratchEditor",
+        "displayName": "Noteworthy: CatScratch",
+        "selector": [
+          {
             "filenamePattern": "*.cscratch"
           }
         ],

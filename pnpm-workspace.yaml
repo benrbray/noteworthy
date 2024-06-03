@@ -1,5 +1,5 @@
 packages:
   - "noteworthy-electron"
   - "noteworthy-editor"
-  - "noteworthy-vscode-ui"
+  - "noteworthy-vscode/noteworthy-vscode-webview"
   - "noteworthy-vscode"

@@ -10,7 +10,7 @@ importers:
     dependencies:
       prosemirror-autocomplete:
         specifier: https://gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%20run%20build%3Acjs%20%26%26%20npm%20run%20build%3Aesm%20%26%26%20npm%20run%20declarations
-        version: '@gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%252525252520run%252525252520build%25252525253Acjs%252525252520%252525252526%252525252526%252525252520npm%252525252520run%252525252520build%25252525253Aesm%252525252520%252525252526%252525252526%252525252520npm%252525252520run%252525252520declarations'
+        version: '@gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%25252525252520run%25252525252520build%2525252525253Acjs%25252525252520%25252525252526%25252525252526%25252525252520npm%25252525252520run%25252525252520build%2525252525253Aesm%25252525252520%25252525252526%25252525252526%25252525252520npm%25252525252520run%25252525252520declarations'
       prosemirror-commands:
         specifier: ^1.5.2
         version: 1.5.2
@@ -179,7 +179,7 @@ importers:
         version: 0.11.10
       prosemirror-autocomplete:
         specifier: https://gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%20run%20build%3Acjs%20%26%26%20npm%20run%20build%3Aesm%20%26%26%20npm%20run%20declarations
-        version: '@gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%252525252525252525252520run%252525252525252525252520build%25252525252525252525253Acjs%252525252525252525252520%252525252525252525252526%252525252525252525252526%252525252525252525252520npm%252525252525252525252520run%252525252525252525252520build%25252525252525252525253Aesm%252525252525252525252520%252525252525252525252526%252525252525252525252526%252525252525252525252520npm%252525252525252525252520run%252525252525252525252520declarations'
+        version: '@gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%25252525252525252525252520run%25252525252525252525252520build%2525252525252525252525253Acjs%25252525252525252525252520%25252525252525252525252526%25252525252525252525252526%25252525252525252525252520npm%25252525252525252525252520run%25252525252525252525252520build%2525252525252525252525253Aesm%25252525252525252525252520%25252525252525252525252526%25252525252525252525252526%25252525252525252525252520npm%25252525252525252525252520run%25252525252525252525252520declarations'
       prosemirror-commands:
         specifier: ^1.5.2
         version: 1.5.2
@@ -371,7 +371,7 @@ importers:
         specifier: ^1.5.0
         version: 1.6.1
 
-  noteworthy-vscode-ui:
+  noteworthy-vscode/noteworthy-vscode-webview:
     dependencies:
       solid-js:
         specifier: ^1.8.15
@@ -8010,7 +8010,7 @@ packages:
   /zwitch@1.0.5:
     resolution: {integrity: sha512-V50KMwwzqJV0NpZIZFwfOD5/lyny3WlSzRiXgA0G7VUnRlqttta1L6UQIHzd6EuBY/cHGfwTIck7w1yH6Q5zUw==}
 
-  '@gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%252525252520run%252525252520build%25252525253Acjs%252525252520%252525252526%252525252526%252525252520npm%252525252520run%252525252520build%25252525253Aesm%252525252520%252525252526%252525252526%252525252520npm%252525252520run%252525252520declarations':
+  '@gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%25252525252520run%25252525252520build%2525252525253Acjs%25252525252520%25252525252526%25252525252526%25252525252520npm%25252525252520run%25252525252520build%2525252525253Aesm%25252525252520%25252525252526%25252525252526%25252525252520npm%25252525252520run%25252525252520declarations':
     resolution: {tarball: https://gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%20run%20build%3Acjs%20%26%26%20npm%20run%20build%3Aesm%20%26%26%20npm%20run%20declarations}
     name: prosemirror-autocomplete
     version: 0.4.3
@@ -8021,7 +8021,7 @@ packages:
       prosemirror-view: 1.33.4
     dev: false
 
-  '@gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%252525252525252525252520run%252525252525252525252520build%25252525252525252525253Acjs%252525252525252525252520%252525252525252525252526%252525252525252525252526%252525252525252525252520npm%252525252525252525252520run%252525252525252525252520build%25252525252525252525253Aesm%252525252525252525252520%252525252525252525252526%252525252525252525252526%252525252525252525252520npm%252525252525252525252520run%252525252525252525252520declarations':
+  '@gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%25252525252525252525252520run%25252525252525252525252520build%2525252525252525252525253Acjs%25252525252525252525252520%25252525252525252525252526%25252525252525252525252526%25252525252525252525252520npm%25252525252525252525252520run%25252525252525252525252520build%2525252525252525252525253Aesm%25252525252525252525252520%25252525252525252525252526%25252525252525252525252526%25252525252525252525252520npm%25252525252525252525252520run%25252525252525252525252520declarations':
     resolution: {tarball: https://gitpkg.now.sh/benrbray/curvenote-editor/packages/prosemirror-autocomplete?benrbray/cancelOnFirstSpace&scripts.postinstall=npm%20run%20build%3Acjs%20%26%26%20npm%20run%20build%3Aesm%20%26%26%20npm%20run%20declarations}
     name: prosemirror-autocomplete
     version: 0.4.3
